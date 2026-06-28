@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bursa Insight</title>
+<title>Ether</title>
 <script src="vendor/lightweight-charts.js"></script>
 <style>
   :root{
@@ -11,6 +11,11 @@
     --text:#d1d4dc; --muted:#787b86; --accent:#2962ff; --accent2:#1848cc;
     --green:#089981; --red:#f23645; --up:#26a69a; --down:#ef5350; --hover:#2a2e39;
     --h-header:48px; --h-tape:36px; --h-bottom:230px; --w-right:300px;
+  }
+  /* light mode: override the palette; accents (green/red/blue) stay the same */
+  body.light{
+    --bg:#ffffff; --panel:#ffffff; --panel2:#f7f9fc; --line:#e3e7ee; --line2:#cfd6e0;
+    --text:#131722; --muted:#5b6b7f; --hover:#eef2f7; --navy:#e8edf5;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -24,9 +29,12 @@
   /* ---------- header ---------- */
   header{height:var(--h-header);display:flex;align-items:center;gap:14px;padding:0 14px;
     background:var(--panel);border-bottom:1px solid var(--line);}
-  .logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;letter-spacing:.2px;}
-  .logo .mark{width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,var(--accent),#00bcd4);
-    display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .logo{display:flex;align-items:center;font-weight:900;font-size:22px;letter-spacing:3px;
+    font-family:"Arial Black","Arial Narrow Bold",Arial,sans-serif;user-select:none;}
+  .logo span{display:inline-block;}
+  .logo .e1{color:#16a34a;}                                   /* green E */
+  .logo .e2{color:#e3242b;transform:scaleX(-1);}             /* red mirrored E */
+  .logo .lt{color:var(--text);}                               /* themed: white in dark, black in light */
   .search{position:relative;}
   .search input{width:240px;background:var(--bg);border:1px solid var(--line);border-radius:6px;
     color:var(--text);padding:7px 10px 7px 30px;font-size:12.5px;outline:none;}
@@ -127,7 +135,7 @@
 </head>
 <body>
 <header>
-  <div class="logo"><span class="mark">📈</span> Bursa<span style="color:var(--accent)">Insight</span></div>
+  <div class="logo" title="Ether"><span class="e1">E</span><span class="lt">T</span><span class="lt">H</span><span class="e2">E</span><span class="lt">R</span></div>
   <div class="search">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
     <input id="search" placeholder="Search symbol e.g. 1155 or MAYBANK" autocomplete="off"/>
@@ -139,6 +147,7 @@
   <div class="lookback" id="lookback">
     <button data-lb="6mo">6M</button><button data-lb="1y" class="active">1Y</button><button data-lb="2y">2Y</button>
   </div>
+  <button class="btn ghost" id="theme" title="Toggle dark / light">🌙</button>
   <button class="btn ghost" id="signin">Sign in</button>
 </header>
 
@@ -224,13 +233,21 @@ const heat=v=>{const t=Math.max(-100,Math.min(100,v))/100;return t>=0?`rgba(8,15
 
 /* ---------------- chart (Lightweight Charts) ---------------- */
 let chart, rsiChart, candle, vol, smaLine, rsiLine, ro;
+function chartTheme(){
+  const light=document.body.classList.contains('light');
+  return {
+    layout:{background:{color:'transparent'},textColor:light?'#4b5563':'#9aa0ac',fontFamily:'inherit'},
+    grid:{vertLines:{color:light?'#eceff3':'#1f2430'},horzLines:{color:light?'#eceff3':'#1f2430'}},
+    rightPriceScale:{borderColor:light?'#e3e7ee':'#2a2e39'},
+    timeScale:{borderColor:light?'#e3e7ee':'#2a2e39'},
+  };
+}
+function applyChartTheme(){ if(chart){chart.applyOptions(chartTheme());rsiChart.applyOptions(chartTheme());} }
 function initChart(){
   const opts={
     autoSize:true,
-    layout:{background:{color:'transparent'},textColor:'#9aa0ac',fontFamily:'inherit'},
-    grid:{vertLines:{color:'#1f2430'},horzLines:{color:'#1f2430'}},
-    rightPriceScale:{borderColor:'#2a2e39'},
-    timeScale:{borderColor:'#2a2e39',timeVisible:false},
+    ...chartTheme(),
+    timeScale:{...chartTheme().timeScale,timeVisible:false},
     crosshair:{mode:0,vertLine:{color:'#4a5160',labelBackgroundColor:'#2962ff'},
       horzLine:{color:'#4a5160',labelBackgroundColor:'#2962ff'}},
   };
@@ -488,6 +505,15 @@ function boot(){
   $("#nav-sectors").onclick=()=>$("#rotation").scrollIntoView({behavior:'smooth'});
   $("#nav-news").onclick=()=>$("#news").scrollIntoView({behavior:'smooth'});
   $("#signin").onclick=()=>alert("Auth tier coming next — guest sees limited charts, login unlocks the full screener & alerts.");
+  // dark / light theme toggle (logo letters + chart follow the theme; persists)
+  function setTheme(light){
+    document.body.classList.toggle('light',light);
+    $("#theme").textContent=light?'☀️':'🌙';
+    applyChartTheme();
+    try{localStorage.setItem('theme',light?'light':'dark');}catch(_){}
+  }
+  $("#theme").onclick=()=>setTheme(!document.body.classList.contains('light'));
+  try{setTheme(localStorage.getItem('theme')==='light');}catch(_){}
   // resizable right panel (drag the left edge; width persists)
   (function(){
     const rz=$("#rresizer"); let dragging=false;
