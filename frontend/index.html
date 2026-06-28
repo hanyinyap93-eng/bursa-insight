@@ -79,9 +79,9 @@
   /* ---------- layout ---------- */
   .grid{height:calc(100vh - var(--h-header) - var(--h-tape));display:grid;
     grid-template-columns:1fr var(--w-right);
-    grid-template-rows:1fr var(--h-bottom);}
+    grid-template-rows:1fr;}
   .center{grid-column:1;grid-row:1;display:flex;flex-direction:column;min-height:0;min-width:0;}
-  .right{grid-column:2;grid-row:1/3;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
+  .right{grid-column:2;grid-row:1;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
   .resizer{position:absolute;left:-3px;top:0;width:7px;height:100%;cursor:col-resize;z-index:30;}
   .resizer::after{content:"";position:absolute;left:2px;top:0;width:2px;height:100%;background:var(--line2);transition:background .12s;}
   .resizer:hover::after,.resizer.active::after{background:var(--accent);}
@@ -268,17 +268,6 @@
     </div>
   </aside>
 
-  <!-- BOTTOM: screener / alerts / backtest -->
-  <section class="bottom">
-    <div class="vresizer" id="vresizer" title="Drag to resize"></div>
-    <div class="tabs" id="tabs">
-      <button data-tab="screener" class="active">Screener</button>
-      <button data-tab="correlated">Correlated</button>
-      <button data-tab="alerts">Alerts</button>
-      <button data-tab="backtest">Backtest</button>
-    </div>
-    <div class="tab-body" id="tab-body"></div>
-  </section>
 </div>
 
 <script>
@@ -610,11 +599,10 @@ function setLookback(lb){LB=lb;CHART_LB=lb;
 }
 function boot(){
   initChart();
-  loadQuotes();loadHealth();loadRotation();loadNews();setTab('screener');
+  loadQuotes();loadHealth();loadRotation();loadNews();
   document.querySelectorAll('#lookback button').forEach(b=>b.onclick=()=>setLookback(b.dataset.lb));
   document.querySelectorAll('#tf button').forEach(b=>b.onclick=()=>{CHART_LB=b.dataset.lb;
     document.querySelectorAll('#tf button').forEach(x=>x.classList.toggle('active',x===b));loadChart(SYMBOL);});
-  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
   $("#nav-sectors").onclick=()=>$("#rotation").scrollIntoView({behavior:'smooth'});
   $("#nav-news").onclick=()=>$("#news").scrollIntoView({behavior:'smooth'});
   $("#signin").onclick=()=>alert("Auth tier coming next — guest sees limited charts, login unlocks the full screener & alerts.");
@@ -641,21 +629,6 @@ function boot(){
       try{localStorage.setItem('wRight',
         getComputedStyle(document.documentElement).getPropertyValue('--w-right').trim());}catch(_){}});
     try{const s=localStorage.getItem('wRight'); if(s)document.documentElement.style.setProperty('--w-right',s);}catch(_){}
-  })();
-  // resizable bottom dock (drag the top edge; height persists)
-  (function(){
-    const rz=$("#vresizer"); let dragging=false;
-    const setH=h=>document.documentElement.style.setProperty('--h-bottom',
-      Math.min(600,Math.max(110,h))+'px');
-    const onMove=e=>{ if(dragging) setH(window.innerHeight-e.clientY); };
-    rz.addEventListener('mousedown',e=>{dragging=true;rz.classList.add('active');
-      document.body.classList.add('vresizing');e.preventDefault();});
-    window.addEventListener('mousemove',onMove);
-    window.addEventListener('mouseup',()=>{ if(!dragging)return; dragging=false;
-      rz.classList.remove('active');document.body.classList.remove('vresizing');
-      try{localStorage.setItem('hBottom',
-        getComputedStyle(document.documentElement).getPropertyValue('--h-bottom').trim());}catch(_){}});
-    try{const s=localStorage.getItem('hBottom'); if(s)document.documentElement.style.setProperty('--h-bottom',s);}catch(_){}
   })();
   $("#search").addEventListener('keydown',e=>{
     if(e.key!=='Enter')return;
