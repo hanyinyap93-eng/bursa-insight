@@ -1,0 +1,12 @@
+{
+  "name": "Ether",
+  "short_name": "Ether",
+  "description": "Ether — Bursa Malaysia market insight: Index Health, screener, sector rotation.",
+  "icons": [
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "display": "standalone"
+}
