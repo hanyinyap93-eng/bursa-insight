@@ -50,6 +50,14 @@
   .btn{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-weight:600;font-size:12.5px;}
   .btn.ghost{background:none;border:1px solid var(--line);color:var(--text);}
   .btn.ghost:hover{border-color:var(--accent);}
+  /* theme toggle: lightbulb icon */
+  #theme{display:inline-flex;align-items:center;justify-content:center;padding:6px 9px;}
+  #theme .bulb{display:block;color:var(--muted);transition:color .15s;}
+  #theme .bulb .rays{opacity:.45;transition:opacity .15s;}
+  #theme:hover .bulb{color:var(--text);}
+  body.light #theme .bulb{color:#f5a623;}             /* lit amber when light mode is on */
+  body.light #theme .bulb .glass{fill:rgba(255,209,102,.35);}
+  body.light #theme .bulb .rays{opacity:1;}
 
   /* ---------- ticker tape ---------- */
   .tape{height:var(--h-tape);background:var(--panel2);border-bottom:1px solid var(--line);
@@ -147,7 +155,21 @@
   <div class="lookback" id="lookback">
     <button data-lb="6mo">6M</button><button data-lb="1y" class="active">1Y</button><button data-lb="2y">2Y</button>
   </div>
-  <button class="btn ghost" id="theme" title="Toggle dark / light">🌙</button>
+  <button class="btn ghost" id="theme" title="Toggle dark / light mode" aria-label="Toggle theme">
+    <svg class="bulb" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <g class="rays">
+        <line x1="12" y1="1.5" x2="12" y2="3.2"/>
+        <line x1="4.6" y1="4.6" x2="5.8" y2="5.8"/>
+        <line x1="19.4" y1="4.6" x2="18.2" y2="5.8"/>
+        <line x1="1.7" y1="11.5" x2="3.4" y2="11.5"/>
+        <line x1="20.6" y1="11.5" x2="22.3" y2="11.5"/>
+      </g>
+      <path class="glass" d="M8.4 15.4a5 5 0 1 1 7.2 0c-.7.7-1.1 1.4-1.1 2.3H9.5c0-.9-.4-1.6-1.1-2.3z"/>
+      <line x1="9.5" y1="19" x2="14.5" y2="19"/>
+      <line x1="10.5" y1="21" x2="13.5" y2="21"/>
+    </svg>
+  </button>
   <button class="btn ghost" id="signin">Sign in</button>
 </header>
 
@@ -508,7 +530,6 @@ function boot(){
   // dark / light theme toggle (logo letters + chart follow the theme; persists)
   function setTheme(light){
     document.body.classList.toggle('light',light);
-    $("#theme").textContent=light?'☀️':'🌙';
     applyChartTheme();
     try{localStorage.setItem('theme',light?'light':'dark');}catch(_){}
   }
