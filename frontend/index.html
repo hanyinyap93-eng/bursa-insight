@@ -355,7 +355,9 @@ async function loadChart(sym){
     vol.setData(d.dates.map((t,i)=>({time:t,value:d.volume[i]||0,
       color:(d.close[i]>=d.open[i])?'rgba(38,166,154,.5)':'rgba(239,83,80,.5)'})));
     smaLine.setData(d.dates.map((t,i)=>({time:t,value:d.sma10[i]})).filter(x=>x.value!=null));
-    chart.timeScale().fitContent();
+    // default view = last ~6 months (~126 trading days); scroll-wheel zooms out to 5y
+    const N=bars.length, SHOW=126;
+    chart.timeScale().setVisibleLogicalRange({from:Math.max(0,N-SHOW), to:N+1});
     const last=d.close[d.close.length-1], prev=d.close[d.close.length-2]||last;
     const chg=last-prev, pct=prev?chg/prev*100:0;
     $("#ch-price").textContent=fmtP(last,3);
