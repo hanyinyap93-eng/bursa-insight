@@ -248,7 +248,7 @@
         <div class="spark" id="g-spark"></div>
       </div>
       <div class="mini-cap muted" id="g-corr-cap" style="padding:0 12px">Top correlated stocks</div>
-      <div class="cm-head"><span>Stock</span><span id="g-corr-col">Corr to KLCI</span><span>Return %</span></div>
+      <div class="cm-head"><span>Stock</span><span id="g-corr-col">Corr</span><span>Return %</span></div>
       <div id="g-corr" class="corr-mini"></div>
     </div>
     <div class="panel">
@@ -449,8 +449,8 @@ async function loadHealth(){
     // stocks most correlated to the selected index
     const corr=o.correlated||[];
     const idxName = isSector ? (o.name||HEALTH_TARGET) : 'KLCI';
-    $("#g-corr-cap").textContent = "Top correlated stocks";
-    $("#g-corr-col").textContent = `Corr to ${idxName}`;
+    $("#g-corr-cap").textContent = `Top correlated to ${idxName}`;
+    $("#g-corr-col").textContent = "Corr";
     $("#g-corr").innerHTML = corr.length ? corr.map(c=>`
       <div class="cm-row" data-ticker="${c.code}.KL" data-code="${c.code}" data-name="${c.name}">
         <span class="nm"><b>${c.name}</b> <span class="muted">${c.code}</span></span>
