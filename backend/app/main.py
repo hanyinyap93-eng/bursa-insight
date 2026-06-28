@@ -49,6 +49,24 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def _prewarm():
+    """Warm the heavy caches in a background thread on boot (uses the on-disk
+    cache if present, else scrapes once) so first page loads aren't blocked."""
+    import threading
+
+    def warm():
+        for fn in (lambda: service.get_health("KLCI"),
+                   service.get_sector_health,
+                   service.get_index_price_panel):
+            try:
+                fn()
+            except Exception:  # noqa: BLE001
+                pass
+
+    threading.Thread(target=warm, daemon=True).start()
+
+
 @app.get("/api/info")
 def info():
     return {"app": settings.app_name, "version": settings.version,

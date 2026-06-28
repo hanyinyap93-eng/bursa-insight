@@ -42,21 +42,53 @@ class _Entry:
     ts: float
 
 
+# Heavy results worth persisting to disk so a server restart doesn't re-scrape
+# the whole market (these are the slow, throttle-prone keys).
+_DISK_PREFIXES = ("sector:", "indexpanel:", "sectordata:", "health:")
+_DISK_TTL = 60 * 60 * 12  # disk cache valid for 12h
+
+
 class _Cache:
     def __init__(self):
         self._d: dict[str, _Entry] = {}
         self._lock = threading.Lock()
 
+    @staticmethod
+    def _disk_path(key):
+        import re
+        safe = re.sub(r"\W+", "_", key)
+        return CACHE_DIR / f"svc_{safe}.pkl"
+
     def get(self, key, ttl=TTL_SECONDS):
         with self._lock:
             e = self._d.get(key)
-            if e is None or (time.monotonic() - e.ts) > ttl:
-                return None
-            return e.value
+            if e is not None and (time.monotonic() - e.ts) <= ttl:
+                return e.value
+        # in-memory miss/expired -> try the on-disk copy for heavy keys
+        if key.startswith(_DISK_PREFIXES):
+            try:
+                import time as _t
+                import pickle
+                p = self._disk_path(key)
+                if p.exists() and (_t.time() - p.stat().st_mtime) <= _DISK_TTL:
+                    value = pickle.loads(p.read_bytes())
+                    with self._lock:
+                        self._d[key] = _Entry(value, time.monotonic())
+                    return value
+            except Exception:  # noqa: BLE001 - ignore a corrupt/incompatible file
+                pass
+        return None
 
     def set(self, key, value):
         with self._lock:
             self._d[key] = _Entry(value, time.monotonic())
+        if key.startswith(_DISK_PREFIXES):
+            try:
+                import pickle
+                CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                self._disk_path(key).write_bytes(pickle.dumps(value))
+            except Exception:  # noqa: BLE001 - best-effort persistence
+                pass
 
     def clear(self):
         with self._lock:
