@@ -131,6 +131,13 @@
   .comp-row .hd small{color:var(--muted);}
   .bar{height:6px;border-radius:3px;background:var(--bg);overflow:hidden;}
   .bar>span{display:block;height:100%;}
+  /* top-correlated mini list */
+  .corr-mini{padding:0 12px 6px;}
+  .cm-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;
+    padding:3px 0;font-size:11.5px;cursor:pointer;border-bottom:1px solid var(--panel);}
+  .cm-row:hover .nm{color:var(--accent);}
+  .cm-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cm-row .corr{color:var(--muted);font-variant-numeric:tabular-nums;}
   .reset-link{color:var(--accent);cursor:pointer;font-size:10.5px;text-transform:none;letter-spacing:0;}
   .reset-link:hover{text-decoration:underline;}
   .rot-row{display:grid;grid-template-columns:96px 1fr 44px;gap:7px;align-items:center;padding:3px 12px;font-size:11.5px;cursor:pointer;}
@@ -234,6 +241,8 @@
         <div class="mini-cap muted">Index Health (% breadth)</div>
         <div class="spark" id="g-spark"></div>
       </div>
+      <div class="mini-cap muted" id="g-corr-cap" style="padding:0 12px">Top correlated stocks</div>
+      <div id="g-corr" class="corr-mini"></div>
     </div>
     <div class="panel">
       <div class="sec-title">Sector Rotation <span class="muted">breadth health</span></div>
@@ -430,6 +439,17 @@ async function loadHealth(){
       const h=Math.max(3,50*Math.abs(x)/mx);   // % of half-height from the axis
       return `<div class="col ${x>=0?'up':'down'}"><i style="height:${h}%;background:${x>=0?'var(--green)':'var(--red)'}"></i></div>`;
     }).join("");
+    // stocks most correlated to the selected index
+    const corr=o.correlated||[];
+    $("#g-corr-cap").textContent = `Top correlated to ${isSector?(o.name||HEALTH_TARGET):'KLCI'}`;
+    $("#g-corr").innerHTML = corr.length ? corr.map(c=>`
+      <div class="cm-row" data-ticker="${c.code}.KL" data-code="${c.code}" data-name="${c.name}">
+        <span class="nm"><b>${c.name}</b> <span class="muted">${c.code}</span></span>
+        <span class="corr">${c.correlation}</span>
+        <span class="mono ${cls(c.return_pct)}">${fmt(c.return_pct)}%</span></div>`).join("")
+      : '<div class="muted" style="font-size:11px">—</div>';
+    document.querySelectorAll('#g-corr .cm-row').forEach(r=>r.onclick=()=>
+      loadChart({ticker:r.dataset.ticker,code:r.dataset.code,name:r.dataset.name}));
   }catch(e){$("#g-sub").textContent=e.message;}
 }
 async function loadRotation(){

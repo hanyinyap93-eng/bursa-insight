@@ -45,8 +45,16 @@ def breadth_overview(index: str = "KLCI", lookback: str = "1y") -> dict:
     n_const = result.close.shape[1]
     above_sma = int(sig["sma"]["up"].iloc[-1].sum())
 
+    from . import screener
+    correlated = [
+        {"code": r["code"], "name": r["name"],
+         "correlation": r["correlation"], "return_pct": r["return_pct"]}
+        for r in screener.correlated_constituents(result, top=6)
+    ]
+
     return {
         "index": index,
+        "correlated": correlated,            # top stocks correlated to the index
         "as_of": str(result.health_pct.index[-1].date()),
         "constituents": n_const,
         "health_pct": round(cur, 1) if cur is not None else None,
@@ -101,7 +109,26 @@ def sector_detail(key: str, lookback: str = "1y") -> dict:
 
     # equal-weight price index, normalised to 100 at the first valid bar
     base = res.close.ffill().bfill().iloc[0]
-    eq = (res.close.divide(base) * 100.0).mean(axis=1).iloc[warm:]
+    eq_full = (res.close.divide(base) * 100.0).mean(axis=1)
+    eq = eq_full.iloc[warm:]
+
+    # stocks most correlated to this sector's index (return correlation)
+    rets = res.close.pct_change()
+    iret = eq_full.pct_change()
+    mi = meta.set_index("Ticker")
+    correlated = []
+    for tkr in res.close.columns:
+        c = rets[tkr].corr(iret)
+        if c != c:  # NaN
+            continue
+        col = res.close[tkr].dropna()
+        ret = (col.iloc[-1] / col.iloc[0] - 1) * 100 if len(col) > 1 else None
+        nm = mi.loc[tkr]["Name"] if tkr in mi.index else tkr
+        correlated.append({"code": tkr.split(".")[0], "name": nm,
+                           "correlation": round(float(c), 3),
+                           "return_pct": round(float(ret), 2) if ret is not None else None})
+    correlated.sort(key=lambda r: r["correlation"], reverse=True)
+    correlated = correlated[:6]
 
     cur = float(hp.iloc[-1])
     prev = float(hp.iloc[-2]) if len(hp) > 1 else cur
@@ -109,6 +136,7 @@ def sector_detail(key: str, lookback: str = "1y") -> dict:
     above_sma = int(res.signals["sma"]["up"].iloc[-1].sum())
     payload = {
         "key": key, "name": SECTOR_DISPLAY.get(key, key),
+        "correlated": correlated,
         "as_of": str(hp.index[-1].date()), "constituents": n,
         "health_pct": round(cur, 1),
         "verdict": "expanding" if cur > prev else "contracting",
