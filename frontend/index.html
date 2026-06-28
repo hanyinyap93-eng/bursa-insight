@@ -113,8 +113,14 @@
   .gauge .big{font-size:30px;font-weight:700;}
   .gauge .verdict{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;}
   .verdict.pos{background:rgba(8,153,129,.16);color:var(--green);} .verdict.neg{background:rgba(242,54,69,.16);color:var(--red);}
-  .spark{display:flex;align-items:flex-end;gap:1px;height:34px;margin-top:8px;}
-  .spark>span{flex:1;border-radius:1px;}
+  /* diverging Index Health sparkline: green up / red down from a zero x-axis */
+  .spark{position:relative;display:flex;align-items:stretch;gap:1px;height:40px;margin-top:8px;}
+  .spark::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;
+    background:var(--line2);pointer-events:none;}
+  .spark .col{flex:1;position:relative;}
+  .spark .col i{position:absolute;left:0;right:0;border-radius:1px;}
+  .spark .col.up i{bottom:50%;}      /* positive: grows up from the axis */
+  .spark .col.down i{top:50%;}       /* negative: grows down below the axis */
   .comp{padding:2px 12px;}
   .comp-row{margin:7px 0;}
   .comp-row .hd{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;}
@@ -377,7 +383,10 @@ async function loadHealth(){
     const v=$("#g-verdict"); v.textContent=o.verdict; v.className="verdict "+(o.verdict==='expanding'?'pos':'neg');
     $("#g-sub").innerHTML=`as of ${o.as_of} · ${o.constituents} stocks · ${o.pct_above_sma}% above SMA · 5d ${o.trend_5d}`;
     const mx=Math.max(1,...o.spark.map(Math.abs));
-    $("#g-spark").innerHTML=o.spark.map(x=>`<span style="height:${12+88*Math.abs(x)/mx}%;background:${x>=0?'var(--green)':'var(--red)'}"></span>`).join("");
+    $("#g-spark").innerHTML=o.spark.map(x=>{
+      const h=Math.max(3,50*Math.abs(x)/mx);   // % of half-height from the axis
+      return `<div class="col ${x>=0?'up':'down'}"><i style="height:${h}%;background:${x>=0?'var(--green)':'var(--red)'}"></i></div>`;
+    }).join("");
     const lab={momentum:"Momentum",rsi:"RSI",sma:"SMA breadth",hl:"New High/Low"};
     $("#g-comp").innerHTML=Object.entries(o.components).map(([k,val])=>{
       const b=o.component_breadth[k];
