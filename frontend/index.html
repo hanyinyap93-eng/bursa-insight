@@ -89,7 +89,15 @@
   .resizer::before{content:"⋮";position:absolute;left:-3px;top:50%;transform:translateY(-50%);
     color:var(--muted);font-size:14px;line-height:1;width:13px;text-align:center;}
   body.resizing{cursor:col-resize;user-select:none;}
-  .bottom{grid-column:1;grid-row:2;border-top:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;}
+  .bottom{grid-column:1;grid-row:2;border-top:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;position:relative;}
+  /* vertical resize handle for the bottom dock */
+  .vresizer{position:absolute;top:-4px;left:0;right:0;height:8px;cursor:row-resize;z-index:30;}
+  .vresizer::after{content:"";position:absolute;top:2px;left:0;right:0;height:2px;
+    background:var(--line2);transition:background .12s;}
+  .vresizer:hover::after,.vresizer.active::after{background:var(--accent);}
+  .vresizer::before{content:"⋯";position:absolute;top:-7px;left:50%;transform:translateX(-50%);
+    color:var(--muted);font-size:14px;}
+  body.vresizing{cursor:row-resize;user-select:none;}
 
   .sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
     padding:10px 12px 6px;display:flex;justify-content:space-between;align-items:center;}
@@ -104,7 +112,7 @@
   .tf{display:flex;gap:1px;margin-left:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
   .tf button{background:none;border:none;color:var(--muted);padding:5px 10px;font-size:11.5px;}
   .tf button.active{background:var(--hover);color:var(--text);}
-  #chart{flex:1;min-height:0;} #rsi{height:96px;border-top:1px solid var(--line);}
+  #chart{flex:1;min-height:0;}
   .pane-label{position:absolute;z-index:3;font-size:10.5px;color:var(--muted);padding:3px 7px;}
 
   /* right panels */
@@ -227,7 +235,6 @@
       </div>
     </div>
     <div id="chart" style="position:relative"><span class="pane-label" id="lbl-price"></span></div>
-    <div id="rsi" style="position:relative"><span class="pane-label">RSI 10</span></div>
   </section>
 
   <!-- RIGHT: panels -->
@@ -252,8 +259,8 @@
       <div id="g-corr" class="corr-mini"></div>
     </div>
     <div class="panel">
-      <div class="sec-title">Sector Rotation <span class="muted">breadth health</span></div>
-      <div id="rotation"><div class="loading" style="padding:8px 12px">computing 13 sectors…</div></div>
+      <div class="sec-title">Indexes <span class="muted">breadth health</span></div>
+      <div id="rotation"><div class="loading" style="padding:8px 12px">computing…</div></div>
     </div>
     <div class="panel" style="flex:1">
       <div class="sec-title">News <span class="muted">local + global</span></div>
@@ -263,6 +270,7 @@
 
   <!-- BOTTOM: screener / alerts / backtest -->
   <section class="bottom">
+    <div class="vresizer" id="vresizer" title="Drag to resize"></div>
     <div class="tabs" id="tabs">
       <button data-tab="screener" class="active">Screener</button>
       <button data-tab="correlated">Correlated</button>
@@ -311,7 +319,7 @@ function lineSVG(arr,h=48){
 }
 
 /* ---------------- chart (Lightweight Charts) ---------------- */
-let chart, rsiChart, candle, vol, smaLine, rsiLine, ro;
+let chart, candle, vol, smaLine, ro;
 function chartTheme(){
   const light=document.body.classList.contains('light');
   return {
@@ -321,7 +329,7 @@ function chartTheme(){
     timeScale:{borderColor:light?'#e3e7ee':'#2a2e39'},
   };
 }
-function applyChartTheme(){ if(chart){chart.applyOptions(chartTheme());rsiChart.applyOptions(chartTheme());} }
+function applyChartTheme(){ if(chart){chart.applyOptions(chartTheme());} }
 function initChart(){
   const opts={
     autoSize:true,
@@ -336,18 +344,8 @@ function initChart(){
   vol=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol'});
   chart.priceScale('vol').applyOptions({scaleMargins:{top:0.82,bottom:0}});
   smaLine=chart.addLineSeries({color:'#2962ff',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
-
-  rsiChart=LightweightCharts.createChart($("#rsi"),{...opts,
-    rightPriceScale:{borderColor:'#2a2e39'},timeScale:{visible:false,borderColor:'#2a2e39'}});
-  rsiLine=rsiChart.addLineSeries({color:'#b388ff',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
-  rsiLine.createPriceLine({price:70,color:'#f2364580',lineStyle:2,lineWidth:1});
-  rsiLine.createPriceLine({price:30,color:'#08998180',lineStyle:2,lineWidth:1});
-  // sync crosshair/time scales
-  chart.timeScale().subscribeVisibleLogicalRangeChange(r=>r&&rsiChart.timeScale().setVisibleLogicalRange(r));
-  rsiChart.timeScale().subscribeVisibleLogicalRangeChange(r=>r&&chart.timeScale().setVisibleLogicalRange(r));
-  candle.subscribeDataChanged(()=>{});
   chart.subscribeCrosshairMove(p=>updateOHLC(p));
-  ro=new ResizeObserver(()=>{chart.applyOptions({});rsiChart.applyOptions({});});
+  ro=new ResizeObserver(()=>{chart.applyOptions({});});
   ro.observe($("#chart"));
 }
 let LASTBARS=[];
@@ -374,7 +372,6 @@ async function loadChart(sym){
     vol.setData(d.dates.map((t,i)=>({time:t,value:d.volume[i]||0,
       color:(d.close[i]>=d.open[i])?'rgba(38,166,154,.5)':'rgba(239,83,80,.5)'})));
     smaLine.setData(d.dates.map((t,i)=>({time:t,value:d.sma10[i]})).filter(x=>x.value!=null));
-    rsiLine.setData(d.dates.map((t,i)=>({time:t,value:d.rsi10[i]})).filter(x=>x.value!=null));
     chart.timeScale().fitContent();
     const last=d.close[d.close.length-1], prev=d.close[d.close.length-2]||last;
     const chg=last-prev, pct=prev?chg/prev*100:0;
@@ -463,15 +460,23 @@ async function loadHealth(){
 }
 async function loadRotation(){
   try{
-    const s=await get(`/api/sectors/rotation?lookback=${LB}`);
-    if(!s.ranked.length){$("#rotation").innerHTML='<div class="muted" style="padding:8px 12px">no data</div>';return;}
-    $("#rotation").innerHTML=s.ranked.map(r=>{
-      const series=(s.heatmap.values[r.sector]||[]).filter(v=>v!=null);
-      const cells=series.slice(-60).map(v=>`<div class="c" style="background:${heat(v)}"></div>`).join("");
-      const sel = r.sector===HEALTH_TARGET ? " sel" : "";
-      return `<div class="rot-row${sel}" data-sector="${r.sector}" title="Click to load ${r.sector}">
-        <div>${r.sector.slice(0,11)}</div>
-        <div class="cells">${cells}</div><div class="val ${cls(r.index_health)}">${fmt(r.index_health,0)}</div></div>`;
+    // sectors + the KLCI itself (so the main index is selectable in the list)
+    const [s,o]=await Promise.all([
+      get(`/api/sectors/rotation?lookback=${LB}`),
+      get(`/api/breadth/overview?lookback=${LB}`).catch(()=>null)
+    ]);
+    const cellsHTML=arr=>arr.filter(v=>v!=null).slice(-60)
+      .map(v=>`<div class="c" style="background:${heat(v)}"></div>`).join("");
+    const rows=[];
+    if(o) rows.push({key:'KLCI', label:'KLCI', cells:cellsHTML(o.spark||[]), val:o.health_pct});
+    (s.ranked||[]).forEach(r=>rows.push(
+      {key:r.sector, label:r.sector.slice(0,11), cells:cellsHTML(s.heatmap.values[r.sector]||[]), val:r.index_health}));
+    if(!rows.length){$("#rotation").innerHTML='<div class="muted" style="padding:8px 12px">no data</div>';return;}
+    $("#rotation").innerHTML=rows.map(r=>{
+      const sel = r.key===HEALTH_TARGET ? " sel" : "";
+      return `<div class="rot-row${sel}" data-sector="${r.key}" title="Click to load ${r.label}">
+        <div>${r.label}</div>
+        <div class="cells">${r.cells}</div><div class="val ${cls(r.val)}">${fmt(r.val,0)}</div></div>`;
     }).join("");
     document.querySelectorAll('.rot-row').forEach(row=>row.onclick=()=>selectIndex(row.dataset.sector));
   }catch(e){$("#rotation").innerHTML=`<div class="muted" style="padding:8px 12px">${e.message}</div>`;}
@@ -636,6 +641,21 @@ function boot(){
       try{localStorage.setItem('wRight',
         getComputedStyle(document.documentElement).getPropertyValue('--w-right').trim());}catch(_){}});
     try{const s=localStorage.getItem('wRight'); if(s)document.documentElement.style.setProperty('--w-right',s);}catch(_){}
+  })();
+  // resizable bottom dock (drag the top edge; height persists)
+  (function(){
+    const rz=$("#vresizer"); let dragging=false;
+    const setH=h=>document.documentElement.style.setProperty('--h-bottom',
+      Math.min(600,Math.max(110,h))+'px');
+    const onMove=e=>{ if(dragging) setH(window.innerHeight-e.clientY); };
+    rz.addEventListener('mousedown',e=>{dragging=true;rz.classList.add('active');
+      document.body.classList.add('vresizing');e.preventDefault();});
+    window.addEventListener('mousemove',onMove);
+    window.addEventListener('mouseup',()=>{ if(!dragging)return; dragging=false;
+      rz.classList.remove('active');document.body.classList.remove('vresizing');
+      try{localStorage.setItem('hBottom',
+        getComputedStyle(document.documentElement).getPropertyValue('--h-bottom').trim());}catch(_){}});
+    try{const s=localStorage.getItem('hBottom'); if(s)document.documentElement.style.setProperty('--h-bottom',s);}catch(_){}
   })();
   $("#search").addEventListener('keydown',e=>{
     if(e.key!=='Enter')return;
