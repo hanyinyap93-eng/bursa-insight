@@ -270,6 +270,15 @@ def stock(ticker: str, lookback: str = "1y"):
             "sma10": [_r(x) for x in ih.sma(close, 10)],
             "rsi10": [_r(x) for x in ih.rsi(close, 10)],
         }
+        # fundamentals (PE, P/B, DY, EPS, ...) from the whole-market klsescreener data
+        try:
+            from .core import klse_quotes
+            code = ticker.split(".")[0]
+            f = klse_quotes.get_one(code) or {}
+            out["fundamentals"] = {k: f.get(k) for k in
+                                   ("pe", "pb", "dy", "eps", "nta", "market_cap", "volume")}
+        except Exception:  # noqa: BLE001 - fundamentals are best-effort
+            out["fundamentals"] = {}
         return out
     except HTTPException:
         raise

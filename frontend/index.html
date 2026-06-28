@@ -375,10 +375,13 @@ async function loadChart(sym){
     $("#ch-chg").className="c "+cls(chg);
     $("#ch-chg").textContent=`${fmt(chg,3)} (${fmt(pct)}%)`;
     // fundamentals from klsescreener quotes (matched by code)
-    const fq=QUOTES.find(x=>x.code===sym.code);
+    // fundamentals for the charted stock (works for any stock, not just KLCI)
+    const fq = d.fundamentals || QUOTES.find(x=>x.code===sym.code) || {};
     const fmtVol=v=>v==null?"—":v>=1000?(v/1000).toFixed(1)+"M":v.toFixed(0)+"K";
-    $("#ch-fund").innerHTML = fq?
-      `<span>P/E <b>${fq.pe??'—'}</b></span><span>DY <b>${fq.dy!=null?fq.dy+'%':'—'}</b></span>`+
+    const has = fq.pe!=null||fq.pb!=null||fq.dy!=null;
+    $("#ch-fund").innerHTML = has?
+      `<span>P/E <b>${fq.pe??'—'}</b></span><span>P/B <b>${fq.pb??'—'}</b></span>`+
+      `<span>DY <b>${fq.dy!=null?fq.dy+'%':'—'}</b></span>`+
       `<span>EPS <b>${fq.eps??'—'}</b></span><span>Vol <b>${fmtVol(fq.volume)}</b></span>`+
       `<span>MCap <b>${fq.market_cap!=null?(fq.market_cap/1000).toFixed(2)+'B':'—'}</b></span>` : "";
     updateOHLC(null);
