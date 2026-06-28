@@ -155,6 +155,43 @@ def get_sector_health(lookback: str = "1y", force: bool = False):
         return df
 
 
+def get_index_price_panel(lookback: str = "2y", force: bool = False):
+    """A (Date x index) price panel for all indexes: KLCI (^KLSE) + 13 sector
+    equal-weight indexes. Used to correlate any stock against every index.
+    Heavy (scrapes + downloads 13 sector member sets); cached ~1h."""
+    import pandas as pd
+    key = f"indexpanel:{lookback}"
+    if not force:
+        cached = _cache.get(key, ttl=TTL_SECONDS * 2)
+        if cached is not None:
+            return cached
+    with _compute_lock:
+        if not force:
+            cached = _cache.get(key, ttl=TTL_SECONDS * 2)
+            if cached is not None:
+                return cached
+        cfg = _cfg("KLCI", lookback)
+        cols = {}
+        try:
+            kl = ih.download_prices([ih.INDEX_SYMBOL_KLCI], cfg)
+            cols["KLCI"] = kl[ih.INDEX_SYMBOL_KLCI]
+        except Exception:  # noqa: BLE001
+            pass
+        for sec, code in ih.SECTOR_INDEX_CODES.items():
+            try:
+                meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
+                if meta.empty:
+                    continue
+                close = ih.download_prices(meta["Ticker"].tolist(), cfg)
+                base = close.ffill().bfill().iloc[0]
+                cols[sec] = (close.divide(base) * 100.0).mean(axis=1)
+            except Exception:  # noqa: BLE001
+                continue
+        panel = pd.DataFrame(cols).sort_index()
+        _cache.set(key, panel)
+        return panel
+
+
 def refresh():
     """Force-refresh the primary caches (used by /refresh and scheduled jobs)."""
     _cache.clear()

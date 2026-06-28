@@ -123,6 +123,23 @@
   .tf button{background:none;border:none;color:var(--muted);padding:5px 10px;font-size:11.5px;}
   .tf button.active{background:var(--hover);color:var(--text);}
   #chart{flex:1;min-height:0;}
+  /* correlation-to-indexes panel below the chart */
+  #corr-panel{height:150px;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0;}
+  .corr-head{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 4px;}
+  .corr-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+  .corr-title b{color:var(--text);}
+  .corr-lb{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .corr-lb button{background:none;border:none;color:var(--muted);padding:4px 9px;font-size:11px;cursor:pointer;}
+  .corr-lb button.active{background:var(--accent);color:#fff;}
+  .corr-list{flex:1;overflow-y:auto;padding:0 12px 8px;display:grid;
+    grid-template-columns:1fr 1fr;gap:1px 22px;align-content:start;}
+  .cr-row{display:grid;grid-template-columns:92px 1fr 36px;gap:8px;align-items:center;font-size:11.5px;padding:2px 0;}
+  .cr-row .cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);}
+  .cr-bar{height:7px;background:var(--bg);border-radius:4px;position:relative;overflow:hidden;}
+  .cr-bar::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line2);}
+  .cr-bar>span{position:absolute;top:0;bottom:0;border-radius:2px;}
+  .cr-val{text-align:right;font-variant-numeric:tabular-nums;}
+  @media (max-width:760px){ .corr-list{grid-template-columns:1fr;} }
   .pane-label{position:absolute;z-index:3;font-size:10.5px;color:var(--muted);padding:3px 7px;}
 
   /* right panels */
@@ -240,6 +257,15 @@
       <div class="ohlc" id="ch-ohlc"></div>
     </div>
     <div id="chart" style="position:relative"><span class="pane-label" id="lbl-price"></span></div>
+    <div id="corr-panel">
+      <div class="corr-head">
+        <span class="corr-title">Correlation of <b id="corr-sym">—</b> to indexes</span>
+        <div class="corr-lb" id="corr-lb">
+          <button data-lb="1mo">1M</button><button data-lb="3mo">3M</button><button data-lb="6mo" class="active">6M</button><button data-lb="1y">1Y</button><button data-lb="2y">2Y</button>
+        </div>
+      </div>
+      <div id="corr-list" class="corr-list"></div>
+    </div>
   </section>
 
   <!-- RIGHT: panels -->
@@ -287,6 +313,7 @@ const CHART_LB = "5y";         // chart fetches long history; scroll-wheel zoom 
 let SYMBOL = {ticker:"1155.KL", code:"1155", name:"MAYBANK"};
 let QUOTES = [];
 let CHART_INIT = false;
+let CORR_LB = "6mo";           // lookback for the stock→indexes correlation panel
 
 const fmt=(x,d=2)=>x==null?"—":(x>0?"+":"")+(+x).toFixed(d);
 const fmtP=(x,d=2)=>x==null?"—":(+x).toFixed(d);
@@ -385,7 +412,28 @@ async function loadChart(sym){
       `<span>EPS <b>${fq.eps??'—'}</b></span><span>Vol <b>${fmtVol(fq.volume)}</b></span>`+
       `<span>MCap <b>${fq.market_cap!=null?(fq.market_cap/1000).toFixed(2)+'B':'—'}</b></span>` : "";
     updateOHLC(null);
+    loadCorrelations();
   }catch(e){$("#lbl-price").textContent="chart error: "+e.message;}
+}
+// correlation of the charted stock to every index (KLCI + sectors)
+async function loadCorrelations(){
+  if(!SYMBOL||!SYMBOL.ticker)return;
+  $("#corr-sym").textContent = SYMBOL.code + (SYMBOL.name&&SYMBOL.name!==SYMBOL.code?(" "+SYMBOL.name):"");
+  document.querySelectorAll('#corr-lb button').forEach(b=>b.classList.toggle('active',b.dataset.lb===CORR_LB));
+  $("#corr-list").innerHTML='<div class="muted" style="grid-column:1/3;padding:6px;font-size:11px">computing…</div>';
+  try{
+    const r=await get(`/api/correlations?ticker=${encodeURIComponent(SYMBOL.ticker)}&lookback=${CORR_LB}`);
+    if(!r.correlations||!r.correlations.length){
+      $("#corr-list").innerHTML='<div class="muted" style="grid-column:1/3;padding:6px;font-size:11px">no data</div>';return;}
+    $("#corr-list").innerHTML=r.correlations.map(c=>{
+      const w=Math.min(50,Math.abs(c.correlation)*50);
+      const st=c.correlation>=0?`left:50%;width:${w}%;background:var(--green)`
+                               :`right:50%;width:${w}%;background:var(--red)`;
+      return `<div class="cr-row"><span class="cn" title="${c.name}">${c.name}</span>
+        <span class="cr-bar"><span style="${st}"></span></span>
+        <span class="cr-val ${cls(c.correlation)}">${c.correlation.toFixed(2)}</span></div>`;
+    }).join("");
+  }catch(e){$("#corr-list").innerHTML=`<div class="muted" style="grid-column:1/3;padding:6px;font-size:11px">${e.message}</div>`;}
 }
 
 /* ---------------- ticker tape + quotes ---------------- */
@@ -605,6 +653,7 @@ async function renderBacktest(){
 function boot(){
   initChart();
   loadQuotes();loadHealth();loadRotation();loadNews();
+  document.querySelectorAll('#corr-lb button').forEach(b=>b.onclick=()=>{CORR_LB=b.dataset.lb;loadCorrelations();});
   $("#nav-sectors").onclick=()=>$("#rotation").scrollIntoView({behavior:'smooth'});
   $("#nav-news").onclick=()=>$("#news").scrollIntoView({behavior:'smooth'});
   $("#signin").onclick=()=>alert("Auth tier coming next — guest sees limited charts, login unlocks the full screener & alerts.");

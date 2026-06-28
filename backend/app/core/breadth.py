@@ -83,6 +83,42 @@ SECTOR_DISPLAY = {
 }
 
 
+_CORR_WINDOW = {"1mo": 21, "3mo": 63, "6mo": 126, "1y": 252, "2y": 504}
+
+
+def stock_index_correlations(ticker: str, lookback: str = "6mo") -> dict:
+    """Correlation of a stock's daily returns to every index (KLCI + sectors).
+
+    Computed over the trailing window given by `lookback`. Returns the list
+    sorted by correlation (descending)."""
+    import pandas as pd
+    cfg = service._cfg("KLCI", "2y")
+    sclose = ih.download_prices([ticker], cfg)
+    if ticker in sclose.columns:
+        s = sclose[ticker]
+    else:
+        s = sclose.iloc[:, 0]
+    panel = service.get_index_price_panel()
+    if panel is None or panel.empty:
+        return {"ticker": ticker, "lookback": lookback, "correlations": []}
+    df = panel.copy()
+    df["__STOCK__"] = s
+    df = df.dropna(subset=["__STOCK__"]).sort_index()
+    n = _CORR_WINDOW.get(lookback, 126)
+    df = df.tail(n + 1)
+    rets = df.pct_change()
+    sret = rets["__STOCK__"]
+    names = {**SECTOR_DISPLAY, "KLCI": "FBM KLCI"}
+    out = []
+    for col in panel.columns:
+        c = rets[col].corr(sret)
+        if c == c:  # not NaN
+            out.append({"index": col, "name": names.get(col, col),
+                        "correlation": round(float(c), 3)})
+    out.sort(key=lambda r: r["correlation"], reverse=True)
+    return {"ticker": ticker, "lookback": lookback, "correlations": out}
+
+
 def sector_detail(key: str, lookback: str = "1y") -> dict:
     """Index Health + index-price proxy for one Bursa sector (clicked in the UI).
 

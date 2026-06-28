@@ -84,6 +84,15 @@ def breadth_series(index: str = "KLCI", lookback: str = "1y"):
         raise HTTPException(502, f"series compute failed: {exc}")
 
 
+@app.get("/api/correlations")
+def correlations(ticker: str, lookback: str = "6mo"):
+    """Correlation of a stock to every index (KLCI + 13 sectors)."""
+    try:
+        return breadth_mod.stock_index_correlations(ticker, lookback)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"correlations failed: {exc}")
+
+
 @app.get("/api/search")
 def search(q: str, limit: int = 12):
     """Search the whole Bursa market by stock code or ticker name/symbol."""
