@@ -84,6 +84,38 @@ def breadth_series(index: str = "KLCI", lookback: str = "1y"):
         raise HTTPException(502, f"series compute failed: {exc}")
 
 
+@app.get("/api/search")
+def search(q: str, limit: int = 12):
+    """Search the whole Bursa market by stock code or ticker name/symbol."""
+    from .core import klse_quotes
+    query = (q or "").strip().upper()
+    if not query:
+        return []
+    try:
+        quotes = klse_quotes.get_quotes()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"search failed: {exc}")
+    import re as _re
+    clean = lambda s: _re.sub(r"\s*\[[^\]]*\]\s*$", "", s or "").strip()
+    out = []
+    for code, rec in quotes.items():
+        name = (rec.get("name") or "").upper()
+        digits = code.upper()
+        if query == digits or digits.startswith(query) or query in name:
+            out.append({
+                "code": code, "name": clean(rec.get("name")), "ticker": f"{code}.KL",
+                "last": rec.get("last"), "chg_pct": rec.get("chg_pct"),
+                "sector": rec.get("sector"),
+            })
+    out.sort(key=lambda r: (
+        r["code"].upper() != query,                       # exact code first
+        not (r["name"] or "").upper().startswith(query),   # name prefix next
+        not r["code"].upper().startswith(query),           # code prefix
+        r["name"] or "",
+    ))
+    return out[:limit]
+
+
 @app.get("/api/quotes")
 def quotes(index: str = "KLCI", lookback: str = "1y"):
     try:
