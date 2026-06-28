@@ -332,11 +332,15 @@ def download_prices(tickers, cfg, extra=None):
         cache_dir = Path(cfg.cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
         safe_idx = re.sub(r"\W+", "", cfg.index_symbol)
-        cache_file = cache_dir / f"close_{safe_idx}_{cfg.lookback}_{cfg.interval}.parquet"
+        # pickle cache: no parquet engine (pyarrow/fastparquet) dependency
+        cache_file = cache_dir / f"close_{safe_idx}_{cfg.lookback}_{cfg.interval}.pkl"
         if cache_file.exists() and not cfg.refresh_cache:
-            cached = pd.read_parquet(cache_file)
-            if _cache_is_fresh(cached, symbols):
-                return cached[symbols]
+            try:
+                cached = pd.read_pickle(cache_file)
+                if _cache_is_fresh(cached, symbols):
+                    return cached[symbols]
+            except Exception:  # noqa: BLE001 - ignore a corrupt/incompatible cache
+                pass
     last_err = None
     for _ in range(cfg.max_retries):
         try:
@@ -355,7 +359,10 @@ def download_prices(tickers, cfg, extra=None):
                 raise RuntimeError("All tickers failed to download.")
             close = close.dropna(how="all").sort_index().ffill()
             if cache_file is not None:
-                close.to_parquet(cache_file)
+                try:
+                    close.to_pickle(cache_file)
+                except Exception:  # noqa: BLE001 - caching is best-effort
+                    pass
             return close
         except Exception as exc:  # noqa: BLE001
             last_err = exc
