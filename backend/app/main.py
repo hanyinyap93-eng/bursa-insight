@@ -69,9 +69,9 @@ def indices():
 
 
 @app.get("/api/breadth/overview")
-def breadth_overview(index: str = "KLCI", lookback: str = "1y"):
+def breadth_overview(index: str = "KLCI", lookback: str = "1y", corr_window: str = None):
     try:
-        return breadth_mod.breadth_overview(index, lookback)
+        return breadth_mod.breadth_overview(index, lookback, corr_window)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"breadth compute failed: {exc}")
 
@@ -134,9 +134,9 @@ def quotes(index: str = "KLCI", lookback: str = "1y"):
 
 
 @app.get("/api/sector/{key}")
-def sector_detail(key: str, lookback: str = "1y"):
+def sector_detail(key: str, lookback: str = "1y", corr_window: str = None):
     try:
-        return breadth_mod.sector_detail(key, lookback)
+        return breadth_mod.sector_detail(key, lookback, corr_window)
     except ValueError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:  # noqa: BLE001

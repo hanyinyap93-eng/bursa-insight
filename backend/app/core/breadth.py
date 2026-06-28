@@ -22,7 +22,7 @@ def _trend(series: pd.Series, n: int = 5) -> str:
     return "expanding" if delta > 0.5 else "contracting" if delta < -0.5 else "flat"
 
 
-def breadth_overview(index: str = "KLCI", lookback: str = "1y") -> dict:
+def breadth_overview(index: str = "KLCI", lookback: str = "1y", corr_window: str = None) -> dict:
     """Single-payload market-breadth snapshot for the overview page."""
     result = service.get_health(index, lookback)
     warm = result.cfg.warmup
@@ -46,15 +46,17 @@ def breadth_overview(index: str = "KLCI", lookback: str = "1y") -> dict:
     above_sma = int(sig["sma"]["up"].iloc[-1].sum())
 
     from . import screener
+    win = _CORR_WINDOW.get(corr_window) if corr_window else None
     correlated = [
         {"code": r["code"], "name": r["name"],
          "correlation": r["correlation"], "return_pct": r["return_pct"]}
-        for r in screener.correlated_constituents(result, top=6)
+        for r in screener.correlated_constituents(result, top=6, window=win)
     ]
 
     return {
         "index": index,
         "correlated": correlated,            # top stocks correlated to the index
+        "corr_window": corr_window or lookback,
         "as_of": str(result.health_pct.index[-1].date()),
         "constituents": n_const,
         "health_pct": round(cur, 1) if cur is not None else None,
@@ -119,28 +121,35 @@ def stock_index_correlations(ticker: str, lookback: str = "6mo") -> dict:
     return {"ticker": ticker, "lookback": lookback, "correlations": out}
 
 
-def sector_detail(key: str, lookback: str = "1y") -> dict:
-    """Index Health + index-price proxy for one Bursa sector (clicked in the UI).
-
-    Health = breadth over the sector's constituents; the index price is an
-    equal-weighted price index of those constituents (normalised to 100 at the
-    window start), since Yahoo has no Bursa sector index symbol. Cached.
-    """
+def _sector_data(key: str, lookback: str):
+    """Heavy per-sector data (constituents + prices), cached so window changes
+    don't trigger a re-scrape. Returns (meta, HealthResult)."""
     code = ih.SECTOR_INDEX_CODES.get(key)
     if not code:
         raise ValueError(f"unknown sector '{key}'")
-    cache_key = f"sectordetail:{key}:{lookback}"
-    cached = service._cache.get(cache_key)
+    cache_key = f"sectordata:{key}:{lookback}"
+    cached = service._cache.get(cache_key, ttl=service.TTL_SECONDS * 2)
     if cached is not None:
         return cached
-
     cfg = service._cfg("KLCI", lookback)
     meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
     if meta.empty:
         raise ValueError(f"no constituents for sector '{key}'")
     close = ih.download_prices(meta["Ticker"].tolist(), cfg)
     res = ih.compute_health(cfg, tickers_meta=meta, close=close)
-    warm = min(cfg.warmup, max(len(res.health_pct) - 2, 0))
+    service._cache.set(cache_key, (meta, res))
+    return meta, res
+
+
+def sector_detail(key: str, lookback: str = "1y", corr_window: str = None) -> dict:
+    """Index Health + index-price proxy for one Bursa sector (clicked in the UI).
+
+    Health = breadth over the sector's constituents; the index price is an
+    equal-weighted price index of those constituents. The top-correlated list is
+    computed over `corr_window` (1mo..2y) so it can share the UI's lookback.
+    """
+    meta, res = _sector_data(key, lookback)
+    warm = min(res.cfg.warmup, max(len(res.health_pct) - 2, 0))
     hp = res.health_pct.iloc[warm:]
 
     # equal-weight price index, normalised to 100 at the first valid bar
@@ -148,9 +157,13 @@ def sector_detail(key: str, lookback: str = "1y") -> dict:
     eq_full = (res.close.divide(base) * 100.0).mean(axis=1)
     eq = eq_full.iloc[warm:]
 
-    # stocks most correlated to this sector's index (return correlation)
+    # stocks most correlated to this sector's index, over the chosen window
+    win = _CORR_WINDOW.get(corr_window) if corr_window else None
     rets = res.close.pct_change()
     iret = eq_full.pct_change()
+    if win:
+        rets = rets.tail(win + 1)
+        iret = iret.tail(win + 1)
     mi = meta.set_index("Ticker")
     correlated = []
     for tkr in res.close.columns:
@@ -170,9 +183,9 @@ def sector_detail(key: str, lookback: str = "1y") -> dict:
     prev = float(hp.iloc[-2]) if len(hp) > 1 else cur
     n = res.close.shape[1]
     above_sma = int(res.signals["sma"]["up"].iloc[-1].sum())
-    payload = {
+    return {
         "key": key, "name": SECTOR_DISPLAY.get(key, key),
-        "correlated": correlated,
+        "correlated": correlated, "corr_window": corr_window or lookback,
         "as_of": str(hp.index[-1].date()), "constituents": n,
         "health_pct": round(cur, 1),
         "verdict": "expanding" if cur > prev else "contracting",
@@ -183,8 +196,6 @@ def sector_detail(key: str, lookback: str = "1y") -> dict:
         "index_level": round(float(eq.iloc[-1]), 2),
         "is_proxy": True,
     }
-    service._cache.set(cache_key, payload)
-    return payload
 
 
 def health_series(index: str = "KLCI", lookback: str = "1y") -> dict:
