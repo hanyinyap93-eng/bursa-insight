@@ -80,13 +80,16 @@
   .grid{height:calc(100vh - var(--h-header) - var(--h-tape));display:grid;
     grid-template-columns:1fr var(--w-right);
     grid-template-rows:1fr var(--h-bottom);}
-  .center{display:flex;flex-direction:column;min-height:0;min-width:0;}
-  .right{grid-row:1/3;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
+  .center{grid-column:1;grid-row:1;display:flex;flex-direction:column;min-height:0;min-width:0;}
+  .right{grid-column:2;grid-row:1/3;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
   .resizer{position:absolute;left:-3px;top:0;width:7px;height:100%;cursor:col-resize;z-index:30;}
-  .resizer::after{content:"";position:absolute;left:2px;top:0;width:2px;height:100%;background:transparent;transition:background .12s;}
+  .resizer::after{content:"";position:absolute;left:2px;top:0;width:2px;height:100%;background:var(--line2);transition:background .12s;}
   .resizer:hover::after,.resizer.active::after{background:var(--accent);}
+  /* grip dots so the divider reads as draggable */
+  .resizer::before{content:"⋮";position:absolute;left:-3px;top:50%;transform:translateY(-50%);
+    color:var(--muted);font-size:14px;line-height:1;width:13px;text-align:center;}
   body.resizing{cursor:col-resize;user-select:none;}
-  .bottom{border-top:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;}
+  .bottom{grid-column:1;grid-row:2;border-top:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;}
 
   .sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
     padding:10px 12px 6px;display:flex;justify-content:space-between;align-items:center;}
