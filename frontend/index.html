@@ -103,11 +103,11 @@
     padding:10px 12px 6px;display:flex;justify-content:space-between;align-items:center;}
 
   /* chart */
-  .chart-top{display:flex;align-items:center;gap:14px;padding:8px 12px;border-bottom:1px solid var(--line);}
+  .chart-top{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;padding:8px 12px;border-bottom:1px solid var(--line);}
   .sym-head{display:flex;align-items:baseline;gap:9px;}
   .sym-head .s{font-size:17px;font-weight:700;} .sym-head .n{color:var(--muted);font-size:12px;}
   .sym-head .p{font-size:17px;font-weight:700;margin-left:6px;} .sym-head .c{font-size:12.5px;font-weight:600;}
-  .ohlc{display:flex;gap:12px;color:var(--muted);font-size:11.5px;}
+  .ohlc{display:flex;gap:12px;color:var(--muted);font-size:11.5px;white-space:nowrap;}
   .ohlc b{color:var(--text);font-weight:600;}
   .tf{display:flex;gap:1px;margin-left:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
   .tf button{background:none;border:none;color:var(--muted);padding:5px 10px;font-size:11.5px;}
@@ -195,9 +195,6 @@
     <a class="active">Chart</a><a id="nav-sectors">Sectors</a><a id="nav-news">News</a>
   </nav>
   <div class="spacer"></div>
-  <div class="lookback" id="lookback">
-    <button data-lb="6mo">6M</button><button data-lb="1y" class="active">1Y</button><button data-lb="2y">2Y</button>
-  </div>
   <button class="btn ghost" id="theme" title="Toggle dark / light mode" aria-label="Toggle theme">
     <svg class="bulb" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -230,9 +227,6 @@
       </div>
       <div class="ohlc" id="ch-fund"></div>
       <div class="ohlc" id="ch-ohlc"></div>
-      <div class="tf" id="tf">
-        <button data-lb="6mo">6M</button><button data-lb="1y" class="active">1Y</button><button data-lb="2y">2Y</button>
-      </div>
     </div>
     <div id="chart" style="position:relative"><span class="pane-label" id="lbl-price"></span></div>
   </section>
@@ -277,8 +271,8 @@
 const API = (location.protocol === "file:" || location.port === "5500")
   ? "http://127.0.0.1:8000" : "";
 const $ = s=>document.querySelector(s);
-let LB = "1y";                 // global lookback
-let CHART_LB = "1y";           // chart timeframe
+let LB = "1y";                 // panel data lookback (health / indexes / quotes)
+const CHART_LB = "5y";         // chart fetches long history; scroll-wheel zoom changes the view
 let SYMBOL = {ticker:"1155.KL", code:"1155", name:"MAYBANK"};
 let QUOTES = [];
 let CHART_INIT = false;
@@ -592,17 +586,9 @@ async function renderBacktest(){
 }
 
 /* ---------------- nav + boot ---------------- */
-function setLookback(lb){LB=lb;CHART_LB=lb;
-  document.querySelectorAll('#lookback button').forEach(b=>b.classList.toggle('active',b.dataset.lb===lb));
-  document.querySelectorAll('#tf button').forEach(b=>b.classList.toggle('active',b.dataset.lb===lb));
-  loadQuotes();loadHealth();loadRotation();loadChart(SYMBOL);
-}
 function boot(){
   initChart();
   loadQuotes();loadHealth();loadRotation();loadNews();
-  document.querySelectorAll('#lookback button').forEach(b=>b.onclick=()=>setLookback(b.dataset.lb));
-  document.querySelectorAll('#tf button').forEach(b=>b.onclick=()=>{CHART_LB=b.dataset.lb;
-    document.querySelectorAll('#tf button').forEach(x=>x.classList.toggle('active',x===b));loadChart(SYMBOL);});
   $("#nav-sectors").onclick=()=>$("#rotation").scrollIntoView({behavior:'smooth'});
   $("#nav-news").onclick=()=>$("#news").scrollIntoView({behavior:'smooth'});
   $("#signin").onclick=()=>alert("Auth tier coming next — guest sees limited charts, login unlocks the full screener & alerts.");
