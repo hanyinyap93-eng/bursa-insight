@@ -57,7 +57,12 @@ def breadth_overview(index: str = "KLCI", lookback: str = "1y") -> dict:
         "components": components,            # -100..100 per component
         "component_breadth": last,           # bullish/bearish counts per component
         "index_level": service.latest(result.index_price) if result.index_price is not None else None,
-        "spark": [round(float(x), 1) for x in health_pct.tail(60)],  # sparkline
+        "spark": [round(float(x), 1) for x in health_pct.tail(60)],  # health sparkline
+        "index_spark": (
+            [round(float(x), 2)
+             for x in result.index_price.reindex(health_pct.index).ffill().tail(60)]
+            if result.index_price is not None else None
+        ),  # KLCI index price line (same 60-bar window as the health sparkline)
     }
 
 

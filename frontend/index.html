@@ -113,8 +113,12 @@
   .gauge .big{font-size:30px;font-weight:700;}
   .gauge .verdict{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;}
   .verdict.pos{background:rgba(8,153,129,.16);color:var(--green);} .verdict.neg{background:rgba(242,54,69,.16);color:var(--red);}
+  /* KLCI index price mini-chart above the health indicator */
+  .idxchart{height:48px;margin:2px 0 2px;}
+  .idxchart svg{display:block;width:100%;height:48px;}
+  .mini-cap{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;margin-top:8px;}
   /* diverging Index Health sparkline: green up / red down from a zero x-axis */
-  .spark{position:relative;display:flex;align-items:stretch;gap:1px;height:40px;margin-top:8px;}
+  .spark{position:relative;display:flex;align-items:stretch;gap:1px;height:40px;margin-top:4px;}
   .spark::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;
     background:var(--line2);pointer-events:none;}
   .spark .col{flex:1;position:relative;}
@@ -220,9 +224,11 @@
           <span class="verdict" id="g-verdict">…</span>
         </div>
         <div class="muted" id="g-sub" style="font-size:11px"></div>
+        <div class="mini-cap muted" id="g-idxcap">FBM KLCI</div>
+        <div class="idxchart" id="g-index"></div>
+        <div class="mini-cap muted">Index Health (% breadth)</div>
         <div class="spark" id="g-spark"></div>
       </div>
-      <div class="comp" id="g-comp"></div>
     </div>
     <div class="panel">
       <div class="sec-title">Sector Rotation <span class="muted">breadth health</span></div>
@@ -266,6 +272,16 @@ const arrow=x=>x>=0?"▲":"▼";
 async function get(p){const r=await fetch(API+p);if(!r.ok)throw new Error((await r.text()).slice(0,120));return r.json();}
 async function post(p,b){const r=await fetch(API+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});if(!r.ok)throw new Error((await r.text()).slice(0,120));return r.json();}
 const heat=v=>{const t=Math.max(-100,Math.min(100,v))/100;return t>=0?`rgba(8,153,129,${.12+.7*t})`:`rgba(242,54,69,${.12+.7*-t})`;};
+// mini line chart (SVG polyline) from a numeric array
+function lineSVG(arr,color,h=48){
+  if(!arr||arr.length<2)return"";
+  const mn=Math.min(...arr),mx=Math.max(...arr),n=arr.length,pad=4;
+  const X=i=>(100*i/(n-1)).toFixed(2);
+  const Y=v=>(pad+(h-2*pad)*(1-(v-mn)/((mx-mn)||1))).toFixed(2);
+  const pts=arr.map((v,i)=>X(i)+","+Y(v)).join(" ");
+  return `<svg viewBox="0 0 100 ${h}" preserveAspectRatio="none">`+
+    `<polyline fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke" points="${pts}"/></svg>`;
+}
 
 /* ---------------- chart (Lightweight Charts) ---------------- */
 let chart, rsiChart, candle, vol, smaLine, rsiLine, ro;
@@ -382,16 +398,17 @@ async function loadHealth(){
     $("#g-val").textContent=fmt(o.health_pct)+"%"; $("#g-val").className="big "+cls(o.health_pct);
     const v=$("#g-verdict"); v.textContent=o.verdict; v.className="verdict "+(o.verdict==='expanding'?'pos':'neg');
     $("#g-sub").innerHTML=`as of ${o.as_of} · ${o.constituents} stocks · ${o.pct_above_sma}% above SMA · 5d ${o.trend_5d}`;
+    // KLCI index price line chart (above the health indicator)
+    if(o.index_spark && o.index_spark.length){
+      const up = o.index_spark[o.index_spark.length-1] >= o.index_spark[0];
+      $("#g-idxcap").innerHTML = `FBM KLCI <b style="color:var(--text)">${fmtP(o.index_level,2)}</b>`;
+      $("#g-index").innerHTML = lineSVG(o.index_spark, up?'var(--green)':'var(--red)', 48);
+    } else { $("#g-index").innerHTML=""; }
+    // diverging health sparkline
     const mx=Math.max(1,...o.spark.map(Math.abs));
     $("#g-spark").innerHTML=o.spark.map(x=>{
       const h=Math.max(3,50*Math.abs(x)/mx);   // % of half-height from the axis
       return `<div class="col ${x>=0?'up':'down'}"><i style="height:${h}%;background:${x>=0?'var(--green)':'var(--red)'}"></i></div>`;
-    }).join("");
-    const lab={momentum:"Momentum",rsi:"RSI",sma:"SMA breadth",hl:"New High/Low"};
-    $("#g-comp").innerHTML=Object.entries(o.components).map(([k,val])=>{
-      const b=o.component_breadth[k];
-      return `<div class="comp-row"><div class="hd"><span>${lab[k]}</span><small>${fmt(val)} · ${b.bullish}▲ ${b.bearish}▼</small></div>
-        <div class="bar"><span style="width:${Math.min(100,Math.abs(val))}%;background:${val>=0?'var(--green)':'var(--red)'}"></span></div></div>`;
     }).join("");
   }catch(e){$("#g-sub").textContent=e.message;}
 }
