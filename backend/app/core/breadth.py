@@ -66,6 +66,63 @@ def breadth_overview(index: str = "KLCI", lookback: str = "1y") -> dict:
     }
 
 
+SECTOR_DISPLAY = {
+    "CONSUMER": "Consumer P&S", "IND-PROD": "Industrial P&S", "CONSTRUCTN": "Construction",
+    "TECHNOLOGY": "Technology", "FINANCE": "Financial Services", "PROPERTIES": "Property",
+    "PLANTATION": "Plantation", "REIT": "REIT", "ENERGY": "Energy", "HEALTH": "Healthcare",
+    "TELECOMMUNICATIONS": "Telco & Media", "TRANSPORTATION": "Transport & Logistics",
+    "UTILITIES": "Utilities",
+}
+
+
+def sector_detail(key: str, lookback: str = "1y") -> dict:
+    """Index Health + index-price proxy for one Bursa sector (clicked in the UI).
+
+    Health = breadth over the sector's constituents; the index price is an
+    equal-weighted price index of those constituents (normalised to 100 at the
+    window start), since Yahoo has no Bursa sector index symbol. Cached.
+    """
+    code = ih.SECTOR_INDEX_CODES.get(key)
+    if not code:
+        raise ValueError(f"unknown sector '{key}'")
+    cache_key = f"sectordetail:{key}:{lookback}"
+    cached = service._cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    cfg = service._cfg("KLCI", lookback)
+    meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
+    if meta.empty:
+        raise ValueError(f"no constituents for sector '{key}'")
+    close = ih.download_prices(meta["Ticker"].tolist(), cfg)
+    res = ih.compute_health(cfg, tickers_meta=meta, close=close)
+    warm = min(cfg.warmup, max(len(res.health_pct) - 2, 0))
+    hp = res.health_pct.iloc[warm:]
+
+    # equal-weight price index, normalised to 100 at the first valid bar
+    base = res.close.ffill().bfill().iloc[0]
+    eq = (res.close.divide(base) * 100.0).mean(axis=1).iloc[warm:]
+
+    cur = float(hp.iloc[-1])
+    prev = float(hp.iloc[-2]) if len(hp) > 1 else cur
+    n = res.close.shape[1]
+    above_sma = int(res.signals["sma"]["up"].iloc[-1].sum())
+    payload = {
+        "key": key, "name": SECTOR_DISPLAY.get(key, key),
+        "as_of": str(hp.index[-1].date()), "constituents": n,
+        "health_pct": round(cur, 1),
+        "verdict": "expanding" if cur > prev else "contracting",
+        "trend_5d": _trend(hp),
+        "pct_above_sma": round(above_sma / n * 100, 1) if n else None,
+        "spark": [round(float(x), 1) for x in hp.tail(60)],
+        "index_spark": [round(float(x), 2) for x in eq.reindex(hp.index).ffill().tail(60)],
+        "index_level": round(float(eq.iloc[-1]), 2),
+        "is_proxy": True,
+    }
+    service._cache.set(cache_key, payload)
+    return payload
+
+
 def health_series(index: str = "KLCI", lookback: str = "1y") -> dict:
     """Time series for the Index Health chart (health % + index overlay)."""
     result = service.get_health(index, lookback)

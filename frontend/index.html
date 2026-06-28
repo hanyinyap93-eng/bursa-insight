@@ -131,7 +131,11 @@
   .comp-row .hd small{color:var(--muted);}
   .bar{height:6px;border-radius:3px;background:var(--bg);overflow:hidden;}
   .bar>span{display:block;height:100%;}
-  .rot-row{display:grid;grid-template-columns:96px 1fr 44px;gap:7px;align-items:center;padding:3px 12px;font-size:11.5px;cursor:default;}
+  .reset-link{color:var(--accent);cursor:pointer;font-size:10.5px;text-transform:none;letter-spacing:0;}
+  .reset-link:hover{text-decoration:underline;}
+  .rot-row{display:grid;grid-template-columns:96px 1fr 44px;gap:7px;align-items:center;padding:3px 12px;font-size:11.5px;cursor:pointer;}
+  .rot-row:hover{background:var(--hover);}
+  .rot-row.sel{box-shadow:inset 2px 0 0 var(--accent);background:var(--hover);}
   .rot-row .cells{display:flex;gap:1px;height:13px;}
   .rot-row .cells .c{flex:1;border-radius:1px;}
   .rot-row .val{text-align:right;font-weight:600;}
@@ -217,7 +221,8 @@
   <aside class="right">
     <div class="resizer" id="rresizer" title="Drag to resize"></div>
     <div class="panel">
-      <div class="sec-title">KLCI Index Health</div>
+      <div class="sec-title"><span id="g-title">KLCI Index Health</span>
+        <a id="g-reset" class="reset-link" style="display:none">← KLCI</a></div>
       <div class="gauge">
         <div class="row" style="justify-content:space-between">
           <span class="big" id="g-val">—</span>
@@ -398,15 +403,25 @@ async function loadQuotes(){
 }
 
 /* ---------------- right panels ---------------- */
+let HEALTH_TARGET = "KLCI";   // 'KLCI' or a sector key (e.g. 'REIT')
+function selectIndex(key){ HEALTH_TARGET = key||"KLCI"; loadHealth();
+  document.querySelectorAll('.rot-row').forEach(r=>r.classList.toggle('sel', r.dataset.sector===HEALTH_TARGET)); }
+
 async function loadHealth(){
+  const isSector = HEALTH_TARGET !== "KLCI";
+  $("#g-title").textContent = (isSector ? HEALTH_TARGET : "KLCI") + " Index Health";
+  $("#g-reset").style.display = isSector ? "inline" : "none";
   try{
-    const o=await get(`/api/breadth/overview?lookback=${LB}`);
+    const o = isSector ? await get(`/api/sector/${HEALTH_TARGET}?lookback=${LB}`)
+                       : await get(`/api/breadth/overview?lookback=${LB}`);
+    if(isSector) $("#g-title").textContent = (o.name||HEALTH_TARGET) + " Index Health";
     $("#g-val").textContent=fmt(o.health_pct)+"%"; $("#g-val").className="big "+cls(o.health_pct);
     const v=$("#g-verdict"); v.textContent=o.verdict; v.className="verdict "+(o.verdict==='expanding'?'pos':'neg');
     $("#g-sub").innerHTML=`as of ${o.as_of} · ${o.constituents} stocks · ${o.pct_above_sma}% above SMA · 5d ${o.trend_5d}`;
-    // KLCI index price line chart (above the health indicator)
+    // index price line chart (above the health indicator)
     if(o.index_spark && o.index_spark.length){
-      $("#g-idxcap").innerHTML = `FBM KLCI <b style="color:var(--text)">${fmtP(o.index_level,2)}</b>`;
+      const label = isSector ? `${o.name||HEALTH_TARGET} (eq-wt index)` : "FBM KLCI";
+      $("#g-idxcap").innerHTML = `${label} <b style="color:var(--text)">${fmtP(o.index_level,2)}</b>`;
       $("#g-index").innerHTML = lineSVG(o.index_spark, 48);
     } else { $("#g-index").innerHTML=""; }
     // diverging health sparkline
@@ -424,9 +439,12 @@ async function loadRotation(){
     $("#rotation").innerHTML=s.ranked.map(r=>{
       const series=(s.heatmap.values[r.sector]||[]).filter(v=>v!=null);
       const cells=series.slice(-60).map(v=>`<div class="c" style="background:${heat(v)}"></div>`).join("");
-      return `<div class="rot-row"><div title="${r.sector}">${r.sector.slice(0,11)}</div>
+      const sel = r.sector===HEALTH_TARGET ? " sel" : "";
+      return `<div class="rot-row${sel}" data-sector="${r.sector}" title="Click to load ${r.sector}">
+        <div>${r.sector.slice(0,11)}</div>
         <div class="cells">${cells}</div><div class="val ${cls(r.index_health)}">${fmt(r.index_health,0)}</div></div>`;
     }).join("");
+    document.querySelectorAll('.rot-row').forEach(row=>row.onclick=()=>selectIndex(row.dataset.sector));
   }catch(e){$("#rotation").innerHTML=`<div class="muted" style="padding:8px 12px">${e.message}</div>`;}
 }
 async function loadNews(){
@@ -566,6 +584,7 @@ function boot(){
   $("#nav-sectors").onclick=()=>$("#rotation").scrollIntoView({behavior:'smooth'});
   $("#nav-news").onclick=()=>$("#news").scrollIntoView({behavior:'smooth'});
   $("#signin").onclick=()=>alert("Auth tier coming next — guest sees limited charts, login unlocks the full screener & alerts.");
+  $("#g-reset").onclick=()=>selectIndex('KLCI');
   // dark / light theme toggle (logo letters + chart follow the theme; persists)
   function setTheme(light){
     document.body.classList.toggle('light',light);

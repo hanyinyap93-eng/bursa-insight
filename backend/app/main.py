@@ -92,6 +92,16 @@ def quotes(index: str = "KLCI", lookback: str = "1y"):
         raise HTTPException(502, f"quotes failed: {exc}")
 
 
+@app.get("/api/sector/{key}")
+def sector_detail(key: str, lookback: str = "1y"):
+    try:
+        return breadth_mod.sector_detail(key, lookback)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"sector detail failed: {exc}")
+
+
 @app.get("/api/sectors/rotation")
 def sector_rotation(lookback: str = "1y"):
     try:
