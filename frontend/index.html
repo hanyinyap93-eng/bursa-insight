@@ -9,9 +9,6 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <meta name="theme-color" content="#000000" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="vendor/lightweight-charts.js"></script>
 <style>
   :root{
@@ -28,9 +25,8 @@
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{margin:0;background:var(--bg);color:var(--text);
-    font:13px/1.45 "Space Grotesk",-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;
+    font:13px/1.45 -apple-system,BlinkMacSystemFont,"Trebuchet MS",Segoe UI,Roboto,sans-serif;
     overflow:hidden;}
-  input,select{font-family:inherit;}
   button{font-family:inherit;cursor:pointer;}
   .pos{color:var(--green);} .neg{color:var(--red);}
   .mono{font-variant-numeric:tabular-nums;}
@@ -38,12 +34,12 @@
   /* ---------- header ---------- */
   header{height:var(--h-header);display:flex;align-items:center;gap:14px;padding:0 14px;
     background:var(--panel);border-bottom:1px solid var(--line);}
-  .logo{display:flex;align-items:center;user-select:none;color:var(--text);}
-  .logo svg{height:24px;width:auto;display:block;}
-  .logo .lg-g{fill:#16a34a;}                 /* green E */
-  .logo .lg-r{fill:#e3242b;}                 /* red mirrored E (the "3") */
-  .logo .lg-t{fill:currentColor;}            /* themed: black in light, white in dark */
-  body.light .logo .lg-g{fill:#16a34a;} body.light .logo .lg-r{fill:#e3242b;}
+  .logo{display:flex;align-items:center;font-weight:900;font-size:22px;letter-spacing:3px;
+    font-family:"Arial Black","Arial Narrow Bold",Arial,sans-serif;user-select:none;}
+  .logo span{display:inline-block;}
+  .logo .e1{color:#16a34a;}                                   /* green E */
+  .logo .e2{color:#e3242b;transform:scaleX(-1);}             /* red mirrored E */
+  .logo .lt{color:var(--text);}                               /* themed: white in dark, black in light */
   .search{position:relative;}
   .search input{width:240px;background:var(--bg);border:1px solid var(--line);border-radius:6px;
     color:var(--text);padding:7px 10px 7px 30px;font-size:12.5px;outline:none;}
@@ -152,41 +148,7 @@
 </head>
 <body>
 <header>
-  <div class="logo" title="ETHER" aria-label="ETHER">
-    <svg viewBox="0 0 158 40" height="24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ETHER">
-      <!-- E (green) with diagonal notch under the top bar -->
-      <g class="lg-g">
-        <path d="M0,0 H26 V8 H14 L8,15 V32 H26 V40 H0 Z"/>
-        <rect x="8" y="15" width="12" height="8" rx="1.2"/>
-      </g>
-      <!-- T -->
-      <g class="lg-t">
-        <rect x="34" y="0" width="26" height="8" rx="1.2"/>
-        <rect x="43" y="0" width="8" height="40" rx="1.2"/>
-      </g>
-      <!-- H -->
-      <g class="lg-t">
-        <rect x="68" y="0" width="8" height="40" rx="1.2"/>
-        <rect x="86" y="0" width="8" height="40" rx="1.2"/>
-        <rect x="68" y="16" width="26" height="8" rx="1.2"/>
-      </g>
-      <!-- mirrored E ("3", red) -->
-      <g class="lg-r">
-        <rect x="102" y="0" width="22" height="8" rx="1.2"/>
-        <rect x="106" y="16" width="18" height="8" rx="1.2"/>
-        <rect x="102" y="32" width="22" height="8" rx="1.2"/>
-        <rect x="116" y="0" width="8" height="40" rx="1.2"/>
-      </g>
-      <!-- R -->
-      <g class="lg-t">
-        <rect x="130" y="0" width="8" height="40" rx="1.2"/>
-        <rect x="130" y="0" width="24" height="8" rx="1.2"/>
-        <rect x="146" y="0" width="8" height="18" rx="1.2"/>
-        <rect x="130" y="16" width="24" height="8" rx="1.2"/>
-        <polygon points="138,24 146,24 156,40 148,40"/>
-      </g>
-    </svg>
-  </div>
+  <div class="logo" title="Ether"><span class="e1">E</span><span class="lt">T</span><span class="lt">H</span><span class="e2">E</span><span class="lt">R</span></div>
   <div class="search">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
     <input id="search" placeholder="Search symbol e.g. 1155 or MAYBANK" autocomplete="off"/>
