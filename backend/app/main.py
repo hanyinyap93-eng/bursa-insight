@@ -102,6 +102,17 @@ def breadth_series(index: str = "KLCI", lookback: str = "1y"):
         raise HTTPException(502, f"series compute failed: {exc}")
 
 
+@app.get("/api/index/{key}/ohlc")
+def index_ohlc(key: str, lookback: str = "5y"):
+    """OHLC for an index (KLCI or a sector key) so it can be charted."""
+    try:
+        return breadth_mod.index_ohlc(key, lookback)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"index ohlc failed: {exc}")
+
+
 @app.get("/api/correlations")
 def correlations(ticker: str, lookback: str = "6mo"):
     """Correlation of a stock to every index (KLCI + 13 sectors)."""
@@ -118,6 +129,13 @@ def search(q: str, limit: int = 12):
     query = (q or "").strip().upper()
     if not query:
         return []
+    # indexes (KLCI + sectors) match first
+    index_names = {"KLCI": "FBM KLCI", **breadth_mod.SECTOR_DISPLAY}
+    idx_matches = [
+        {"code": k, "name": f"{nm} index", "ticker": k, "is_index": True}
+        for k, nm in index_names.items()
+        if query in k.upper() or query in nm.upper()
+    ]
     try:
         quotes = klse_quotes.get_quotes()
     except Exception as exc:  # noqa: BLE001
@@ -140,7 +158,7 @@ def search(q: str, limit: int = 12):
         not r["code"].upper().startswith(query),           # code prefix
         r["name"] or "",
     ))
-    return out[:limit]
+    return (idx_matches + out)[:limit]   # indexes listed first
 
 
 @app.get("/api/quotes")

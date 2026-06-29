@@ -394,7 +394,10 @@ async function loadChart(sym){
   $("#ch-name").textContent=sym.name;
   $("#lbl-price").textContent=sym.code+" · "+sym.name;
   try{
-    const d=await get(`/api/stock/${encodeURIComponent(sym.ticker)}?lookback=${CHART_LB}`);
+    const d = sym.isIndex
+      ? await get(`/api/index/${encodeURIComponent(sym.indexKey||sym.code)}/ohlc?lookback=${CHART_LB}`, 120000)
+      : await get(`/api/stock/${encodeURIComponent(sym.ticker)}?lookback=${CHART_LB}`);
+    if(d.name){ $("#ch-name").textContent=d.name; $("#lbl-price").textContent=sym.code+" · "+d.name; }
     const bars=d.dates.map((t,i)=>({time:t,open:d.open[i],high:d.high[i],low:d.low[i],close:d.close[i]}))
       .filter(b=>b.open!=null&&b.close!=null);
     LASTBARS=bars;
@@ -410,16 +413,20 @@ async function loadChart(sym){
     $("#ch-price").textContent=fmtP(last,3);
     $("#ch-chg").className="c "+cls(chg);
     $("#ch-chg").textContent=`${fmt(chg,3)} (${fmt(pct)}%)`;
-    // fundamentals from klsescreener quotes (matched by code)
-    // fundamentals for the charted stock (works for any stock, not just KLCI)
-    const fq = d.fundamentals || QUOTES.find(x=>x.code===sym.code) || {};
-    const fmtVol=v=>v==null?"—":v>=1000?(v/1000).toFixed(1)+"M":v.toFixed(0)+"K";
-    const has = fq.pe!=null||fq.pb!=null||fq.dy!=null;
-    $("#ch-fund").innerHTML = has?
-      `<span>P/E <b>${fq.pe??'—'}</b></span><span>P/B <b>${fq.pb??'—'}</b></span>`+
-      `<span>DY <b>${fq.dy!=null?fq.dy+'%':'—'}</b></span>`+
-      `<span>EPS <b>${fq.eps??'—'}</b></span><span>Vol <b>${fmtVol(fq.volume)}</b></span>`+
-      `<span>MCap <b>${fq.market_cap!=null?(fq.market_cap/1000).toFixed(2)+'B':'—'}</b></span>` : "";
+    // basic ratios for a stock; for an index show its composition instead
+    if(d.is_index){
+      $("#ch-fund").innerHTML = `<span>INDEX</span><span>${d.constituents||'—'} constituents</span>`+
+        (sym.indexKey&&sym.indexKey!=='KLCI'?`<span>equal-weight</span>`:'');
+    } else {
+      const fq = d.fundamentals || QUOTES.find(x=>x.code===sym.code) || {};
+      const fmtVol=v=>v==null?"—":v>=1000?(v/1000).toFixed(1)+"M":v.toFixed(0)+"K";
+      const has = fq.pe!=null||fq.pb!=null||fq.dy!=null;
+      $("#ch-fund").innerHTML = has?
+        `<span>P/E <b>${fq.pe??'—'}</b></span><span>P/B <b>${fq.pb??'—'}</b></span>`+
+        `<span>DY <b>${fq.dy!=null?fq.dy+'%':'—'}</b></span>`+
+        `<span>EPS <b>${fq.eps??'—'}</b></span><span>Vol <b>${fmtVol(fq.volume)}</b></span>`+
+        `<span>MCap <b>${fq.market_cap!=null?(fq.market_cap/1000).toFixed(2)+'B':'—'}</b></span>` : "";
+    }
     updateOHLC(null);
     loadCorrelations();
   }catch(e){$("#lbl-price").textContent="chart error: "+e.message;}
@@ -428,6 +435,7 @@ async function loadChart(sym){
 async function loadCorrelations(){
   if(!SYMBOL||!SYMBOL.ticker)return;
   $("#corr-sym").textContent = SYMBOL.code + (SYMBOL.name&&SYMBOL.name!==SYMBOL.code?(" "+SYMBOL.name):"");
+  if(SYMBOL.isIndex){ $("#corr-list").innerHTML='<div class="muted" style="grid-column:1/3;padding:6px;font-size:11px">— not applicable for an index —</div>'; return; }
   document.querySelectorAll('#corr-lb button').forEach(b=>b.classList.toggle('active',b.dataset.lb===CORR_LB));
   $("#corr-list").innerHTML='<div class="muted" style="grid-column:1/3;padding:6px;font-size:11px">computing…</div>';
   try{
@@ -478,6 +486,8 @@ async function loadQuotes(){
 /* ---------------- right panels ---------------- */
 let HEALTH_TARGET = "KLCI";   // 'KLCI' or a sector key (e.g. 'REIT')
 function selectIndex(key){ HEALTH_TARGET = key||"KLCI"; loadHealth();
+  loadChart({code:HEALTH_TARGET, name:(HEALTH_TARGET==='KLCI'?'FBM KLCI':HEALTH_TARGET),
+             ticker:HEALTH_TARGET, isIndex:true, indexKey:HEALTH_TARGET});
   document.querySelectorAll('.rot-row').forEach(r=>r.classList.toggle('sel', r.dataset.sector===HEALTH_TARGET)); }
 
 async function loadHealth(){
@@ -708,7 +718,9 @@ function setupSearch(){
   const inp=$("#search"), dd=$("#search-dd");
   let items=[], active=-1, timer=null;
   const close=()=>{dd.classList.remove('open');dd.innerHTML="";items=[];active=-1;};
-  const pick=it=>{ if(!it)return; loadChart({ticker:it.ticker,code:it.code,name:it.name});
+  const pick=it=>{ if(!it)return;
+    if(it.is_index){ selectIndex(it.code); }
+    else { loadChart({ticker:it.ticker,code:it.code,name:it.name}); }
     inp.value="";close();inp.blur(); };
   const render=()=>{
     dd.innerHTML=items.map((it,i)=>`<div class="sd-row${i===active?' active':''}" data-i="${i}">

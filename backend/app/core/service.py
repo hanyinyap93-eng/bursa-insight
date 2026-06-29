@@ -44,7 +44,7 @@ class _Entry:
 
 # Heavy results worth persisting to disk so a server restart doesn't re-scrape
 # the whole market (these are the slow, throttle-prone keys).
-_DISK_PREFIXES = ("sector:", "indexpanel:", "sectordata:", "health:")
+_DISK_PREFIXES = ("sector:", "indexpanel:", "sectordata:", "health:", "indexohlc:")
 _DISK_TTL = 60 * 60 * 12  # disk cache valid for 12h
 
 

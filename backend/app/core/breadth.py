@@ -121,6 +121,74 @@ def stock_index_correlations(ticker: str, lookback: str = "6mo") -> dict:
     return {"ticker": ticker, "lookback": lookback, "correlations": out}
 
 
+def index_ohlc(key: str, lookback: str = "5y") -> dict:
+    """OHLC for an index so it can be charted like a stock.
+
+    KLCI uses the real ^KLSE OHLC; a sector uses an equal-weight OHLC built from
+    its constituents (each normalised to 100 at the window start). Cached.
+    """
+    import yfinance as yf
+    import pandas as pd
+    cache_key = f"indexohlc:{key}:{lookback}"
+    cached = service._cache.get(cache_key, ttl=service.TTL_SECONDS)
+    if cached is not None:
+        return cached
+
+    if key == "KLCI":
+        raw = yf.Ticker(ih.INDEX_SYMBOL_KLCI).history(period=lookback, interval="1d", auto_adjust=False)
+        raw = raw[~raw.index.duplicated(keep="last")].sort_index()
+        o, h, l, c, v = raw["Open"], raw["High"], raw["Low"], raw["Close"], raw["Volume"]
+        name, nconst = "FBM KLCI", 30
+    else:
+        code = ih.SECTOR_INDEX_CODES.get(key)
+        if not code:
+            raise ValueError(f"unknown index '{key}'")
+        meta = ih.get_index_tickers(code, 3, 4)
+        if meta.empty:
+            raise ValueError(f"no constituents for '{key}'")
+        tickers = meta["Ticker"].tolist()
+        raw = yf.download(tickers, period=lookback, interval="1d", auto_adjust=False,
+                          group_by="ticker", threads=True, progress=False)
+        lvl0 = set(raw.columns.get_level_values(0)) if getattr(raw.columns, "nlevels", 1) > 1 else set()
+        fields = {"Open": [], "High": [], "Low": [], "Close": []}
+        used = 0
+        for t in tickers:
+            if t not in lvl0:
+                continue
+            sub = raw[t]
+            base = sub["Close"].ffill().bfill().iloc[0]
+            if not base or base != base:
+                continue
+            for f in fields:
+                fields[f].append(sub[f] / base * 100.0)
+            used += 1
+        if not fields["Close"]:
+            raise ValueError(f"no price data for '{key}'")
+        o = pd.concat(fields["Open"], axis=1).mean(axis=1)
+        h = pd.concat(fields["High"], axis=1).mean(axis=1)
+        l = pd.concat(fields["Low"], axis=1).mean(axis=1)
+        c = pd.concat(fields["Close"], axis=1).mean(axis=1)
+        v, name, nconst = None, SECTOR_DISPLAY.get(key, key) + " (eq-wt)", used
+
+    df = pd.DataFrame({"o": o, "h": h, "l": l, "c": c}).dropna().sort_index()
+    sma = df["c"].rolling(10, min_periods=10).mean()
+    vol = ([int(x) if x == x else 0 for x in v.reindex(df.index)] if v is not None
+           else [0] * len(df))
+    out = {
+        "ticker": key, "name": name, "is_index": True, "constituents": nconst,
+        "dates": [str(d.date()) for d in df.index],
+        "open": [round(float(x), 4) for x in df["o"]],
+        "high": [round(float(x), 4) for x in df["h"]],
+        "low": [round(float(x), 4) for x in df["l"]],
+        "close": [round(float(x), 4) for x in df["c"]],
+        "volume": vol,
+        "sma10": [None if x != x else round(float(x), 4) for x in sma],
+        "fundamentals": {},
+    }
+    service._cache.set(cache_key, out)
+    return out
+
+
 def _sector_data(key: str, lookback: str):
     """Heavy per-sector data (constituents + prices), cached so window changes
     don't trigger a re-scrape. Returns (meta, HealthResult)."""
