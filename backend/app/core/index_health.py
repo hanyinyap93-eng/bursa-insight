@@ -341,6 +341,28 @@ def download_prices(tickers, cfg, extra=None):
                     return cached[symbols]
             except Exception:  # noqa: BLE001 - ignore a corrupt/incompatible cache
                 pass
+    def _finish(close):
+        close = close.dropna(axis=1, how="all")
+        if close.empty:
+            raise RuntimeError("All tickers failed to download.")
+        close = close.dropna(how="all").sort_index().ffill()
+        if cache_file is not None:
+            try:
+                close.to_pickle(cache_file)
+            except Exception:  # noqa: BLE001 - caching is best-effort
+                pass
+        return close
+
+    # PRIMARY: klsescreener UDF feed (works from cloud, fresher than Yahoo)
+    try:
+        from . import klse_prices
+        panel = klse_prices.close_panel(symbols, cfg.lookback)
+        if not panel.empty:
+            return _finish(panel[[c for c in symbols if c in panel.columns]])
+    except Exception:  # noqa: BLE001 - fall back to yfinance
+        pass
+
+    # FALLBACK: yfinance (fast locally; blocked on datacenter IPs)
     last_err = None
     for _ in range(cfg.max_retries):
         try:
@@ -354,16 +376,7 @@ def download_prices(tickers, cfg, extra=None):
             close = raw["Close"].copy()
             if isinstance(close, pd.Series):
                 close = close.to_frame()
-            close = close.dropna(axis=1, how="all")
-            if close.empty:
-                raise RuntimeError("All tickers failed to download.")
-            close = close.dropna(how="all").sort_index().ffill()
-            if cache_file is not None:
-                try:
-                    close.to_pickle(cache_file)
-                except Exception:  # noqa: BLE001 - caching is best-effort
-                    pass
-            return close
+            return _finish(close)
         except Exception as exc:  # noqa: BLE001
             last_err = exc
             time.sleep(cfg.retry_wait)

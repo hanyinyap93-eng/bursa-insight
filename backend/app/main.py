@@ -293,11 +293,17 @@ def backtest_screen(req: BacktestScreenRequest):
 @app.get("/api/stock/{ticker}")
 def stock(ticker: str, lookback: str = "1y"):
     """OHLC + SMA/RSI for a single stock (charts). ticker e.g. '1155.KL'."""
-    import yfinance as yf
     try:
-        # Ticker.history() returns clean single-level OHLCV columns, avoiding the
-        # MultiIndex/duplicate-column issues that yf.download can produce.
-        raw = yf.Ticker(ticker).history(period=lookback, interval="1d", auto_adjust=False)
+        # PRIMARY: klsescreener UDF (works from cloud); FALLBACK: yfinance.
+        raw = None
+        try:
+            from .core import klse_prices
+            raw = klse_prices.history(ticker, lookback=lookback)
+        except Exception:  # noqa: BLE001
+            raw = None
+        if raw is None or raw.empty:
+            import yfinance as yf
+            raw = yf.Ticker(ticker).history(period=lookback, interval="1d", auto_adjust=False)
         if raw is None or raw.empty:
             raise HTTPException(404, f"no data for {ticker}")
         if hasattr(raw.columns, "nlevels") and raw.columns.nlevels > 1:

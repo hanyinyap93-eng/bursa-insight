@@ -127,16 +127,15 @@ def index_ohlc(key: str, lookback: str = "5y") -> dict:
     KLCI uses the real ^KLSE OHLC; a sector uses an equal-weight OHLC built from
     its constituents (each normalised to 100 at the window start). Cached.
     """
-    import yfinance as yf
     import pandas as pd
+    from . import klse_prices
     cache_key = f"indexohlc:{key}:{lookback}"
     cached = service._cache.get(cache_key, ttl=service.TTL_SECONDS)
     if cached is not None:
         return cached
 
     if key == "KLCI":
-        raw = yf.Ticker(ih.INDEX_SYMBOL_KLCI).history(period=lookback, interval="1d", auto_adjust=False)
-        raw = raw[~raw.index.duplicated(keep="last")].sort_index()
+        raw = klse_prices.history(ih.INDEX_SYMBOL_KLCI, lookback=lookback)
         o, h, l, c, v = raw["Open"], raw["High"], raw["Low"], raw["Close"], raw["Volume"]
         name, nconst = "FBM KLCI", 30
     else:
@@ -147,15 +146,21 @@ def index_ohlc(key: str, lookback: str = "5y") -> dict:
         if meta.empty:
             raise ValueError(f"no constituents for '{key}'")
         tickers = meta["Ticker"].tolist()
-        raw = yf.download(tickers, period=lookback, interval="1d", auto_adjust=False,
-                          group_by="ticker", threads=True, progress=False)
-        lvl0 = set(raw.columns.get_level_values(0)) if getattr(raw.columns, "nlevels", 1) > 1 else set()
+        # eq-weight OHLC: pull each constituent's OHLC (klsescreener), normalise
+        from concurrent.futures import ThreadPoolExecutor
         fields = {"Open": [], "High": [], "Low": [], "Close": []}
         used = 0
-        for t in tickers:
-            if t not in lvl0:
+
+        def _ohlc(t):
+            try:
+                return klse_prices.history(t, lookback=lookback)
+            except Exception:  # noqa: BLE001
+                return None
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            subs = list(ex.map(_ohlc, tickers))
+        for sub in subs:
+            if sub is None or sub.empty:
                 continue
-            sub = raw[t]
             base = sub["Close"].ffill().bfill().iloc[0]
             if not base or base != base:
                 continue
