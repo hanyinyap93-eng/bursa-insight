@@ -251,6 +251,17 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None) -> di
     prev = float(hp.iloc[-2]) if len(hp) > 1 else cur
     n = res.close.shape[1]
     above_sma = int(res.signals["sma"]["up"].iloc[-1].sum())
+
+    # Use the SAME eq-wt index as the chart (index_ohlc, 5y-anchored) so the
+    # panel's index level matches the chart. Fall back to the local 1y series.
+    try:
+        oh = index_ohlc(key, "5y")
+        index_level = round(oh["close"][-1], 2)
+        index_spark = [round(x, 2) for x in oh["close"][-60:]]
+    except Exception:  # noqa: BLE001
+        index_level = round(float(eq.iloc[-1]), 2)
+        index_spark = [round(float(x), 2) for x in eq.reindex(hp.index).ffill().tail(60)]
+
     return {
         "key": key, "name": SECTOR_DISPLAY.get(key, key),
         "correlated": correlated, "corr_window": corr_window or lookback,
@@ -260,8 +271,8 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None) -> di
         "trend_5d": _trend(hp),
         "pct_above_sma": round(above_sma / n * 100, 1) if n else None,
         "spark": [round(float(x), 1) for x in hp.tail(60)],
-        "index_spark": [round(float(x), 2) for x in eq.reindex(hp.index).ffill().tail(60)],
-        "index_level": round(float(eq.iloc[-1]), 2),
+        "index_spark": index_spark,
+        "index_level": index_level,
         "is_proxy": True,
     }
 
