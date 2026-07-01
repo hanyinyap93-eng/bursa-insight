@@ -21,13 +21,16 @@ except Exception:  # pragma: no cover
 from . import index_health as ih
 
 # (label, scope, url). scope: "local" (Malaysia) | "global".
+# Malaysia-market focused. Google News searches aggregate Bursa/KLCI coverage
+# from many outlets (local AND global) filtered to Malaysia relevance; the rest
+# are Malaysian business desks. Per-item publisher is extracted for Google News.
+_GN = ("https://news.google.com/rss/search?q={q}+when:7d&hl=en-MY&gl=MY&ceid=MY:en")
 FEEDS = [
-    ("The Edge Markets", "local", "https://theedgemalaysia.com/rss"),
-    ("The Star Business", "local", "https://www.thestar.com.my/rss/business"),
-    ("Bursa Announcements", "local", "https://www.bursamalaysia.com/misc/rss/announcements"),
-    ("Reuters Markets", "global", "https://www.reutersagency.com/feed/?best-topics=markets&post_type=best"),
-    ("CNBC Markets", "global", "https://search.cnbc.com/rss/2.0/CNBC.xml"),
-    ("Yahoo Finance", "global", "https://finance.yahoo.com/news/rssindex"),
+    ("Google News", "local", _GN.format(q="(Bursa+Malaysia+OR+KLCI+OR+%22FBM+KLCI%22)")),
+    ("Google News", "local", _GN.format(q="(Malaysia+economy+OR+ringgit+OR+%22Bank+Negara%22)")),
+    ("Free Malaysia Today", "local", "https://www.freemalaysiatoday.com/category/business/feed/"),
+    ("Malay Mail", "local", "https://www.malaymail.com/feed/rss/money"),
+    ("BusinessToday", "local", "https://www.businesstoday.com.my/feed/"),
 ]
 
 # keyword -> sector tag (re-uses the engine's sector keyword logic + index names)
@@ -73,27 +76,62 @@ def _tag(text: str):
     return sectors, indices
 
 
+def _get(url, timeout=8):
+    import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")})
+    return urllib.request.urlopen(req, timeout=timeout).read()
+
+
+def _strip(html):
+    import re
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html or "")).strip()
+
+
 def _fetch_all() -> list[dict]:
     if feedparser is None:
         return []
     items = []
     for label, scope, url in FEEDS:
         try:
-            parsed = feedparser.parse(url)
+            parsed = feedparser.parse(_get(url))       # urllib timeout: never hangs
         except Exception:  # noqa: BLE001
             continue
-        for e in parsed.entries[:25]:
+        for e in parsed.entries[:20]:
             title = getattr(e, "title", "").strip()
-            summary = getattr(e, "summary", "")[:400]
+            src = label
+            # Google News: real publisher is in e.source.title, and the title
+            # carries a trailing " - Publisher" that we strip for a clean headline.
+            try:
+                s = getattr(e, "source", None)
+                if s is not None and getattr(s, "title", None):
+                    src = s.title
+                if " - " in title:
+                    head, pub = title.rsplit(" - ", 1)
+                    if 0 < len(pub) <= 40:
+                        title = head.strip()
+                        if src == label:
+                            src = pub.strip()
+            except Exception:  # noqa: BLE001
+                pass
+            summary = _strip(getattr(e, "summary", ""))[:280]
             link = getattr(e, "link", "")
             published = getattr(e, "published", "") or getattr(e, "updated", "")
             sectors, indices = _tag(f"{title} {summary}")
             items.append({
-                "title": title, "link": link, "source": label, "scope": scope,
+                "title": title, "link": link, "source": src, "scope": scope,
                 "published": published, "summary": summary,
                 "sectors": sectors, "indices": indices,
             })
-    return items
+    # de-duplicate by title (Google News + local desks overlap)
+    seen, uniq = set(), []
+    for it in items:
+        k = it["title"].lower()[:80]
+        if k and k not in seen:
+            seen.add(k)
+            uniq.append(it)
+    return uniq
 
 
 def get_news(scope: str = None, sector: str = None, index: str = None,
