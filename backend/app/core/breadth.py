@@ -230,10 +230,17 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None) -> di
     eq_full = (res.close.divide(base) * 100.0).mean(axis=1)
     eq = eq_full.iloc[warm:]
 
-    # stocks most correlated to this sector's index, over the chosen window
+    # stocks most correlated to this sector's index, over the chosen window.
+    # Correlate against the SAME index series the stock->indexes panel uses
+    # (service.get_index_price_panel) so a stock's value matches in both panels.
     win = _CORR_WINDOW.get(corr_window) if corr_window else None
+    try:
+        panel = service.get_index_price_panel()
+        idx_series = panel[key].reindex(res.close.index) if key in panel.columns else eq_full
+    except Exception:  # noqa: BLE001
+        idx_series = eq_full
     rets = res.close.pct_change()
-    iret = eq_full.pct_change()
+    iret = idx_series.pct_change()
     if win:
         rets = rets.tail(win + 1)
         iret = iret.tail(win + 1)
