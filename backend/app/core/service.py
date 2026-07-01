@@ -79,6 +79,29 @@ class _Cache:
                 pass
         return None
 
+    def get_stale(self, key):
+        """Return (value, age_seconds) ignoring TTL, or None. Loads from disk if
+        needed. Used for stale-while-revalidate so requests never block once a
+        value exists."""
+        with self._lock:
+            e = self._d.get(key)
+            if e is not None:
+                return e.value, (time.monotonic() - e.ts)
+        if key.startswith(_DISK_PREFIXES):
+            try:
+                import time as _t
+                import pickle
+                p = self._disk_path(key)
+                if p.exists():
+                    age = _t.time() - p.stat().st_mtime
+                    value = pickle.loads(p.read_bytes())
+                    with self._lock:
+                        self._d[key] = _Entry(value, time.monotonic())
+                    return value, age
+            except Exception:  # noqa: BLE001
+                pass
+        return None
+
     def set(self, key, value):
         with self._lock:
             self._d[key] = _Entry(value, time.monotonic())
@@ -97,6 +120,49 @@ class _Cache:
 
 _cache = _Cache()
 _compute_lock = threading.Lock()
+
+# background-refresh de-dup (one in-flight rebuild per key)
+_refreshing: set = set()
+_refresh_lock = threading.Lock()
+
+
+def _spawn_refresh(key, builder):
+    """Rebuild `key` in a background thread (at most one in flight per key)."""
+    with _refresh_lock:
+        if key in _refreshing:
+            return
+        _refreshing.add(key)
+
+    def _run():
+        try:
+            _cache.set(key, builder())
+        except Exception:  # noqa: BLE001
+            pass
+        finally:
+            with _refresh_lock:
+                _refreshing.discard(key)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def _swr(key, ttl, builder, force=False):
+    """Stale-while-revalidate: serve the cached value instantly (even if stale)
+    and refresh in the background; only block when there is no value yet."""
+    if not force:
+        got = _cache.get_stale(key)
+        if got is not None:
+            value, age = got
+            if age > ttl:
+                _spawn_refresh(key, builder)
+            return value
+    with _compute_lock:
+        if not force:
+            got = _cache.get_stale(key)
+            if got is not None:
+                return got[0]
+        value = builder()
+        _cache.set(key, value)
+        return value
 
 
 def _cfg(index: str = "KLCI", lookback: str = "1y") -> ih.BreadthConfig:
@@ -143,95 +209,101 @@ def get_constituents(force: bool = False):
     return df
 
 
+def _build_health(index, lookback, force):
+    cfg = _cfg(index, lookback)
+    cfg.refresh_cache = force
+    meta = get_constituents() if index == "KLCI" else None
+    return ih.compute_health(cfg, tickers_meta=meta)
+
+
 def get_health(index: str = "KLCI", lookback: str = "1y", force: bool = False) -> ih.HealthResult:
-    """Breadth Index Health for an index (cached). KLCI only in the MVP."""
+    """Breadth Index Health (stale-while-revalidate cached). KLCI only in MVP."""
     key = f"health:{index}:{lookback}"
-    if not force:
-        cached = _cache.get(key)
-        if cached is not None:
-            return cached
-    with _compute_lock:
-        if not force:
-            cached = _cache.get(key)
-            if cached is not None:
-                return cached
-        cfg = _cfg(index, lookback)
-        cfg.refresh_cache = force
-        meta = get_constituents() if index == "KLCI" else None
-        result = ih.compute_health(cfg, tickers_meta=meta)
-        _cache.set(key, result)
-        return result
+    return _swr(key, TTL_SECONDS, lambda: _build_health(index, lookback, force), force=force)
 
 
 def get_sector_health(lookback: str = "1y", force: bool = False):
-    """Per-sector breadth Index Health % (sector rotation).
+    """Per-sector breadth Index Health % (sector rotation), SWR-cached.
 
-    Returns a (Date x sector) DataFrame where each column is that sector index's
-    breadth health % computed over its own constituents. Cached (heavier: it
-    scrapes + downloads 13 sector member sets).
+    (Date x sector) DataFrame; heavy (scrapes + downloads 13 sector member sets).
     """
     key = f"sector:{lookback}"
-    if not force:
-        cached = _cache.get(key, ttl=TTL_SECONDS * 2)
-        if cached is not None:
-            return cached
-    with _compute_lock:
-        if not force:
-            cached = _cache.get(key, ttl=TTL_SECONDS * 2)
-            if cached is not None:
-                return cached
-        cfg = _cfg("KLCI", lookback)
-        cfg.refresh_cache = force
-        df = ih.sector_rotation_health(cfg)
-        _cache.set(key, df)
-        return df
+    cfg = _cfg("KLCI", lookback)
+    cfg.refresh_cache = force
+    return _swr(key, TTL_SECONDS * 2, lambda: ih.sector_rotation_health(cfg), force=force)
+
+
+def _build_index_panel(lookback):
+    import pandas as pd
+    cfg = _cfg("KLCI", lookback)
+    cols = {}
+    try:
+        kl = ih.download_prices([ih.INDEX_SYMBOL_KLCI], cfg)
+        cols["KLCI"] = kl[ih.INDEX_SYMBOL_KLCI]
+    except Exception:  # noqa: BLE001
+        pass
+    for sec, code in ih.SECTOR_INDEX_CODES.items():
+        try:
+            meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
+            if meta.empty:
+                continue
+            close = ih.download_prices(meta["Ticker"].tolist(), cfg)
+            base = close.ffill().bfill().iloc[0]
+            cols[sec] = (close.divide(base) * 100.0).mean(axis=1)
+        except Exception:  # noqa: BLE001
+            continue
+    return pd.DataFrame(cols).sort_index()
 
 
 def get_index_price_panel(lookback: str = "2y", force: bool = False):
-    """A (Date x index) price panel for all indexes: KLCI (^KLSE) + 13 sector
-    equal-weight indexes. Used to correlate any stock against every index.
-    Heavy (scrapes + downloads 13 sector member sets); cached ~1h."""
-    import pandas as pd
+    """(Date x index) price panel: KLCI + 13 sector eq-wt indexes. SWR-cached."""
     key = f"indexpanel:{lookback}"
-    if not force:
-        cached = _cache.get(key, ttl=TTL_SECONDS * 2)
-        if cached is not None:
-            return cached
-    with _compute_lock:
-        if not force:
-            cached = _cache.get(key, ttl=TTL_SECONDS * 2)
-            if cached is not None:
-                return cached
-        cfg = _cfg("KLCI", lookback)
-        cols = {}
+    return _swr(key, TTL_SECONDS * 2, lambda: _build_index_panel(lookback), force=force)
+
+
+def warm_all():
+    """Rebuild the heavy caches (force). Used on startup and by the scheduler."""
+    for fn in (lambda: get_health("KLCI", force=True),
+               lambda: get_sector_health(force=True),
+               lambda: get_index_price_panel(force=True)):
         try:
-            kl = ih.download_prices([ih.INDEX_SYMBOL_KLCI], cfg)
-            cols["KLCI"] = kl[ih.INDEX_SYMBOL_KLCI]
+            fn()
         except Exception:  # noqa: BLE001
             pass
-        for sec, code in ih.SECTOR_INDEX_CODES.items():
-            try:
-                meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
-                if meta.empty:
-                    continue
-                close = ih.download_prices(meta["Ticker"].tolist(), cfg)
-                base = close.ffill().bfill().iloc[0]
-                cols[sec] = (close.divide(base) * 100.0).mean(axis=1)
-            except Exception:  # noqa: BLE001
-                continue
-        panel = pd.DataFrame(cols).sort_index()
-        _cache.set(key, panel)
-        return panel
 
 
 def refresh():
     """Force-refresh the primary caches (used by /refresh and scheduled jobs)."""
     _cache.clear()
-    get_health("KLCI", force=True)
-    try:
-        get_sector_health(force=True)
-    except Exception:  # noqa: BLE001 - sector indices may be unavailable
-        pass
+    warm_all()
+
+
+# Background scheduler: proactively re-warm caches so users always hit fresh
+# data (no on-request rebuild). Interval configurable via BURSA_REFRESH_MINUTES.
+_scheduler_started = False
+
+
+def start_scheduler():
+    global _scheduler_started
+    if _scheduler_started:
+        return
+    _scheduler_started = True
+    import os
+
+    minutes = float(os.environ.get("BURSA_REFRESH_MINUTES", "20"))
+    interval = max(60.0, minutes * 60.0)
+
+    def _loop():
+        # initial warm on boot (uses on-disk cache if fresh)
+        warm_all()
+        while True:
+            time.sleep(interval)
+            try:
+                warm_all()
+            except Exception:  # noqa: BLE001
+                pass
+
+    threading.Thread(target=_loop, daemon=True).start()
 
 
 def latest(series: pd.Series, default=None):

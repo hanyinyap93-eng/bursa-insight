@@ -156,7 +156,7 @@ def index_ohlc(key: str, lookback: str = "5y") -> dict:
                 return klse_prices.history(t, lookback=lookback)
             except Exception:  # noqa: BLE001
                 return None
-        with ThreadPoolExecutor(max_workers=8) as ex:
+        with ThreadPoolExecutor(max_workers=16) as ex:
             subs = list(ex.map(_ohlc, tickers))
         for sub in subs:
             if sub is None or sub.empty:

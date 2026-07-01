@@ -73,7 +73,7 @@ def history(ticker: str, lookback: str = "5y", resolution: str = "D",
     raise RuntimeError(f"klse history failed for {ticker}: {last}")
 
 
-def close_panel(tickers, lookback: str = "1y", max_workers: int = 8) -> pd.DataFrame:
+def close_panel(tickers, lookback: str = "1y", max_workers: int = 16) -> pd.DataFrame:
     """Close-price panel (Date x ticker) fetched concurrently from the UDF feed.
 
     Columns are keyed by the ORIGINAL ticker (e.g. '^KLSE', '1155.KL') so callers

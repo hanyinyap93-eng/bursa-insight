@@ -712,6 +712,10 @@ function boot(){
     try{const s=localStorage.getItem('wRight'); if(s)document.documentElement.style.setProperty('--w-right',s);}catch(_){}
   })();
   setupSearch();
+  // live auto-refresh: keep prices/health current without a manual reload
+  // (skipped while the tab is hidden; backend serves cached data instantly)
+  setInterval(()=>{ if(!document.hidden) loadQuotes(); }, 60000);
+  setInterval(()=>{ if(!document.hidden) loadHealth(); }, 150000);
 }
 // whole-market search-as-you-type (code or ticker symbol)
 function setupSearch(){
