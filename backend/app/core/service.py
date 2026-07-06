@@ -120,7 +120,19 @@ class _Cache:
 
 
 _cache = _Cache()
-_compute_lock = threading.Lock()
+
+# Per-key compute locks: a slow first build (e.g. the GEX scrape or a blocked
+# yfinance call on a cloud host) must not serialize unrelated keys behind it.
+_key_locks: dict = {}
+_key_locks_guard = threading.Lock()
+
+
+def _compute_lock_for(key):
+    with _key_locks_guard:
+        lock = _key_locks.get(key)
+        if lock is None:
+            lock = _key_locks[key] = threading.Lock()
+        return lock
 
 # background-refresh de-dup (one in-flight rebuild per key)
 _refreshing: set = set()
@@ -156,7 +168,7 @@ def _swr(key, ttl, builder, force=False):
             if age > ttl:
                 _spawn_refresh(key, builder)
             return value
-    with _compute_lock:
+    with _compute_lock_for(key):
         if not force:
             got = _cache.get_stale(key)
             if got is not None:
