@@ -37,6 +37,17 @@ app/
     backtest.py      backtest a screen (health-threshold timing + signal screen)
     alerts.py        Index Health threshold alerts (in-memory store)
     news.py          local + global RSS aggregator, tagged to sectors/indices
+    sentiment.py     Malaysia analyst sentiment (yfinance recommendations per
+                     KLCI constituent -> -1..+1 scores + overall gauge)
+    klci_gex.py      KLCI warrant Gamma Exposure — discovers the live FBMKLCI
+                     structured-warrant chain, scrapes terms, prices issuer
+                     gamma (Black-Scholes), builds the hedging map + readout
+    fbm_indexes.py   FBM market-index health (Mid 70 / ACE / EMAS / Fledgling):
+                     constituents from investingmalaysia, equal-weight proxy
+                     index, overall + per-sector Index Health %
+    risk_appetite.py Risk appetite: ACE / MID 70 / KLCI return spreads with
+                     rolling betas, H = 50+50·tanh(z/2) scores, and Ziemba
+                     turn-of-year monthly seasonality (t-stats)
 _cache/              parquet price cache (auto-created)
 ```
 
@@ -54,6 +65,11 @@ Data sources (MVP, "mixed" tier): **yfinance** (delayed prices) + **klsescreener
 | GET | `/api/screener/correlated` | Top-N constituents correlated to the index |
 | GET | `/api/screener/presets` | Built-in preset screens |
 | POST | `/api/screener/run` | Run a custom screen |
+| GET | `/api/sentiment/analyst` | **Malaysia analyst sentiment** — per-KLCI-constituent rating counts + overall gauge |
+| GET | `/api/gex/klci` | **KLCI warrant GEX** — per-warrant issuer gamma, by-strike map, net-GEX profile + trough, Health×GEX readout |
+| GET | `/api/fbm/indexes` | FBM market-index registry (Mid 70, ACE, EMAS, Fledgling) |
+| GET | `/api/fbm/{key}` | **FBM index health** — overall Index Health %, components, EW-proxy spark, per-sector health % |
+| GET | `/api/risk-appetite` | **Risk appetite** — ACE/MID70/KLCI spread H-scores, betas, turn-of-year seasonality |
 | GET | `/api/news` | Aggregated local + global news (filter by scope/sector/index) |
 | GET/POST/DELETE | `/api/alerts` | Manage Index Health threshold alerts |
 | GET | `/api/alerts/evaluate` | Which alerts are firing now |
@@ -67,6 +83,12 @@ Data sources (MVP, "mixed" tier): **yfinance** (delayed prices) + **klsescreener
 ```bash
 # Market breadth overview
 curl "http://127.0.0.1:8000/api/breadth/overview"
+
+# Analyst sentiment across the KLCI constituents
+curl "http://127.0.0.1:8000/api/sentiment/analyst"
+
+# KLCI warrant Gamma Exposure (first build scrapes the chain — slow; cached 12h)
+curl "http://127.0.0.1:8000/api/gex/klci"
 
 # Top 10 stocks correlated to the KLCI over the last 60 bars
 curl "http://127.0.0.1:8000/api/screener/correlated?top=10&window=60"

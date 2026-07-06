@@ -96,9 +96,9 @@
   /* ---------- layout ---------- */
   .grid{height:calc(100vh - var(--h-header) - var(--h-tape));display:grid;
     grid-template-columns:1fr var(--w-right);
-    grid-template-rows:1fr;}
+    grid-template-rows:1fr var(--h-bottom);}
   .center{grid-column:1;grid-row:1;display:flex;flex-direction:column;min-height:0;min-width:0;}
-  .right{grid-column:2;grid-row:1;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
+  .right{grid-column:2;grid-row:1/3;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
   .resizer{position:absolute;left:-3px;top:0;width:7px;height:100%;cursor:col-resize;z-index:30;}
   .resizer::after{content:"";position:absolute;left:2px;top:0;width:2px;height:100%;background:var(--line2);transition:background .12s;}
   .resizer:hover::after,.resizer.active::after{background:var(--accent);}
@@ -214,6 +214,70 @@
   .chip:hover,.chip.active{border-color:var(--accent);color:#fff;background:var(--accent);}
   .field{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;}
   .muted{color:var(--muted);} .loading{color:var(--muted);font-style:italic;}
+
+  /* ---------- GEX / analyst-sentiment page ---------- */
+  .page{display:none;height:calc(100vh - var(--h-header) - var(--h-tape));overflow-y:auto;
+    padding:18px 22px 40px;background:var(--bg);}
+  .page.open{display:block;}
+  .page h2{font-size:15px;font-weight:700;margin:22px 0 4px;}
+  .page h2:first-child{margin-top:0;}
+  .page .sub{color:var(--muted);font-size:11.5px;margin-bottom:12px;}
+  .cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 16px;min-width:130px;box-shadow:var(--shadow);}
+  .card .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px;}
+  .card .v{font-size:19px;font-weight:700;letter-spacing:-.3px;}
+  .card .d{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:980px){ .gx-grid{grid-template-columns:1fr;} }
+  .gx-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;box-shadow:var(--shadow);min-width:0;}
+  .gx-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+    font-weight:600;margin:0 0 10px;}
+  .gx-panel svg{display:block;width:100%;}
+  .readout{border-left:3px solid var(--accent);padding:10px 14px;background:var(--panel);
+    border-radius:var(--radius-sm);font-size:12.5px;margin:12px 0;}
+  .readout b{display:block;margin-bottom:3px;}
+  /* analyst sentiment */
+  .sent-gauge{position:relative;height:14px;border-radius:7px;margin:26px 8px 4px;
+    background:linear-gradient(90deg,#d7191c,#bdbdbd 50%,#1a9641);}
+  .sent-gauge .pin{position:absolute;top:-7px;width:3px;height:28px;background:var(--text);border-radius:2px;}
+  .sent-gauge .pv{position:absolute;top:-24px;transform:translateX(-50%);font-weight:700;font-size:13px;}
+  .sent-scale{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;padding:4px 8px 0;}
+  .sr{display:grid;grid-template-columns:110px 1fr 84px;gap:10px;align-items:center;
+    padding:3px 0;font-size:11.5px;}
+  .sr .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .sr .nm:hover{color:var(--accent);}
+  .sr .stack{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--bg);}
+  .sr .stack i{display:block;height:100%;}
+  .sr .sc{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);margin-top:10px;}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
+
+  /* ---------- usability polish ---------- */
+  nav{overflow-x:auto;scrollbar-width:none;}
+  nav::-webkit-scrollbar{display:none;}
+  nav a{white-space:nowrap;}
+  @media (max-width:980px){
+    header{gap:10px;padding:0 12px;}
+    .search input{width:150px;}
+    .search input:focus{width:220px;}
+  }
+  .page-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px;}
+  .explain{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);
+    margin:0 0 14px;font-size:12.5px;max-width:880px;}
+  .explain summary{cursor:pointer;padding:9px 14px;color:var(--accent);font-weight:600;
+    list-style:none;user-select:none;}
+  .explain summary::-webkit-details-marker{display:none;}
+  .explain summary::before{content:"ⓘ  ";}
+  .explain[open] summary{border-bottom:1px solid var(--line);}
+  .explain .ex-body{padding:10px 14px;color:var(--muted);line-height:1.7;}
+  .explain .ex-body b{color:var(--text);}
+  .skel{border-radius:8px;background:linear-gradient(90deg,var(--panel2) 25%,var(--hover) 50%,var(--panel2) 75%);
+    background-size:200% 100%;animation:shimmer 1.3s infinite;}
+  @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+  .skel-row{height:13px;margin:10px 0;}
+  .skel-block{height:150px;margin:12px 0;}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
   ::-webkit-scrollbar{width:9px;height:9px;} ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px;}
   ::-webkit-scrollbar-track{background:transparent;}
@@ -228,7 +292,7 @@
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active">Chart</a><a id="nav-sectors">Sectors</a><a id="nav-news">News</a>
+    <a class="active" id="nav-chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" title="Local + global market news (right panel)">News</a><a id="nav-gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
   </nav>
   <div class="spacer"></div>
   <button class="btn ghost" id="theme" title="Toggle dark / light mode" aria-label="Toggle theme">
@@ -276,6 +340,18 @@
     </div>
   </section>
 
+  <!-- BOTTOM: screener / correlated / alerts / backtest dock -->
+  <div class="bottom">
+    <div class="vresizer" id="vresizer" title="Drag to resize"></div>
+    <div class="tabs">
+      <button data-tab="screener" title="Preset stock screens over the KLCI constituents">Screener</button>
+      <button data-tab="correlated" title="Stocks most correlated to the KLCI">Correlated</button>
+      <button data-tab="alerts" title="Index Health threshold alerts">Alerts</button>
+      <button data-tab="backtest" title="Backtest the Index-Health timing strategy">Backtest</button>
+    </div>
+    <div class="tab-body" id="tab-body"></div>
+  </div>
+
   <!-- RIGHT: panels -->
   <aside class="right">
     <div class="resizer" id="rresizer" title="Drag to resize"></div>
@@ -308,6 +384,75 @@
   </aside>
 
 </div>
+
+<!-- GEX PAGE: Malaysia analyst sentiment + KLCI warrant Gamma Exposure -->
+<section class="page" id="page-gex">
+  <div class="page-tools">
+    <button class="chip" id="gex-refresh" title="Re-fetch both sections">↻ Refresh</button>
+    <span class="muted" style="font-size:11px">Esc returns to the chart · data is cached server-side</span>
+  </div>
+  <h2>Malaysia analyst sentiment <span class="muted" style="font-weight:400">— KLCI constituents</span></h2>
+  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+    Each bar shows how professional analysts currently rate one KLCI stock, from <b>Strong Buy</b>
+    (dark green) to <b>Strong Sell</b> (red). The <b>score</b> next to each bar squeezes those ratings
+    into one number from <b>−1</b> (everyone says sell) to <b>+1</b> (everyone says buy), with the
+    number of analysts in brackets — more analysts means a more reliable score. The gauge on the
+    right combines every rating on every stock into one overall market mood. Click a stock's name
+    to open its price chart.
+  </div></details>
+  <div class="sub" id="sent-sub">loading…</div>
+  <div id="sent-body"></div>
+
+  <h2 style="margin-top:30px">KLCI Warrant Gamma Exposure (GEX) <span class="muted" style="font-weight:400">— issuer hedging map</span></h2>
+  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+    Banks that issue KLCI warrants must constantly buy and sell FKLI futures to hedge them. This page
+    maps where that hedging is concentrated. Bars grow <b>downward</b> because issuers are always
+    "short gamma" — near those strikes their hedging <b>amplifies</b> market moves instead of damping
+    them. The <b>gamma trough</b> (purple line) marks the index level with the strongest such pressure:
+    expect faster, choppier moves if the KLCI trades into that zone. The readout box combines this
+    with today's market breadth into one practical takeaway.
+  </div></details>
+  <div class="sub" id="gex-sub">loading…</div>
+  <div id="gex-body"></div>
+</section>
+
+<!-- MARKET INDEX PAGE: FBM Mid 70 / ACE / EMAS / Fledgling index health -->
+<section class="page" id="page-fbm">
+  <div class="page-tools">
+    <button class="chip" id="fbm-refresh" title="Re-fetch all four indexes">↻ Refresh</button>
+    <span class="muted" style="font-size:11px">Esc returns to the chart · first build can take a minute per index</span>
+  </div>
+  <h2>Malaysia market indexes <span class="muted" style="font-weight:400">— FBM index health &amp; per-sector health (%)</span></h2>
+  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+    <b>Index Health %</b> measures how broadly an index is rising: every constituent is checked on four
+    signals — above its moving average, making new highs vs new lows, positive momentum, and RSI — and
+    the results are averaged. <b>+100%</b> means every stock passes every check, <b>−100%</b> means every
+    stock fails; around <b>0</b> the market is mixed. The green/red histogram shows how that health has
+    evolved; the line above it is the index itself (an equal-weight proxy, since these indexes have no
+    public price feed). The sector bars underneath show which industries inside the index are driving
+    or dragging it, with the number of member stocks in brackets and the 5-day change.
+  </div></details>
+  <div class="gx-grid" id="fbm-grid"></div>
+</section>
+
+<!-- R-APPETITE PAGE: ACE / MID 70 / KLCI index spreads (Ziemba) -->
+<section class="page" id="page-ra">
+  <div class="page-tools">
+    <button class="chip" id="ra-refresh" title="Re-fetch the spread analysis">↻ Refresh</button>
+    <span class="muted" style="font-size:11px">Esc returns to the chart</span>
+  </div>
+  <h2>Risk appetite <span class="muted" style="font-weight:400">— FBM ACE / MID 70 / KLCI index spreads (Ziemba turn-of-year &amp; size effect)</span></h2>
+  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+    When investors feel confident they buy risky small companies (<b>FBM ACE</b>) faster than the safe
+    big ones (<b>FBM KLCI</b>); when they get nervous the reverse happens. Each score tracks that gap:
+    <b>above 60</b> the risky index is outrunning the safe one (risk-on), <b>below 40</b> money is hiding
+    in large caps (defensive). <b>H_RiskAppetite</b> (black line) is the overall mood. The monthly table
+    tests Ziemba's <b>turn-of-year effect</b> — small caps historically outperforming around Dec–Jan
+    (shaded) — where a t-stat beyond ±2 marks a month whose edge is statistically meaningful, not luck.
+  </div></details>
+  <div class="sub" id="ra-sub">loading…</div>
+  <div id="ra-body"></div>
+</section>
 
 <script>
 // Backend base URL.
@@ -685,6 +830,386 @@ async function renderBacktest(){
   };
 }
 
+/* ---------------- GEX page (analyst sentiment + warrant GEX) ---------------- */
+const RATING_META=[["strongBuy","Strong Buy","#1a9641"],["buy","Buy","#a6d96a"],
+  ["hold","Hold","#bdbdbd"],["sell","Sell","#fdae61"],["strongSell","Strong Sell","#d7191c"]];
+let SENT_LOADED=false, GEX_LOADED=false, FBM_LOADED=false, RA_LOADED=false;
+
+// views: the chart dashboard ('chart') and the full pages ('gex','fbm','ra')
+function showPage(name){
+  $("#grid").style.display = name==="chart" ? "grid" : "none";
+  $("#page-gex").classList.toggle("open", name==="gex");
+  $("#page-fbm").classList.toggle("open", name==="fbm");
+  $("#page-ra").classList.toggle("open", name==="ra");
+  document.querySelectorAll("nav a").forEach(a=>
+    a.classList.toggle("active", a.id==="nav-"+name || (name==="chart"&&a.id==="nav-chart")));
+  if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); }
+  if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
+  if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
+  try{localStorage.setItem("view",name);}catch(_){}
+}
+const showGexPage=on=>showPage(on?"gex":"chart");
+
+// shimmer placeholder while a section builds
+const skeleton=(rows=3,block=true)=>
+  (block?'<div class="skel skel-block"></div>':'')+
+  Array.from({length:rows},(_,i)=>`<div class="skel skel-row" style="width:${88-i*14}%"></div>`).join("");
+// slow first builds: retry automatically once before asking the user
+function autoRetry(el,fn,tag,delay=15){
+  let left=delay;
+  const tick=()=>{
+    el.innerHTML=`<div class="muted">⏳ ${tag} is still building on the server — retrying automatically
+      in ${left}s… <a class="reset-link" id="ar-now">retry now</a></div>`;
+    $("#ar-now").onclick=()=>{clearInterval(iv);fn(1);};
+    if(left--<=0){clearInterval(iv);fn(1);}
+  };
+  const iv=setInterval(tick,1000); tick();
+}
+
+async function loadSentiment(retried){
+  const body=$("#sent-body");
+  body.innerHTML=skeleton(5);
+  try{
+    const s=await get("/api/sentiment/analyst",300000);
+    SENT_LOADED=true;
+    const o=s.overall, pos=((o.score+1)/2*100).toFixed(1);
+    $("#sent-sub").textContent=`as of ${s.as_of.replace("T"," ")} · ${o.total_ratings} ratings across `+
+      `${o.stocks_covered}/${o.stocks_universe} constituents (yfinance)`;
+    const compTotal=Math.max(1,o.total_ratings);
+    const compBar=RATING_META.map(([k,,c])=>{
+      const w=(o.composition[k]||0)/compTotal*100;
+      return w?`<i style="width:${w}%;background:${c}" title="${k}: ${o.composition[k]}"></i>`:"";
+    }).join("");
+    const rows=s.stocks.map(st=>{
+      const stack=RATING_META.map(([k,,c])=>{
+        const w=st[k]/st.total*100;
+        return w?`<i style="width:${w}%;background:${c}" title="${k}: ${st[k]}"></i>`:"";
+      }).join("");
+      return `<div class="sr"><span class="nm" data-code="${st.code}" data-ticker="${st.ticker}" data-name="${st.name}" title="Open chart"><b>${st.name}</b></span>
+        <span class="stack">${stack}</span>
+        <span class="sc"><b class="${cls(st.score)}">${fmt(st.score)}</b> (${st.total})</span></div>`;
+    }).join("");
+    body.innerHTML=`
+      <div class="gx-grid">
+        <div class="gx-panel">
+          <h3>Ratings by constituent <span style="float:right;text-transform:none;letter-spacing:0">score · #analysts</span></h3>
+          ${rows||'<div class="muted">no analyst coverage found</div>'}
+          <div class="legend">${RATING_META.map(([,l,c])=>`<span><i style="background:${c}"></i>${l}</span>`).join("")}</div>
+        </div>
+        <div class="gx-panel">
+          <h3>Overall analyst sentiment</h3>
+          <div class="sent-gauge"><span class="pv ${cls(o.score)}" style="left:${pos}%">${fmt(o.score)}</span><span class="pin" style="left:${pos}%"></span></div>
+          <div class="sent-scale"><span>-1 Strong Sell</span><span>0 Hold</span><span>+1 Strong Buy</span></div>
+          <div style="text-align:center;margin:12px 0 18px"><span class="verdict ${o.score>=0?'pos':'neg'}" style="font-size:12px;padding:4px 14px">${o.label}</span></div>
+          <h3>All ratings composition</h3>
+          <div class="sr" style="grid-template-columns:1fr"><span class="stack" style="height:20px">${compBar}</span></div>
+          <div class="legend">${RATING_META.map(([k,l,c])=>`<span><i style="background:${c}"></i>${l} ${o.composition[k]||0}</span>`).join("")}</div>
+        </div>
+      </div>`;
+    body.querySelectorAll(".sr .nm[data-ticker]").forEach(n=>n.onclick=()=>{
+      showGexPage(false);
+      loadChart({ticker:n.dataset.ticker,code:n.dataset.code,name:n.dataset.name});
+    });
+  }catch(e){
+    if(e.message==="timeout"&&!retried){autoRetry(body,loadSentiment,"Analyst sentiment");return;}
+    const msg=e.message==="timeout"?"still computing (first build takes a while)…":e.message;
+    body.innerHTML=`<div class="muted">${msg} <a class="reset-link" id="sent-retry">retry</a></div>`;
+    $("#sent-retry").onclick=()=>loadSentiment();
+  }
+}
+
+// vertical grouped bars: issuer GEX by strike (calls green, puts red), spot dashed
+function gexStrikeSVG(byStrike,spot,H=230){
+  const strikes=byStrike.map(r=>r.strike);
+  const lo=Math.min(...strikes,spot)-15, hi=Math.max(...strikes,spot)+15;
+  const vmax=Math.max(1,...byStrike.map(r=>Math.max(Math.abs(r.call_gex),Math.abs(r.put_gex))))/1e6;
+  const W=560,padL=8,padR=8,padT=14,padB=30,zero=padT+8;
+  const X=v=>padL+(W-padL-padR)*(v-lo)/(hi-lo);
+  const S=(H-padT-padB-8)/vmax;               // px per RM mn (bars grow DOWN: negative gamma)
+  const bw=Math.max(3,Math.min(11,(W-20)/(byStrike.length*2.6)));
+  let bars="",labels="";
+  byStrike.forEach(r=>{
+    const x=X(r.strike),c=Math.abs(r.call_gex)/1e6*S,p=Math.abs(r.put_gex)/1e6*S;
+    if(r.call_gex)bars+=`<rect x="${(x-bw-1).toFixed(1)}" y="${zero}" width="${bw}" height="${c.toFixed(1)}" fill="var(--green)" opacity=".85"><title>K=${r.strike} calls RM ${(r.call_gex/1e6).toFixed(1)} mn/1%</title></rect>`;
+    if(r.put_gex)bars+=`<rect x="${(x+1).toFixed(1)}" y="${zero}" width="${bw}" height="${p.toFixed(1)}" fill="var(--red)" opacity=".85"><title>K=${r.strike} puts RM ${(r.put_gex/1e6).toFixed(1)} mn/1%</title></rect>`;
+    labels+=`<text x="${x.toFixed(1)}" y="${H-10}" font-size="9" fill="var(--muted)" text-anchor="middle">${r.strike}</text>`;
+  });
+  const xs=X(spot);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    <line x1="${padL}" y1="${zero}" x2="${W-padR}" y2="${zero}" stroke="var(--line2)"/>
+    ${bars}${labels}
+    <line x1="${xs}" y1="${padT-6}" x2="${xs}" y2="${H-padB+4}" stroke="var(--text)" stroke-dasharray="4 3"/>
+    <text x="${xs}" y="${padT-1}" font-size="9.5" fill="var(--text)" text-anchor="middle">spot ${spot.toFixed(0)}</text>
+  </svg>`;
+}
+
+// net-GEX profile over hypothetical KLCI levels, with trough + spot markers
+function gexProfileSVG(prof,spot,H=238){
+  const lv=prof.levels,g=prof.net_gex_rm_mn;
+  const W=560,padL=8,padR=8,padT=30,padB=30;      // padT leaves room for top labels
+  const gmin=Math.min(...g),gmax=Math.max(...g,0);
+  const X=i=>padL+(W-padL-padR)*i/(lv.length-1);
+  const Y=v=>padT+(H-padT-padB)*(gmax-v)/((gmax-gmin)||1);
+  const pts=g.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  const area=`${X(0)},${Y(0)} ${pts} ${X(lv.length-1)},${Y(0)}`;
+  const xi=v=>X(lv.reduce((b,x,i)=>Math.abs(x-v)<Math.abs(lv[b]-v)?i:b,0));
+  const xt=xi(prof.trough),xs=xi(spot);
+  // trough & spot are labelled inline; stack them on separate top rows when close
+  const near=Math.abs(xt-xs)<70;
+  const troughY=padT-16, spotY=near?padT-4:padT-16;
+  // only the axis endpoints as ticks (corners), so nothing sits under the spot label
+  const ticks=[[0,'start',padL+2],[lv.length-1,'end',W-padR-2]].map(([i,anch,x])=>
+    `<text x="${x}" y="${H-9}" font-size="9" fill="var(--muted)" text-anchor="${anch}">${lv[i].toFixed(0)}</text>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    <line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--line2)"/>
+    <polygon points="${area}" fill="var(--accent)" opacity=".12"/>
+    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <line x1="${xt}" y1="${padT}" x2="${xt}" y2="${H-padB}" stroke="#a855f7" stroke-dasharray="2 3"/>
+    <text x="${xt}" y="${troughY}" font-size="9.5" fill="#a855f7" text-anchor="middle">trough ${prof.trough.toFixed(0)}</text>
+    <line x1="${xs}" y1="${padT}" x2="${xs}" y2="${H-padB}" stroke="var(--text)" stroke-dasharray="4 3"/>
+    <text x="${xs}" y="${spotY}" font-size="9.5" fill="var(--text)" text-anchor="middle">spot ${spot.toFixed(0)}</text>
+    ${ticks}</svg>`;
+}
+
+async function loadGex(retried){
+  const body=$("#gex-body");
+  body.innerHTML=skeleton(4);
+  try{
+    const g=await get("/api/gex/klci",300000);
+    GEX_LOADED=true;
+    $("#gex-sub").textContent=`as of ${g.as_of.replace("T"," ")} · spot ${g.spot.toLocaleString()} · `+
+      `${g.warrants_live} live warrants (${g.calls} calls, ${g.puts} puts) · issuers short gamma; negative = destabilising hedge flow`;
+    const r=g.readout||{};
+    const topRows=(g.top_concentrations||[]).map(t=>`<tr>
+      <td><b>${t.name}</b></td><td class="num">${t.strike}</td><td>${t.type}</td>
+      <td class="muted">${t.maturity}</td><td class="num">${(t.iv*100).toFixed(0)}%</td>
+      <td class="num ${cls(t.gex_rm_per_1pct)}">${(t.gex_rm_per_1pct/1e6).toFixed(2)}</td></tr>`).join("");
+    const wRows=(g.warrants||[]).map(w=>`<tr>
+      <td><b>${w.name}</b> <span class="muted">${w.code}</span></td><td>${w.type}</td>
+      <td class="num">${w.strike}</td><td class="muted">${w.maturity}</td>
+      <td class="num">${w.ratio}</td><td class="num">${w.price==null?"—":w.price.toFixed(3)}</td>
+      <td class="num">${(w.iv*100).toFixed(0)}%</td>
+      <td class="num">${w.units==null?"—":(w.units/1e6).toFixed(0)}M <span class="muted">(${w.units_basis})</span></td>
+      <td class="num ${cls(w.gex_rm_per_1pct)}">${(w.gex_rm_per_1pct/1e6).toFixed(2)}</td>
+      <td class="muted">${w.discovery_source}</td></tr>`).join("");
+    body.innerHTML=`
+      <div class="cards">
+        <div class="card"><div class="k">Net issuer GEX</div>
+          <div class="v ${cls(g.net_gex_rm_mn)}">RM ${g.net_gex_rm_mn.toFixed(1)} mn</div>
+          <div class="d">per 1% KLCI move</div></div>
+        <div class="card"><div class="k">KLCI spot</div><div class="v">${g.spot.toLocaleString()}</div>
+          <div class="d">from warrant pages / ^KLSE</div></div>
+        <div class="card"><div class="k">Gamma trough</div><div class="v">${(r.trough??g.profile.trough).toLocaleString()}</div>
+          <div class="d">${r.distance_pct!=null?`${Math.abs(r.distance_pct).toFixed(1)}% ${r.distance_pct>0?"below":"above"} spot`:"max hedging-pressure zone"}</div></div>
+        <div class="card"><div class="k">Live warrants</div><div class="v">${g.warrants_live}</div>
+          <div class="d">${g.calls} calls · ${g.puts} puts</div></div>
+        ${r.health_pct!=null?`<div class="card"><div class="k">Index Health</div>
+          <div class="v ${cls(r.health_pct)}">${fmt(r.health_pct)}%</div><div class="d">today's breadth</div></div>`:""}
+      </div>
+      ${r.read?`<div class="readout"><b>${r.position}</b>${r.read}</div>`:""}
+      <div class="gx-grid">
+        <div class="gx-panel"><h3>Issuer GEX by strike (RM mn per 1% move)</h3>
+          ${gexStrikeSVG(g.by_strike,g.spot)}
+          <div class="legend"><span><i style="background:var(--green)"></i>Call warrants</span>
+            <span><i style="background:var(--red)"></i>Put warrants</span>
+            <span>bars grow downward — issuers are short gamma</span></div></div>
+        <div class="gx-panel"><h3>Net GEX vs index level — trough marks the max hedging-pressure zone</h3>
+          ${gexProfileSVG(g.profile,g.spot)}</div>
+      </div>
+      <div class="gx-grid" style="margin-top:14px">
+        <div class="gx-panel"><h3>Top 5 gamma concentrations</h3>
+          <table><thead><tr><th>Warrant</th><th class="num">Strike</th><th>Type</th><th>Expiry</th>
+            <th class="num">IV</th><th class="num">GEX RM mn/1%</th></tr></thead><tbody>${topRows}</tbody></table></div>
+        <div class="gx-panel"><h3>Assumptions</h3>
+          <div class="muted" style="font-size:11.5px;line-height:1.7">
+            r = ${(g.assumptions.r*100).toFixed(1)}% · div yield = ${(g.assumptions.q*100).toFixed(1)}% ·
+            IV fallback = ${(g.assumptions.default_iv*100).toFixed(0)}% · haircut = ${g.assumptions.haircut}<br>
+            ${g.assumptions.note}. Bursa SW issuers are always short the warrants they list and
+            delta-hedge via FKLI, so issuer gamma is negative for calls and puts — the map shows
+            destabilising hedge-flow zones, not SPX-style pinning.</div></div>
+      </div>
+      <div class="gx-panel" style="margin-top:14px"><h3>Live warrant chain (${g.warrants_live})</h3>
+        <div style="overflow-x:auto"><table><thead><tr><th>Warrant</th><th>Type</th><th class="num">Strike</th>
+          <th>Expiry</th><th class="num">Ratio</th><th class="num">Price</th><th class="num">IV</th>
+          <th class="num">Units</th><th class="num">GEX RM mn/1%</th><th>Source</th></tr></thead>
+          <tbody>${wRows}</tbody></table></div></div>`;
+  }catch(e){
+    if(e.message==="timeout"&&!retried){autoRetry(body,loadGex,"The warrant GEX map",20);return;}
+    const msg=e.message==="timeout"?"still building the GEX map (first build scrapes ~20 warrant pages — retry in a minute)…":e.message;
+    body.innerHTML=`<div class="muted">${msg} <a class="reset-link" id="gex-retry">retry</a></div>`;
+    $("#gex-retry").onclick=()=>loadGex();
+  }
+}
+
+/* ---------------- Market Index page (FBM Mid 70 / ACE / EMAS / Fledgling) -- */
+const FBM_KEYS=["MID70","ACE","EMAS","FLEDGLING"];
+const FBM_NAMES={MID70:"FBM Mid 70",ACE:"FBM ACE",EMAS:"FBM EMAS",FLEDGLING:"FBM Fledgling"};
+const COMP_LABEL={sma:"SMA breadth",hl:"New high/low",momentum:"Momentum",rsi:"RSI"};
+
+function loadFbm(){
+  $("#fbm-grid").innerHTML=FBM_KEYS.map(k=>`<div class="gx-panel" id="fbm-${k}">
+    <h3>${FBM_NAMES[k]}</h3>${skeleton(4)}
+  </div>`).join("");
+  FBM_KEYS.forEach(k=>loadFbmIndex(k));    // all four load independently
+}
+
+async function loadFbmIndex(key,retried){
+  const el=$("#fbm-"+key);
+  try{
+    const d=await get(`/api/fbm/${key.toLowerCase()}?lookback=1y`,300000);
+    // diverging health sparkline (same style as the right-rail gauge)
+    const mx=Math.max(1,...d.spark.map(Math.abs));
+    const spark=d.spark.map(x=>{
+      const h=Math.max(3,50*Math.abs(x)/mx);
+      return `<div class="col ${x>=0?'up':'down'}"><i style="height:${h}%;background:${x>=0?'var(--green)':'var(--red)'}"></i></div>`;
+    }).join("");
+    const compChips=Object.entries(d.components).map(([k,v])=>
+      `<span class="chip" style="cursor:default"><span class="muted">${COMP_LABEL[k]||k}</span>
+        <b class="${cls(v)}"> ${fmt(v,0)}%</b></span>`).join("");
+    const secRows=d.sectors.map(s=>{
+      const w=Math.min(50,Math.abs(s.health_pct)/2);       // 100% -> half width
+      const st=s.health_pct>=0?`left:50%;width:${w}%;background:var(--green)`
+                              :`right:50%;width:${w}%;background:var(--red)`;
+      return `<div class="cr-row" style="grid-template-columns:150px 1fr 78px">
+        <span class="cn" title="${s.sector}">${s.sector} <span class="muted">(${s.members})</span></span>
+        <span class="cr-bar"><span style="${st}"></span></span>
+        <span class="cr-val ${cls(s.health_pct)}">${fmt(s.health_pct,0)}%
+          <span class="muted" style="font-size:9.5px">${fmt(s.chg_5d,0)} 5d</span></span></div>`;
+    }).join("");
+    el.innerHTML=`<h3>${d.name}</h3>
+      <div class="row" style="justify-content:space-between;align-items:baseline">
+        <span class="big ${cls(d.health_pct)}" style="font-size:28px;font-weight:700">${fmt(d.health_pct)}%</span>
+        <span class="verdict ${d.health_pct>=0?'pos':'neg'}">${d.verdict}</span>
+      </div>
+      <div class="muted" style="font-size:11px;margin:2px 0 8px">as of ${d.as_of} · ${d.constituents} constituents
+        (${d.priced} priced) · 5d ${fmt(d.trend_5d)} · ${d.source}</div>
+      <div class="mini-cap muted">${d.name} — ${d.index_note} <b style="color:var(--text)">${d.index_level??""}</b></div>
+      <div class="idxchart">${lineSVG(d.index_spark,48)}</div>
+      <div class="mini-cap muted">Index Health (% breadth)</div>
+      <div class="spark" style="height:46px">${spark}</div>
+      <div class="chips" style="margin:10px 0 4px">${compChips}</div>
+      <div class="mini-cap muted" style="margin-top:12px">Per-sector health % (members) · latest bar</div>
+      ${secRows||'<div class="muted" style="font-size:11px">no sector data</div>'}`;
+  }catch(e){
+    if(e.message==="timeout"&&!retried){
+      el.innerHTML=`<h3>${FBM_NAMES[key]}</h3><div id="fbm-ar-${key}"></div>`;
+      autoRetry(el.querySelector(`#fbm-ar-${key}`),r=>loadFbmIndex(key,r),FBM_NAMES[key],20);
+      return;
+    }
+    const msg=e.message==="timeout"?"still building (large index — retry shortly)…":e.message;
+    el.innerHTML=`<h3>${FBM_NAMES[key]}</h3><div class="muted">${msg}
+      <a class="reset-link" data-k="${key}">retry</a></div>`;
+    el.querySelector(".reset-link").onclick=()=>{
+      el.innerHTML=`<h3>${FBM_NAMES[key]}</h3>${skeleton(3)}`;
+      loadFbmIndex(key);};
+  }
+}
+
+/* ---------------- R-Appetite page (ACE / MID 70 / KLCI spreads) ------------ */
+const RA_COLORS={"ACE-KLCI":"#f59e0b","70-KLCI":"#38bdf8","ACE-70":"#a78bfa"};
+const IDX_COLORS={"FBM KLCI":"var(--text)","FBM ACE":"#f59e0b","FBM MID 70":"#38bdf8"};
+
+// generic multi-line SVG: series = [{label,color,values,width?}], shared x axis
+function multiLineSVG(dates,seriesList,{H=230,ymin=null,ymax=null,guides=[],fmtTick=v=>v.toFixed(0)}={}){
+  const W=560,padL=34,padR=8,padT=10,padB=22;
+  const all=seriesList.flatMap(s=>s.values.filter(v=>v!=null));
+  const lo=ymin??Math.min(...all), hi=ymax??Math.max(...all);
+  const X=i=>padL+(W-padL-padR)*i/Math.max(1,dates.length-1);
+  const Y=v=>padT+(H-padT-padB)*(hi-v)/((hi-lo)||1);
+  let out="";
+  guides.forEach(g=>{out+=`<line x1="${padL}" y1="${Y(g.v)}" x2="${W-padR}" y2="${Y(g.v)}"
+    stroke="${g.color||'var(--line2)'}" stroke-dasharray="${g.dash||'4 4'}" opacity=".7"/>
+    <text x="${padL-4}" y="${Y(g.v)+3}" font-size="8.5" fill="var(--muted)" text-anchor="end">${fmtTick(g.v)}</text>`;});
+  [lo,hi].forEach(v=>{out+=`<text x="${padL-4}" y="${Y(v)+3}" font-size="8.5" fill="var(--muted)" text-anchor="end">${fmtTick(v)}</text>`;});
+  seriesList.forEach(s=>{
+    const pts=s.values.map((v,i)=>v==null?null:`${X(i).toFixed(1)},${Y(v).toFixed(1)}`)
+      .filter(Boolean).join(" ");
+    out+=`<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="${s.width||1.6}"/>`;
+  });
+  const tick=i=>`<text x="${X(i)}" y="${H-7}" font-size="8.5" fill="var(--muted)"
+    text-anchor="${i===0?'start':i===dates.length-1?'end':'middle'}">${dates[i]}</text>`;
+  out+=tick(0)+tick(Math.floor(dates.length/2))+tick(dates.length-1);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
+}
+
+async function loadRiskAppetite(retried){
+  const body=$("#ra-body");
+  body.innerHTML=skeleton(4);
+  try{
+    const d=await get("/api/risk-appetite",300000);
+    $("#ra-sub").textContent=`as of ${d.as_of} · ${d.history} history, charts show last `+
+      `${d.display_years}y · ${d.notes.score}`;
+    const spreadCards=d.spreads.map(s=>`
+      <div class="card"><div class="k">${s.hi} vs ${s.lo}</div>
+        <div class="v ${s.h>=60?'pos':s.h<40?'neg':''}" style="color:${RA_COLORS[s.tag]}">${s.h??'—'}<span class="muted" style="font-size:12px">/100</span></div>
+        <div class="d">β ${s.beta??'—'} · 21d spread ${fmt(s.spread_21d_pct)}%</div></div>`).join("");
+    // H-score lines + composite
+    const hSeries=d.spreads.map(s=>({label:s.tag,color:RA_COLORS[s.tag],values:d.series[s.tag]}))
+      .concat([{label:"H_RiskAppetite",color:"var(--text)",values:d.series.composite,width:2.6}]);
+    const hChart=multiLineSVG(d.series.dates,hSeries,{ymin:0,ymax:100,
+      guides:[{v:60,color:"var(--green)",dash:"2 4"},{v:50},{v:40,color:"var(--red)",dash:"2 4"}]});
+    // rebased relative performance
+    const rbSeries=Object.entries(d.rebased.levels).map(([n,vals])=>
+      ({label:n,color:IDX_COLORS[n]||"var(--accent)",values:vals,width:n==="FBM KLCI"?2.2:1.6}));
+    const rbChart=multiLineSVG(d.rebased.dates,rbSeries,{fmtTick:v=>v.toFixed(0)});
+    // monthly seasonality: grouped bars, Dec/Jan highlighted
+    const mChart=(()=>{const W=560,H=230,padL=34,padR=8,padT=12,padB=24;
+      const vals=d.spreads.flatMap(s=>s.monthly.map(m=>m.mean_bps));
+      const lo=Math.min(...vals,0),hi=Math.max(...vals,0);
+      const Y=v=>padT+(H-padT-padB)*(hi-v)/((hi-lo)||1);
+      const slot=(W-padL-padR)/12, bw=slot/(d.spreads.length+1);
+      let out=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--line2)"/>`;
+      [lo,hi].forEach(v=>{out+=`<text x="${padL-4}" y="${Y(v)+3}" font-size="8.5" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}</text>`;});
+      for(let m=1;m<=12;m++){
+        const x0=padL+(m-1)*slot, toy=(m===12||m===1);
+        if(toy)out+=`<rect x="${x0}" y="${padT}" width="${slot}" height="${H-padT-padB}" fill="var(--accent)" opacity=".07"/>`;
+        d.spreads.forEach((s,i)=>{
+          const mm=s.monthly.find(r=>r.month===["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m-1]);
+          if(!mm)return;
+          const y=Y(Math.max(0,mm.mean_bps)),h=Math.abs(Y(mm.mean_bps)-Y(0));
+          out+=`<rect x="${(x0+bw*(i+0.5)).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h,0.5).toFixed(1)}"
+            fill="${RA_COLORS[s.tag]}" opacity=".85"><title>${s.tag} ${mm.month}: ${mm.mean_bps} bps (t=${mm.t_stat})</title></rect>`;});
+        out+=`<text x="${x0+slot/2}" y="${H-8}" font-size="8.5" fill="${toy?'var(--accent)':'var(--muted)'}" text-anchor="middle">${["J","F","M","A","M","J","J","A","S","O","N","D"][m-1]}</text>`;}
+      return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;})();
+    const legend=d.spreads.map(s=>`<span><i style="background:${RA_COLORS[s.tag]}"></i>${s.tag}</span>`).join("");
+    const mTables=d.spreads.map(s=>`
+      <div class="gx-panel"><h3>${s.tag} — mean daily spread by month <span style="text-transform:none;letter-spacing:0">(bps, full history)</span></h3>
+        <table><thead><tr><th>Month</th><th class="num">Mean bps</th><th class="num">n</th><th class="num">t-stat</th></tr></thead><tbody>
+        ${s.monthly.map(m=>{const toy=(m.month==="Dec"||m.month==="Jan");
+          return `<tr${toy?' style="background:color-mix(in srgb,var(--accent) 8%,transparent)"':''}>
+          <td${toy?' style="font-weight:700"':''}>${m.month}</td>
+          <td class="num ${cls(m.mean_bps)}">${fmt(m.mean_bps,1)}</td>
+          <td class="num muted">${m.n}</td>
+          <td class="num ${Math.abs(m.t_stat)>=2?cls(m.t_stat):'muted'}">${fmt(m.t_stat,2)}</td></tr>`;}).join("")}
+        </tbody></table></div>`).join("");
+    body.innerHTML=`
+      <div class="cards">
+        <div class="card"><div class="k">H_RiskAppetite</div>
+          <div class="v ${d.h_risk_appetite>=60?'pos':d.h_risk_appetite<40?'neg':''}">${d.h_risk_appetite}<span class="muted" style="font-size:12px">/100</span></div>
+          <div class="d">${d.regime}</div></div>
+        ${spreadCards}
+      </div>
+      <div class="readout"><b>${d.regime.charAt(0).toUpperCase()+d.regime.slice(1)}</b>
+        Both vs-KLCI scores high → risk appetite improving; both low → defensive market; ACE weak while
+        KLCI stable → weak underlying breadth. ${d.notes.toy}</div>
+      <div class="gx-grid">
+        <div class="gx-panel"><h3>Risk-appetite health scores — H = 50 + 50·tanh(z/2) (&gt;60 risk-on, &lt;40 defensive)</h3>
+          ${hChart}<div class="legend">${legend}<span><i style="background:var(--text)"></i>H_RiskAppetite (composite)</span></div></div>
+        <div class="gx-panel"><h3>Relative performance, rebased to 100 (last ${d.display_years}y)</h3>
+          ${rbChart}<div class="legend">${Object.keys(d.rebased.levels).map(n=>`<span><i style="background:${IDX_COLORS[n]||'var(--accent)'}"></i>${n}</span>`).join("")}</div></div>
+      </div>
+      <div class="gx-panel" style="margin-top:14px"><h3>Turn-of-year test — mean daily index spread by calendar month (bps, full history; Dec/Jan shaded)</h3>
+        ${mChart}<div class="legend">${legend}<span class="muted">|t| ≥ 2 ≈ significant at 95%</span></div></div>
+      <div class="gx-grid" style="margin-top:14px">${mTables}</div>
+      <div class="muted" style="font-size:11px;margin-top:10px">β: ${d.notes.beta}.</div>`;
+  }catch(e){
+    if(e.message==="timeout"&&!retried){autoRetry(body,loadRiskAppetite,"The spread analysis");return;}
+    const msg=e.message==="timeout"?"still computing…":e.message;
+    body.innerHTML=`<div class="muted">${msg} <a class="reset-link" id="ra-retry">retry</a></div>`;
+    $("#ra-retry").onclick=()=>loadRiskAppetite();
+  }
+}
+
 /* ---------------- nav + boot ---------------- */
 function boot(){
   initChart();
@@ -692,8 +1217,24 @@ function boot(){
   // bottom panel selector drives only the stock→indexes panel; the index's
   // top-correlated list stays fixed at 6 months.
   document.querySelectorAll('#corr-lb button').forEach(b=>b.onclick=()=>{CORR_LB=b.dataset.lb;loadCorrelations();});
-  $("#nav-sectors").onclick=()=>$("#rotation").scrollIntoView({behavior:'smooth'});
-  $("#nav-news").onclick=()=>$("#news").scrollIntoView({behavior:'smooth'});
+  $("#nav-chart").onclick=()=>showPage("chart");
+  $("#nav-sectors").onclick=()=>{showPage("chart");$("#rotation").scrollIntoView({behavior:'smooth'});};
+  $("#nav-news").onclick=()=>{showPage("chart");$("#news").scrollIntoView({behavior:'smooth'});};
+  $("#nav-gex").onclick=()=>showPage("gex");
+  $("#nav-fbm").onclick=()=>showPage("fbm");
+  $("#nav-ra").onclick=()=>showPage("ra");
+  // per-page refresh buttons re-fetch (server serves cached + refreshes behind)
+  $("#gex-refresh").onclick=()=>{loadSentiment();loadGex();};
+  $("#fbm-refresh").onclick=loadFbm;
+  $("#ra-refresh").onclick=()=>loadRiskAppetite();
+  // Esc anywhere (outside an input) returns to the chart
+  window.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||""))
+      showPage("chart");
+  });
+  // restore the last view (analytics pages only re-open if previously open)
+  try{const v=localStorage.getItem("view");
+    if(["gex","fbm","ra"].includes(v)) showPage(v);}catch(_){}
   $("#signin").onclick=()=>alert("Auth tier coming next — guest sees limited charts, login unlocks the full screener & alerts.");
   $("#g-reset").onclick=()=>selectIndex('KLCI');
   // dark / light theme toggle (logo letters + chart follow the theme; persists)
@@ -718,6 +1259,24 @@ function boot(){
       try{localStorage.setItem('wRight',
         getComputedStyle(document.documentElement).getPropertyValue('--w-right').trim());}catch(_){}});
     try{const s=localStorage.getItem('wRight'); if(s)document.documentElement.style.setProperty('--w-right',s);}catch(_){}
+  })();
+  // bottom dock: screener / correlated / alerts / backtest
+  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+  setTab('screener');
+  // vertical resize for the bottom dock (height persists)
+  (function(){
+    const rz=$("#vresizer"); let dragging=false;
+    const setH=h=>document.documentElement.style.setProperty('--h-bottom',
+      Math.min(440,Math.max(120,h))+'px');
+    rz.addEventListener('mousedown',e=>{dragging=true;rz.classList.add('active');
+      document.body.classList.add('vresizing');e.preventDefault();});
+    window.addEventListener('mousemove',e=>{ if(dragging) setH(window.innerHeight-e.clientY); });
+    window.addEventListener('mouseup',()=>{ if(!dragging)return; dragging=false;
+      rz.classList.remove('active');document.body.classList.remove('vresizing');
+      try{localStorage.setItem('hBottom',
+        getComputedStyle(document.documentElement).getPropertyValue('--h-bottom').trim());}catch(_){}});
+    try{const s=localStorage.getItem('hBottom');
+      if(s)document.documentElement.style.setProperty('--h-bottom',s);}catch(_){}
   })();
   setupSearch();
   // live auto-refresh: keep prices/health current without a manual reload

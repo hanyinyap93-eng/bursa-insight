@@ -44,7 +44,8 @@ class _Entry:
 
 # Heavy results worth persisting to disk so a server restart doesn't re-scrape
 # the whole market (these are the slow, throttle-prone keys).
-_DISK_PREFIXES = ("sector:", "indexpanel:", "sectordata:", "health:", "indexohlc:")
+_DISK_PREFIXES = ("sector:", "indexpanel:", "sectordata:", "health:", "indexohlc:",
+                  "sentiment:", "gex:", "fbm:", "riskapp:")
 _DISK_TTL = 60 * 60 * 12  # disk cache valid for 12h
 
 
@@ -261,11 +262,83 @@ def get_index_price_panel(lookback: str = "2y", force: bool = False):
     return _swr(key, TTL_SECONDS * 2, lambda: _build_index_panel(lookback), force=force)
 
 
+def get_analyst_sentiment(index: str = "KLCI", force: bool = False) -> dict:
+    """Malaysia analyst sentiment over the KLCI constituents (SWR-cached).
+
+    Slow first build (~30 yfinance recommendation calls), so it is cached with
+    a long TTL and persisted to disk.
+    """
+    from . import sentiment as sent_mod
+
+    key = f"sentiment:{index}"
+
+    def _build():
+        meta = get_constituents()
+        return sent_mod.build_sentiment(meta, index=index)
+
+    return _swr(key, TTL_SECONDS * 12, _build, force=force)  # 6h TTL
+
+
+def get_klci_gex(force: bool = False) -> dict:
+    """KLCI warrant Gamma Exposure payload (SWR-cached).
+
+    Very slow first build (discovers + scrapes the whole FBMKLCI warrant
+    chain with polite delays), so it is cached with a long TTL, persisted to
+    disk, and served stale-while-revalidate.
+    """
+    from . import klci_gex as gex_mod
+
+    key = "gex:KLCI"
+
+    def _build():
+        health_pct = None
+        try:  # combine with today's Index Health for the regime readout
+            result = get_health("KLCI")
+            hp = result.health_pct.dropna()
+            if len(hp):
+                health_pct = float(hp.iloc[-1])
+        except Exception:  # noqa: BLE001 - readout degrades gracefully
+            pass
+        return gex_mod.build_gex_payload(health_pct=health_pct)
+
+    return _swr(key, TTL_SECONDS * 24, _build, force=force)  # 12h TTL
+
+
+def get_fbm_health(key: str, lookback: str = "1y", force: bool = False) -> dict:
+    """FBM market-index health (Mid 70 / ACE / EMAS / Fledgling), SWR-cached.
+
+    Heavy first build: scrapes the constituent list from investingmalaysia and
+    downloads every member's prices (EMAS is ~200+ stocks), so it is cached
+    with a long TTL and persisted to disk.
+    """
+    from . import fbm_indexes as fbm_mod
+
+    k = key.upper()
+    cache_key = f"fbm:{k}:{lookback}"
+    return _swr(cache_key, TTL_SECONDS * 4,  # 2h TTL
+                lambda: fbm_mod.build_fbm_health(k, lookback), force=force)
+
+
+def get_risk_appetite(force: bool = False) -> dict:
+    """Risk-appetite index spreads (ACE / MID 70 vs KLCI), SWR-cached.
+
+    Light build (3 index histories from the klsescreener UDF feed), but cached
+    like everything else so the page loads instantly.
+    """
+    from . import risk_appetite as ra_mod
+
+    return _swr("riskapp:1", TTL_SECONDS,  # 30 min TTL
+                lambda: ra_mod.build_risk_appetite(), force=force)
+
+
 def warm_all():
     """Rebuild the heavy caches (force). Used on startup and by the scheduler."""
     for fn in (lambda: get_health("KLCI", force=True),
                lambda: get_sector_health(force=True),
-               lambda: get_index_price_panel(force=True)):
+               lambda: get_index_price_panel(force=True),
+               # not forced: these scrape slowly; SWR keeps them fresh enough
+               lambda: get_analyst_sentiment("KLCI"),
+               lambda: get_klci_gex()):
         try:
             fn()
         except Exception:  # noqa: BLE001

@@ -9,6 +9,11 @@ Endpoints (MVP):
   GET  /api/breadth/series       - Index Health time series + index overlay
   GET  /api/sectors/rotation     - sector rotation heatmap + ranked snapshot
   GET  /api/screener/correlated  - top-N constituents correlated to the index
+  GET  /api/sentiment/analyst    - Malaysia analyst sentiment (KLCI constituents)
+  GET  /api/gex/klci             - KLCI warrant Gamma Exposure (issuer hedging map)
+  GET  /api/fbm/indexes          - FBM market-index registry (Mid 70/ACE/EMAS/Fledgling)
+  GET  /api/fbm/{key}            - FBM index health + per-sector health %
+  GET  /api/risk-appetite        - ACE/MID70/KLCI spreads (Ziemba turn-of-year & size)
   GET  /api/screener/presets     - preset screen definitions
   POST /api/screener/run         - run a custom screen
   GET  /api/news                 - aggregated local + global market news
@@ -212,6 +217,67 @@ def screener_run(req: ScreenRequest):
         return {"count": len(rows), "results": rows}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"screen failed: {exc}")
+
+
+# --------------------------------------------------------------------------- #
+# Analyst sentiment & warrant GEX (KLCI)
+# --------------------------------------------------------------------------- #
+@app.get("/api/sentiment/analyst")
+def analyst_sentiment(index: str = "KLCI", force: bool = False):
+    """Malaysia analyst sentiment over the KLCI constituents: per-stock
+    recommendation counts + -1..+1 scores and the overall gauge."""
+    if index != "KLCI":
+        raise HTTPException(404, f"analyst sentiment not available for {index}")
+    try:
+        return service.get_analyst_sentiment(index, force=force)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"analyst sentiment failed: {exc}")
+
+
+@app.get("/api/gex/klci")
+def klci_gex(force: bool = False):
+    """KLCI index-warrant Gamma Exposure: per-warrant issuer GEX, by-strike
+    aggregation, net-GEX profile with the gamma trough, and the Index Health x
+    GEX regime readout. First build scrapes the warrant chain (slow); results
+    are cached (12h TTL, stale-while-revalidate)."""
+    try:
+        return service.get_klci_gex(force=force)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"GEX compute failed: {exc}")
+
+
+# --------------------------------------------------------------------------- #
+# FBM market indexes (Mid 70 / ACE / EMAS / Fledgling)
+# --------------------------------------------------------------------------- #
+@app.get("/api/risk-appetite")
+def risk_appetite(force: bool = False):
+    """Risk appetite: FBM ACE / MID 70 / KLCI index spreads (Ziemba
+    turn-of-year & size effect) — H scores, rolling betas, monthly
+    seasonality with t-stats, and rebased relative performance."""
+    try:
+        return service.get_risk_appetite(force=force)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"risk appetite failed: {exc}")
+
+
+@app.get("/api/fbm/indexes")
+def fbm_indexes():
+    """Registry of the FBM market indexes served by /api/fbm/{key}."""
+    from .core import fbm_indexes as fbm_mod
+    return [{"key": k, **v} for k, v in fbm_mod.FBM_INDEXES.items()]
+
+
+@app.get("/api/fbm/{key}")
+def fbm_health(key: str, lookback: str = "1y", force: bool = False):
+    """Index Health + per-sector Health % for one FBM market index.
+    First build scrapes constituents and downloads all member prices (slow);
+    results are cached (2h TTL, stale-while-revalidate)."""
+    try:
+        return service.get_fbm_health(key, lookback, force=force)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"FBM health failed: {exc}")
 
 
 # --------------------------------------------------------------------------- #
