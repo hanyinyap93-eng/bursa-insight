@@ -31,6 +31,9 @@ from . import index_health as ih
 
 CACHE_DIR = Path(__file__).resolve().parents[2] / "_cache"
 SECTOR_MAP_CSV = CACHE_DIR / "im_sector_map.csv"   # shared code->sector cache
+# Packaged seed data (checked into the repo): investingmalaysia blocks some
+# cloud IPs, so a fresh server with an empty cache still needs constituents.
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 IM_BASE = "https://investingmalaysia.com/category"
 FBM_INDEXES = {
@@ -96,9 +99,10 @@ def fetch_category(base_url, max_pages=40, wait=1.0):
 
 def load_sector_map():
     """code -> sector abbrev for ~1,100 Bursa stocks. Scraped once, then cached."""
-    if SECTOR_MAP_CSV.exists():
-        df = pd.read_csv(SECTOR_MAP_CSV, dtype=str)
-        return dict(zip(df["code"], df["sector"]))
+    for path in (SECTOR_MAP_CSV, DATA_DIR / "im_sector_map.csv"):
+        if path.exists():
+            df = pd.read_csv(path, dtype=str)
+            return dict(zip(df["code"], df["sector"]))
     smap = {}
     for cat, abbrev in BM_SECTOR_CATS.items():
         got = fetch_category(f"{IM_BASE}/bursa-malaysia-sector/{cat}/")
@@ -140,14 +144,17 @@ def get_fbm_constituents(key: str) -> pd.DataFrame:
         except Exception:  # noqa: BLE001
             pass
         return df
-    if const_file.exists():  # scrape failed -> last-good disk copy
-        try:
-            cached = pd.read_json(const_file)
-            if len(cached) >= 5:
-                cached.attrs["source"] = "disk-cache"
-                return cached
-        except Exception:  # noqa: BLE001
-            pass
+    # scrape failed -> last-good disk copy, then the packaged repo seed
+    for path, src in ((const_file, "disk-cache"),
+                      (DATA_DIR / f"fbm_{key.lower()}_constituents.json", "seed")):
+        if path.exists():
+            try:
+                cached = pd.read_json(path)
+                if len(cached) >= 5:
+                    cached.attrs["source"] = src
+                    return cached
+            except Exception:  # noqa: BLE001
+                pass
     raise RuntimeError(f"{info['name']} constituent scrape failed and no disk cache")
 
 
