@@ -78,6 +78,12 @@ def build_sentiment(constituents: pd.DataFrame, index: str = "KLCI") -> dict:
     """
     stocks = fetch_analyst_ratings(
         constituents["Ticker"].tolist(), constituents["Name"].tolist())
+    if not stocks:
+        # don't cache an empty gauge as if it were a valid reading
+        raise RuntimeError(
+            "no analyst ratings retrievable — Yahoo Finance appears to block "
+            "this server's IP (common on cloud hosts). Sentiment works when "
+            "the backend runs from a residential connection.")
     composition = {c: sum(s[c] for s in stocks) for c in RATING_COLS}
     total = sum(composition.values())
     overall = round(_score(composition), 4) if total else 0.0
