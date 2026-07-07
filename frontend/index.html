@@ -310,6 +310,63 @@
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
   ::-webkit-scrollbar{width:9px;height:9px;} ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px;}
   ::-webkit-scrollbar-track{background:transparent;}
+
+  /* ============================================================= */
+  /* MOBILE / SMALL SCREENS — stack the dashboard vertically and    */
+  /* let the page scroll (the desktop layout is a fixed-height grid) */
+  /* ============================================================= */
+  @media (max-width:760px){
+    html,body{height:auto;overflow-x:hidden;overflow-y:auto;}
+    body{-webkit-text-size-adjust:100%;}
+
+    /* header wraps into rows: logo + controls, then search, then nav */
+    header{height:auto;flex-wrap:wrap;gap:8px;padding:8px 10px;}
+    .logo{font-size:18px;letter-spacing:2px;}
+    header .spacer{order:1;flex:1;}
+    #lang,#theme,#signin{order:2;}
+    #signin{padding:8px 12px;font-size:12px;}
+    .search{order:5;flex:1 1 100%;}
+    .search input{width:100%;}
+    .search input:focus{width:100%;}
+    nav{order:6;flex:1 1 100%;gap:2px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
+    nav a{padding:7px 11px;font-size:12.5px;flex:0 0 auto;}
+
+    /* ticker tape a touch shorter */
+    .tape{--h-tape:34px;}
+    .tick{padding:0 14px;font-size:11.5px;}
+
+    /* main dashboard: single column, chart on top, right rail below */
+    .grid{height:auto;grid-template-columns:1fr;grid-template-rows:auto auto;}
+    .center{grid-column:1;grid-row:1;}
+    /* flex:none so the explicit height applies in the now auto-height column
+       (a flex:1 child collapses to 0 when its container isn't a fixed height) */
+    #chart{flex:none;height:56vh;min-height:300px;}
+    #corr-panel{flex:none;height:auto;min-height:150px;}
+    .corr-list{grid-template-columns:1fr;}
+    .right{grid-column:1;grid-row:2;border-left:none;border-top:1px solid var(--line);
+      overflow:visible;max-height:none;}
+    .resizer{display:none;}
+    .right .panel[style*="flex:1"]{flex:0 0 auto;}
+
+    /* analytics pages (GEX / Market Index / R-Appetite) flow in the document */
+    .page{height:auto;padding:14px 12px 40px;}
+    .page.open{display:block;}
+    .gx-grid{grid-template-columns:1fr;}
+    .cards{gap:8px;}
+    .card{min-width:calc(50% - 8px);flex:1 1 calc(50% - 8px);}
+    .explain,.page .sub{max-width:100%;}
+    /* wide charts / tables scroll sideways inside their panel, not the page */
+    .gx-panel{overflow-x:auto;}
+    .page-tools{flex-wrap:wrap;}
+
+    /* modal fits small screens */
+    .modal{width:min(340px,calc(100vw - 24px));}
+  }
+  /* very narrow (small phones): drop cards to a single column */
+  @media (max-width:430px){
+    .card{min-width:100%;flex-basis:100%;}
+    .logo{font-size:16px;}
+  }
 </style>
 </head>
 <body>
