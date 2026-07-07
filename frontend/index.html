@@ -1122,8 +1122,10 @@ async function loadSentiment(retried,force){
     if(s&&s.warming){ warmingRetry(body, ()=>loadSentiment(), "Preparing analyst sentiment (~30 rating lookups)…", s.error); return; }
     SENT_LOADED=true;
     const o=s.overall, pos=((o.score+1)/2*100).toFixed(1);
-    $("#sent-sub").textContent=`as of ${s.as_of.replace("T"," ")} · ${o.total_ratings} ratings across `+
-      `${o.stocks_covered}/${o.stocks_universe} constituents (yfinance)`;
+    $("#sent-sub").textContent=`as of ${s.as_of.replace("T"," ")} · ${o.total_ratings} broker calls across `+
+      `${o.stocks_covered}/${o.stocks_universe} constituents`+
+      (o.avg_upside_pct!=null?` · avg target upside ${fmt(o.avg_upside_pct,1)}%`:"")+
+      (s.source?` · ${s.source}`:"");
     const compTotal=Math.max(1,o.total_ratings);
     const compBar=RATING_META.map(([k,,c])=>{
       const w=(o.composition[k]||0)/compTotal*100;
@@ -1134,9 +1136,10 @@ async function loadSentiment(retried,force){
         const w=st[k]/st.total*100;
         return w?`<i style="width:${w}%;background:${c}" title="${k}: ${st[k]}"></i>`:"";
       }).join("");
+      const up=st.upside_pct!=null?` <span class="${cls(st.upside_pct)}" style="font-size:9.5px" title="avg target upside">${fmt(st.upside_pct,0)}%</span>`:"";
       return `<div class="sr"><span class="nm" data-code="${st.code}" data-ticker="${st.ticker}" data-name="${st.name}" title="Open chart"><b>${st.name}</b></span>
         <span class="stack">${stack}</span>
-        <span class="sc"><b class="${cls(st.score)}">${fmt(st.score)}</b> (${st.total})</span></div>`;
+        <span class="sc"><b class="${cls(st.score)}">${fmt(st.score)}</b> (${st.total})${up}</span></div>`;
     }).join("");
     body.innerHTML=`
       <div class="gx-grid">
