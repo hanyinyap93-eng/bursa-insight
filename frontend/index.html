@@ -96,9 +96,9 @@
   /* ---------- layout ---------- */
   .grid{height:calc(100vh - var(--h-header) - var(--h-tape));display:grid;
     grid-template-columns:1fr var(--w-right);
-    grid-template-rows:1fr var(--h-bottom);}
+    grid-template-rows:1fr;}
   .center{grid-column:1;grid-row:1;display:flex;flex-direction:column;min-height:0;min-width:0;}
-  .right{grid-column:2;grid-row:1/3;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
+  .right{grid-column:2;grid-row:1;border-left:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;overflow-y:auto;position:relative;}
   .resizer{position:absolute;left:-3px;top:0;width:7px;height:100%;cursor:col-resize;z-index:30;}
   .resizer::after{content:"";position:absolute;left:2px;top:0;width:2px;height:100%;background:var(--line2);transition:background .12s;}
   .resizer:hover::after,.resizer.active::after{background:var(--accent);}
@@ -106,15 +106,6 @@
   .resizer::before{content:"⋮";position:absolute;left:-3px;top:50%;transform:translateY(-50%);
     color:var(--muted);font-size:14px;line-height:1;width:13px;text-align:center;}
   body.resizing{cursor:col-resize;user-select:none;}
-  .bottom{grid-column:1;grid-row:2;border-top:1px solid var(--line);background:var(--panel2);display:flex;flex-direction:column;min-height:0;position:relative;}
-  /* vertical resize handle for the bottom dock */
-  .vresizer{position:absolute;top:-4px;left:0;right:0;height:8px;cursor:row-resize;z-index:30;}
-  .vresizer::after{content:"";position:absolute;top:2px;left:0;right:0;height:2px;
-    background:var(--line2);transition:background .12s;}
-  .vresizer:hover::after,.vresizer.active::after{background:var(--accent);}
-  .vresizer::before{content:"⋯";position:absolute;top:-7px;left:50%;transform:translateX(-50%);
-    color:var(--muted);font-size:14px;}
-  body.vresizing{cursor:row-resize;user-select:none;}
 
   .sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;
     padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center;}
@@ -198,12 +189,7 @@
   .news a{color:var(--text);text-decoration:none;display:block;padding:10px 16px;border-bottom:1px solid var(--line);}
   .news a:hover{background:var(--hover);} .news .meta{color:var(--muted);font-size:10.5px;margin-top:3px;}
 
-  /* bottom tabs */
-  .tabs{display:flex;gap:2px;padding:7px 10px 0;border-bottom:1px solid var(--line);}
-  .tabs button{background:none;border:none;color:var(--muted);padding:7px 13px;font-size:12.5px;font-weight:600;
-    border-bottom:2px solid transparent;}
-  .tabs button.active{color:var(--text);border-bottom-color:var(--accent);}
-  .tab-body{flex:1;overflow:auto;padding:10px 12px;}
+  /* tables (GEX / Market Index / R-Appetite pages) */
   table{width:100%;border-collapse:collapse;font-size:12px;}
   th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--panel);white-space:nowrap;}
   th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;background:var(--panel2);}
@@ -212,7 +198,6 @@
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
   .chip{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:5px 12px;font-size:11.5px;}
   .chip:hover,.chip.active{border-color:var(--accent);color:#fff;background:var(--accent);}
-  .field{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;}
   .muted{color:var(--muted);} .loading{color:var(--muted);font-style:italic;}
 
   /* ---------- GEX / analyst-sentiment page ---------- */
@@ -339,18 +324,6 @@
       <div id="corr-list" class="corr-list"></div>
     </div>
   </section>
-
-  <!-- BOTTOM: screener / correlated / alerts / backtest dock -->
-  <div class="bottom">
-    <div class="vresizer" id="vresizer" title="Drag to resize"></div>
-    <div class="tabs">
-      <button data-tab="screener" title="Preset stock screens over the KLCI constituents">Screener</button>
-      <button data-tab="correlated" title="Stocks most correlated to the KLCI">Correlated</button>
-      <button data-tab="alerts" title="Index Health threshold alerts">Alerts</button>
-      <button data-tab="backtest" title="Backtest the Index-Health timing strategy">Backtest</button>
-    </div>
-    <div class="tab-body" id="tab-body"></div>
-  </div>
 
   <!-- RIGHT: panels -->
   <aside class="right">
@@ -716,118 +689,6 @@ async function loadNews(){
       <div class="meta">${n.source} · ${n.scope}${n.sectors.length?' · '+n.sectors.join(', '):''}</div></a>`).join("")
       :'<div class="muted" style="padding:8px 12px">no news (feeds may be blocked here)</div>';
   }catch(e){$("#news").innerHTML=`<div class="muted" style="padding:8px 12px">${e.message}</div>`;}
-}
-
-/* ---------------- bottom tabs ---------------- */
-const TABS={
-  screener: renderScreener, correlated: renderCorrelated, alerts: renderAlerts, backtest: renderBacktest,
-};
-function setTab(t){
-  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  TABS[t]();
-}
-async function renderScreener(){
-  const body=$("#tab-body");
-  body.innerHTML=`<div class="chips" id="presets">
-    <button class="chip" data-p="breakout">🚀 Breakout</button>
-    <button class="chip" data-p="oversold_correlated">📉 Oversold + correlated</button>
-    <button class="chip" data-p="uptrend_healthy">📈 Healthy uptrend</button>
-    <button class="chip" data-p="weak_breakdown">⚠️ Breakdown</button></div>
-    <div id="screen-out" class="muted">Pick a preset to screen the KLCI constituents.</div>`;
-  document.querySelectorAll('#presets .chip').forEach(c=>c.onclick=async()=>{
-    document.querySelectorAll('#presets .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
-    $("#screen-out").innerHTML='<span class="loading">screening…</span>';
-    try{
-      const presets=await get('/api/screener/presets');
-      const r=await post('/api/screener/run',Object.assign({index:"KLCI",lookback:LB},presets[c.dataset.p]));
-      $("#screen-out").innerHTML=tableHTML(enrichFund(r.results),
-        [["name","Stock"],["sector","Sector"],["net_signal","Net",1],["correlation","Corr",1],
-         ["return_pct","Return %",1],["pe","P/E",1],["dy","DY %",1]],
-        `${r.count} matches`);
-      wireRows();
-    }catch(e){$("#screen-out").innerHTML=`<span class="muted">${e.message}</span>`;}
-  });
-}
-async function renderCorrelated(){
-  $("#tab-body").innerHTML='<span class="loading">loading…</span>';
-  try{
-    const rows=await get(`/api/screener/correlated?top=30&lookback=${LB}`);
-    $("#tab-body").innerHTML=tableHTML(enrichFund(rows),
-      [["name","Stock"],["sector","Sector"],["correlation","Corr to KLCI",1],["return_pct","Return %",1],
-       ["pe","P/E",1],["dy","DY %",1]],
-      "Most correlated to KLCI");
-    wireRows();
-  }catch(e){$("#tab-body").innerHTML=`<span class="muted">${e.message}</span>`;}
-}
-// merge PE/DY (and other fundamentals) from the loaded klsescreener quotes by code
-function enrichFund(rows){return rows.map(r=>{const q=QUOTES.find(x=>x.code===r.code);
-  return q?{...r,pe:q.pe,dy:q.dy,eps:q.eps,volume:q.volume}:r;});}
-function tableHTML(rows,cols,caption){
-  if(!rows||!rows.length)return '<span class="muted">no matches</span>';
-  const head=cols.map(c=>`<th class="${c[2]?'num':''}">${c[1]}</th>`).join("");
-  const body=rows.map(r=>{
-    const tk=r.ticker||((r.code||'')+'.KL');
-    const tds=cols.map(c=>{
-      let v=r[c[0]];
-      if(c[0]==="name")return `<td><b>${r.name}</b> <span class="muted">${r.code||''}</span></td>`;
-      if(c[0]==="return_pct")return `<td class="num ${cls(v)}">${fmt(v)}%</td>`;
-      if(c[0]==="dy")return `<td class="num">${v==null?'—':v+'%'}</td>`;
-      if(c[2])return `<td class="num">${v==null?'—':v}</td>`;
-      return `<td class="muted">${v??''}</td>`;
-    }).join("");
-    return `<tr class="click" data-ticker="${tk}" data-code="${r.code||''}" data-name="${r.name}">${tds}</tr>`;
-  }).join("");
-  return `<div class="muted" style="margin-bottom:6px">${caption}</div><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
-}
-function wireRows(){document.querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>
-  loadChart({ticker:tr.dataset.ticker,code:tr.dataset.code,name:tr.dataset.name}));}
-
-async function renderAlerts(){
-  const body=$("#tab-body");
-  body.innerHTML=`<div class="row" style="margin-bottom:10px">
-    <select class="field" id="al-metric"><option value="index_health">KLCI Index Health</option>
-      <option value="component:rsi">RSI breadth</option><option value="component:sma">SMA breadth</option></select>
-    <select class="field" id="al-op"><option value="cross_below">crosses below</option>
-      <option value="cross_above">crosses above</option><option value="below">is below</option><option value="above">is above</option></select>
-    <input class="field" id="al-th" type="number" value="-10" style="width:80px"/>
-    <button class="btn" id="al-add">Add alert</button></div><div id="al-list" class="muted">loading…</div>`;
-  $("#al-add").onclick=async()=>{await post('/api/alerts',{metric:$("#al-metric").value,op:$("#al-op").value,threshold:+$("#al-th").value});drawAlerts();};
-  drawAlerts();
-}
-async function drawAlerts(){
-  const [list,ev]=await Promise.all([get('/api/alerts'),get('/api/alerts/evaluate').catch(()=>({firing:[]}))]);
-  const firing=new Set(ev.firing.map(f=>f.id));
-  $("#al-list").innerHTML=list.length?`<table><thead><tr><th>Metric</th><th>Condition</th><th class="num">Now</th><th>Status</th><th></th></tr></thead><tbody>`+
-    list.map(a=>`<tr><td>${a.metric}</td><td class="muted">${a.op.replace('_',' ')} ${a.threshold}</td>
-      <td class="num">${a.last_value??'—'}</td>
-      <td>${firing.has(a.id)?'<span class="verdict neg" style="padding:1px 7px">🔔 firing</span>':'<span class="muted">armed</span>'}</td>
-      <td class="num"><button class="chip" data-del="${a.id}">✕</button></td></tr>`).join("")+`</tbody></table>`
-    :'<span class="muted">No alerts yet. Add one above (e.g. KLCI health crosses below −10).</span>';
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{await fetch(API+`/api/alerts/${b.dataset.del}`,{method:'DELETE'});drawAlerts();});
-}
-async function renderBacktest(){
-  $("#tab-body").innerHTML=`<div class="row" style="margin-bottom:10px">
-    <span class="muted">Long KLCI when health &gt;</span><input class="field" id="bt-e" type="number" value="0" style="width:64px"/>
-    <span class="muted">, flat when health &lt;</span><input class="field" id="bt-x" type="number" value="-10" style="width:64px"/>
-    <button class="btn" id="bt-run">Run</button></div><div id="bt-out" class="muted">Compare the Index-Health timing strategy vs buy &amp; hold.</div>`;
-  $("#bt-run").onclick=async()=>{
-    $("#bt-out").innerHTML='<span class="loading">running…</span>';
-    try{
-      const r=await post('/api/backtest/health',{entry:+$("#bt-e").value,exit:+$("#bt-x").value,lookback:LB});
-      const s=r.stats,b=r.buy_hold_stats,step=Math.max(1,Math.floor(r.equity.length/90)),pts=a=>a.filter((_,i)=>i%step===0);
-      const e=pts(r.equity),h=pts(r.buy_hold),all=e.concat(h),mn=Math.min(...all),mx=Math.max(...all);
-      const Y=v=>110-100*(v-mn)/((mx-mn)||1),X=(i,n)=>620*i/(n-1);
-      const ln=(a,c)=>`<polyline fill="none" stroke="${c}" stroke-width="2" points="${a.map((v,i)=>X(i,a.length).toFixed(1)+','+Y(v).toFixed(1)).join(' ')}"/>`;
-      $("#bt-out").innerHTML=`<div class="row" style="gap:24px;align-items:flex-start">
-        <svg viewBox="0 0 620 116" width="100%" style="max-width:620px;background:var(--bg);border-radius:8px">${ln(h,'#787b86')}${ln(e,'#2962ff')}</svg>
-        <table style="width:auto"><tr><th></th><th class="num">Strategy</th><th class="num">Buy&amp;Hold</th></tr>
-        <tr><td>Total return</td><td class="num ${cls(s.total_return_pct)}">${fmt(s.total_return_pct)}%</td><td class="num ${cls(b.total_return_pct)}">${fmt(b.total_return_pct)}%</td></tr>
-        <tr><td>Max drawdown</td><td class="num">${fmt(s.max_drawdown_pct)}%</td><td class="num">${fmt(b.max_drawdown_pct)}%</td></tr>
-        <tr><td>Sharpe</td><td class="num">${s.sharpe}</td><td class="num">${b.sharpe}</td></tr>
-        <tr><td>Trades / in-market</td><td class="num">${r.n_trades} / ${r.time_in_market_pct}%</td><td></td></tr></table></div>
-        <div class="muted" style="margin-top:6px"><span style="color:#2962ff">■</span> strategy &nbsp;<span style="color:#787b86">■</span> buy &amp; hold</div>`;
-    }catch(e){$("#bt-out").innerHTML=`<span class="muted">${e.message}</span>`;}
-  };
 }
 
 /* ---------------- GEX page (analyst sentiment + warrant GEX) ---------------- */
@@ -1259,24 +1120,6 @@ function boot(){
       try{localStorage.setItem('wRight',
         getComputedStyle(document.documentElement).getPropertyValue('--w-right').trim());}catch(_){}});
     try{const s=localStorage.getItem('wRight'); if(s)document.documentElement.style.setProperty('--w-right',s);}catch(_){}
-  })();
-  // bottom dock: screener / correlated / alerts / backtest
-  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
-  setTab('screener');
-  // vertical resize for the bottom dock (height persists)
-  (function(){
-    const rz=$("#vresizer"); let dragging=false;
-    const setH=h=>document.documentElement.style.setProperty('--h-bottom',
-      Math.min(440,Math.max(120,h))+'px');
-    rz.addEventListener('mousedown',e=>{dragging=true;rz.classList.add('active');
-      document.body.classList.add('vresizing');e.preventDefault();});
-    window.addEventListener('mousemove',e=>{ if(dragging) setH(window.innerHeight-e.clientY); });
-    window.addEventListener('mouseup',()=>{ if(!dragging)return; dragging=false;
-      rz.classList.remove('active');document.body.classList.remove('vresizing');
-      try{localStorage.setItem('hBottom',
-        getComputedStyle(document.documentElement).getPropertyValue('--h-bottom').trim());}catch(_){}});
-    try{const s=localStorage.getItem('hBottom');
-      if(s)document.documentElement.style.setProperty('--h-bottom',s);}catch(_){}
   })();
   setupSearch();
   // live auto-refresh: keep prices/health current without a manual reload
