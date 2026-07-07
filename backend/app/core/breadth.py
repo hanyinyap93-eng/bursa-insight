@@ -107,7 +107,9 @@ def stock_index_correlations(ticker: str, lookback: str = "6mo") -> dict:
     panel_key = "indexpanel:2y"
     got = service._cache.get_stale(panel_key)
     if got is None:
-        service._spawn_refresh(panel_key, lambda: service._build_index_panel("2y"))
+        # warm via the locked accessor so this can't double-build against the
+        # startup warm-up; _spawn_refresh de-dups to a single background thread
+        service._spawn_refresh(panel_key, service.get_index_price_panel)
         return {"ticker": ticker, "lookback": lookback, "correlations": [],
                 "warming": True}
     panel = got[0]

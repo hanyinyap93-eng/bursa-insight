@@ -253,24 +253,42 @@ def get_sector_health(lookback: str = "1y", term: str = "short", force: bool = F
 
 
 def _build_index_panel(lookback):
+    """(Date x index) price panel: KLCI raw + each sector as an equal-weight
+    proxy (rebased to 100). All constituent prices are fetched in ONE batched
+    download so they cache together (previously 14 separate downloads shared —
+    and kept overwriting — one cache file, so nothing cached and every build
+    re-downloaded ~300 stocks; that took 7+ min and stalled on a cloud host)."""
     import pandas as pd
     cfg = _cfg("KLCI", lookback)
-    cols = {}
-    try:
-        kl = ih.download_prices([ih.INDEX_SYMBOL_KLCI], cfg)
-        cols["KLCI"] = kl[ih.INDEX_SYMBOL_KLCI]
-    except Exception:  # noqa: BLE001
-        pass
+    # 1) resolve each sector's constituents (sector-page scrapes)
+    members = {}
     for sec, code in ih.SECTOR_INDEX_CODES.items():
         try:
             meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
-            if meta.empty:
-                continue
-            close = ih.download_prices(meta["Ticker"].tolist(), cfg)
-            base = close.ffill().bfill().iloc[0]
-            cols[sec] = (close.divide(base) * 100.0).mean(axis=1)
+            if not meta.empty:
+                members[sec] = meta["Ticker"].tolist()
         except Exception:  # noqa: BLE001
             continue
+    # 2) one batched price download for every symbol (KLCI + all members)
+    syms = list(dict.fromkeys(
+        [ih.INDEX_SYMBOL_KLCI] + [t for tks in members.values() for t in tks]))
+    try:
+        px = ih.download_prices(syms, cfg)
+    except Exception:  # noqa: BLE001
+        px = pd.DataFrame()
+    if px.empty:
+        return pd.DataFrame()
+    # 3) assemble: KLCI level + per-sector equal-weight (rebased to 100)
+    cols = {}
+    if ih.INDEX_SYMBOL_KLCI in px.columns:
+        cols["KLCI"] = px[ih.INDEX_SYMBOL_KLCI]
+    for sec, tks in members.items():
+        have = [t for t in tks if t in px.columns]
+        if not have:
+            continue
+        sub = px[have]
+        base = sub.ffill().bfill().iloc[0]
+        cols[sec] = (sub.divide(base) * 100.0).mean(axis=1)
     return pd.DataFrame(cols).sort_index()
 
 
