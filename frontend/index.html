@@ -378,7 +378,7 @@
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
+    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
   </nav>
   <div class="spacer"></div>
   <button class="btn ghost" id="lang" title="Switch language / 切换语言" aria-label="Switch language">
@@ -538,7 +538,7 @@
 <div class="modal-backdrop" id="auth-modal">
   <div class="modal" role="dialog" aria-modal="true">
     <h3 data-i18n="auth.title">Sign in</h3>
-    <p data-i18n="auth.blurb">Sign in to unlock GEX and Market Index.</p>
+    <p data-i18n="auth.blurb">Sign in to unlock GEX, Market Index and R-Appetite.</p>
     <div id="gbtn-wrap" style="display:none">
       <div id="gbtn" style="display:flex;justify-content:center"></div>
       <div class="auth-or"><span data-i18n="auth.or">or</span></div>
@@ -600,7 +600,7 @@ const I18N = {
     "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
     "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
     "auth.signin":"Sign in","auth.signout":"Sign out","auth.title":"Sign in",
-    "auth.blurb":"Sign in to unlock GEX and Market Index.",
+    "auth.blurb":"Sign in to unlock GEX, Market Index and R-Appetite.",
     "auth.email":"Email","auth.emailPh":"you@example.com",
     "auth.cancel":"Cancel","auth.submit":"Sign in","auth.needEmail":"Please enter a valid email.",
     "auth.locked":"Sign in required — click to sign in","auth.hi":"Hi","auth.or":"or",
@@ -632,7 +632,7 @@ const I18N = {
     "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
     "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
     "auth.signin":"登录","auth.signout":"退出","auth.title":"登录",
-    "auth.blurb":"登录后可解锁「伽马敞口」和「市场指数」。",
+    "auth.blurb":"登录后可解锁「伽马敞口」「市场指数」和「风险偏好」。",
     "auth.email":"邮箱","auth.emailPh":"you@example.com",
     "auth.cancel":"取消","auth.submit":"登录","auth.needEmail":"请输入有效的邮箱地址。",
     "auth.locked":"需要登录 — 点击登录","auth.hi":"你好","auth.or":"或",
@@ -666,7 +666,7 @@ function applyStaticI18n(){
 // Gate: GEX + Market Index require sign-in. Primary is Google Sign-In
 // (Google Identity Services); an email sign-in is kept as a fallback for when
 // no Google Client ID is configured. State persists in localStorage.
-const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm"};
+const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra"};
 const GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
 function authUser(){ try{ return localStorage.getItem("authUser")||""; }catch(_){ return ""; } }
 function authName(){ try{ return localStorage.getItem("authName")||""; }catch(_){ return ""; } }
@@ -751,7 +751,8 @@ function signOut(){
   try{ if(window.google&&google.accounts&&google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(_){}
   updateAuthUI();
   // if currently viewing a gated page, fall back to the chart
-  if($("#page-gex").classList.contains("open")||$("#page-fbm").classList.contains("open"))
+  if($("#page-gex").classList.contains("open")||$("#page-fbm").classList.contains("open")
+     ||$("#page-ra").classList.contains("open"))
     showPage("chart");
 }
 
@@ -1652,7 +1653,7 @@ function boot(){
   });
   // restore the last view (skip gated pages when signed out — no modal on boot)
   try{const v=localStorage.getItem("view");
-    if(v==="ra" || (GATED_PAGES[v] && isAuthed())) showPage(v);}catch(_){}
+    if(GATED_PAGES[v] && isAuthed()) showPage(v);}catch(_){}
   // sign-in gate: button toggles sign-in / sign-out; modal handles sign-in
   updateAuthUI();
   $("#signin").onclick=()=>{ isAuthed() ? signOut() : openAuth(null); };
