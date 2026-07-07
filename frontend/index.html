@@ -741,10 +741,39 @@ function autoRetry(el,fn,tag,delay=15){
   const iv=setInterval(tick,1000); tick();
 }
 
+// KLCI sector weights (approx, by constituent market cap from /api/quotes)
+const SECTOR_PALETTE=["#3d7bff","#00c281","#f5a623","#a855f7","#f5555a","#38bdf8",
+  "#fbbf24","#34d399","#fb7185","#818cf8","#2dd4bf","#f472b6","#94a3b8"];
+function klciSectorWeights(){
+  const c=(QUOTES||[]).filter(q=>!q.is_index && q.market_cap>0);
+  if(c.length<5) return null;
+  const by={}; let total=0;
+  c.forEach(q=>{ const s=(q.sector&&q.sector!=="UNK"&&q.sector!=="Index")?q.sector:"Other";
+    by[s]=(by[s]||0)+q.market_cap; total+=q.market_cap; });
+  const rows=Object.entries(by).map(([sector,mc])=>({sector,mc,weight:mc/total*100}))
+    .sort((a,b)=>b.weight-a.weight);
+  return {rows,total,n:c.length};
+}
+function sectorWeightsHTML(){
+  const sw=klciSectorWeights();
+  if(!sw) return "";
+  const short={"Financial Services":"Financials","Telecommunications & Media":"Telco & Media",
+    "Consumer Products & Services":"Consumer","Industrial Products & Services":"Industrials",
+    "Transportation & Logistics":"Transport & Logistics","Health Care":"Healthcare"};
+  return `<h3 style="margin-top:18px">KLCI sector weights <span style="text-transform:none;letter-spacing:0;font-weight:400">— market-cap approx</span></h3>`+
+    sw.rows.map((r,i)=>`<div class="sr" style="grid-template-columns:118px 1fr 44px">
+      <span class="nm" title="${r.sector}">${short[r.sector]||r.sector}</span>
+      <span class="stack" style="background:var(--bg)"><i style="width:${r.weight.toFixed(1)}%;background:${SECTOR_PALETTE[i%SECTOR_PALETTE.length]}" title="RM ${(r.mc/1000).toFixed(1)} bn"></i></span>
+      <span class="sc"><b>${r.weight.toFixed(1)}%</b></span></div>`).join("")+
+    `<div class="muted" style="font-size:10px;margin-top:6px">Share of total market cap across ${sw.n} constituents (≈ RM ${(sw.total/1000).toFixed(0)} bn). Uncategorised names grouped as "Other".</div>`;
+}
+
 async function loadSentiment(retried){
   const body=$("#sent-body");
   body.innerHTML=skeleton(5);
   try{
+    // ensure quotes are available for the sector-weights sub-panel
+    if(!(QUOTES&&QUOTES.length)){ try{ QUOTES=await get(`/api/quotes?lookback=${LB}`); }catch(_){} }
     const s=await get("/api/sentiment/analyst",300000);
     SENT_LOADED=true;
     const o=s.overall, pos=((o.score+1)/2*100).toFixed(1);
@@ -779,6 +808,7 @@ async function loadSentiment(retried){
           <h3>All ratings composition</h3>
           <div class="sr" style="grid-template-columns:1fr"><span class="stack" style="height:20px">${compBar}</span></div>
           <div class="legend">${RATING_META.map(([k,l,c])=>`<span><i style="background:${c}"></i>${l} ${o.composition[k]||0}</span>`).join("")}</div>
+          ${sectorWeightsHTML()}
         </div>
       </div>`;
     body.querySelectorAll(".sr .nm[data-ticker]").forEach(n=>n.onclick=()=>{
