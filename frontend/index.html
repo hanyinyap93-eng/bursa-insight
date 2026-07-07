@@ -595,6 +595,7 @@ const I18N = {
     "ra.title":"Risk appetite","ra.titleSub":"— FBM ACE / MID 70 / KLCI index spreads (Ziemba turn-of-year & size effect)",
     "ra.explain":"When investors feel confident they buy risky small companies (<b>FBM ACE</b>) faster than the safe big ones (<b>FBM KLCI</b>); when they get nervous the reverse happens. Each score tracks that gap: <b>above 60</b> the risky index is outrunning the safe one (risk-on), <b>below 40</b> money is hiding in large caps (defensive). <b>H_RiskAppetite</b> (black line) is the overall mood. The monthly table tests Ziemba's <b>turn-of-year effect</b> — small caps historically outperforming around Dec–Jan (shaded) — where a t-stat beyond ±2 marks a month whose edge is statistically meaningful, not luck.",
     "health.suffix":" Index Health","verdict.expanding":"expanding","verdict.contracting":"contracting",
+    "trend.saturated":"saturated","trend.expanding":"expanding","trend.contracting":"contracting","trend.weak":"weak",
     "sub.asOf":"as of","sub.stocks":"stocks","sub.aboveSma":"above SMA","sub.5d":"5d",
     "loading.computing":"computing…","loading.default":"loading…",
     "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
@@ -627,6 +628,7 @@ const I18N = {
     "ra.title":"风险偏好","ra.titleSub":"— FBM ACE / MID 70 / KLCI 指数价差（Ziemba 年末效应与规模效应）",
     "ra.explain":"当投资者有信心时，他们买入高风险小型公司（<b>FBM ACE</b>）的速度快于安全的大型公司（<b>FBM KLCI</b>）；当他们紧张时则相反。每个评分追踪这一差距：<b>高于 60</b> 表示高风险指数跑赢安全指数（风险偏好），<b>低于 40</b> 表示资金躲入大盘股（防御）。<b>H_RiskAppetite</b>（黑线）为整体情绪。月度表格检验 Ziemba 的<b>年末效应</b>——历史上小盘股在 12 月至 1 月前后跑赢（阴影）——其中 t 值超过 ±2 表示该月的优势具有统计显著性，而非偶然。",
     "health.suffix":" 指数健康","verdict.expanding":"扩张中","verdict.contracting":"收缩中",
+    "trend.saturated":"饱和","trend.expanding":"扩张","trend.contracting":"收缩","trend.weak":"疲弱",
     "sub.asOf":"截至","sub.stocks":"只成分股","sub.aboveSma":"高于均线","sub.5d":"5日",
     "loading.computing":"计算中…","loading.default":"加载中…",
     "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
@@ -759,6 +761,13 @@ function signOut(){
 const fmt=(x,d=2)=>x==null?"—":(x>0?"+":"")+(+x).toFixed(d);
 const fmtP=(x,d=2)=>x==null?"—":(+x).toFixed(d);
 const cls=x=>x>=0?"pos":"neg";
+// Index Health trend band from the health %: >15 saturated, 0..15 expanding,
+// -20..0 contracting, <-20 weak. Returns {key, cls} (cls = pos/neg colour).
+function healthTrend(pct){
+  if(pct==null) return {key:"contracting",cls:"neg"};
+  const key = pct>15?"saturated" : pct>=0?"expanding" : pct>=-20?"contracting" : "weak";
+  return {key, cls: pct>=0?"pos":"neg"};
+}
 const arrow=x=>x>=0?"▲":"▼";
 async function get(p,ms){
   const ctrl=ms?new AbortController():null, t=ms?setTimeout(()=>ctrl.abort(),ms):null;
@@ -961,7 +970,8 @@ async function loadHealth(){
                        : await get(`/api/breadth/overview?lookback=${LB}&corr_window=6mo&term=${TERM}`);
     if(isSector) $("#g-title").textContent = (o.name||HEALTH_TARGET) + t("health.suffix");
     $("#g-val").textContent=fmt(o.health_pct)+"%"; $("#g-val").className="big "+cls(o.health_pct);
-    const v=$("#g-verdict"); v.textContent=t("verdict."+o.verdict); v.className="verdict "+(o.verdict==='expanding'?'pos':'neg');
+    const tr=healthTrend(o.health_pct);
+    const v=$("#g-verdict"); v.textContent=t("trend."+tr.key); v.className="verdict "+tr.cls;
     const tp=o.term_periods?` · ${TERM} (SMA ${o.term_periods.period}/HL ${o.term_periods.hl_period})`:"";
     $("#g-sub").innerHTML=`${t("sub.asOf")} ${o.as_of} · ${o.constituents} ${t("sub.stocks")} · ${o.pct_above_sma}% ${t("sub.aboveSma")} · ${t("sub.5d")} ${o.trend_5d}${tp}`;
     // index price line chart (above the health indicator)
@@ -1422,7 +1432,7 @@ async function loadFbmIndex(key,retried,force){
         <span class="big ${cls(d.health_pct)}" style="font-size:28px;font-weight:700">${fmt(d.health_pct)}%</span>
         <span class="row" style="gap:8px;align-items:center">
           <div class="lookback termmini fbm-term" data-key="${key}" title="Index Health horizon for ${d.name}">${termToggleHTML(term)}</div>
-          <span class="verdict ${d.health_pct>=0?'pos':'neg'}">${t("verdict."+d.verdict)}</span>
+          <span class="verdict ${healthTrend(d.health_pct).cls}">${t("trend."+healthTrend(d.health_pct).key)}</span>
         </span>
       </div>
       <div class="muted" style="font-size:11px;margin:2px 0 8px">as of ${d.as_of} · ${d.constituents} constituents
