@@ -63,6 +63,22 @@
   nav a{padding:8px 14px;border-radius:var(--radius-pill);color:var(--muted);text-decoration:none;
     font-weight:600;font-size:13px;cursor:pointer;transition:color .12s,background .12s;}
   nav a:hover,nav a.active{color:var(--text);background:var(--hover);}
+  /* gated nav items (locked until sign-in) */
+  nav a.locked{opacity:.6;}
+  nav a.locked::after{content:"🔒";font-size:9px;margin-left:4px;opacity:.8;vertical-align:1px;}
+  /* sign-in modal */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;
+    display:none;align-items:center;justify-content:center;}
+  .modal-backdrop.open{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 24px;width:340px;max-width:calc(100vw - 32px);box-shadow:var(--shadow);}
+  .modal h3{margin:0 0 6px;font-size:17px;font-weight:700;}
+  .modal p{margin:0 0 16px;font-size:12.5px;color:var(--muted);line-height:1.5;}
+  .modal label{font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;}
+  .modal input{width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:var(--radius-sm);
+    color:var(--text);padding:10px 12px;font-size:13px;outline:none;transition:border-color .15s;}
+  .modal input:focus{border-color:var(--accent);}
+  .modal .err{color:var(--red);font-size:11px;margin-top:6px;min-height:14px;}
   .spacer{flex:1;}
   .lookback{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
   .lookback button{background:none;border:none;color:var(--muted);padding:6px 12px;font-size:12px;border-radius:var(--radius-pill);}
@@ -297,7 +313,7 @@
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
+    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
   </nav>
   <div class="spacer"></div>
   <button class="btn ghost" id="lang" title="Switch language / 切换语言" aria-label="Switch language">
@@ -318,7 +334,7 @@
       <line x1="10.5" y1="21" x2="13.5" y2="21"/>
     </svg>
   </button>
-  <button class="btn ghost" id="signin" data-i18n="signin">Sign in</button>
+  <button class="btn ghost" id="signin">Sign in</button>
 </header>
 
 <div class="tape"><div class="track" id="tape">Loading market…</div></div>
@@ -453,6 +469,21 @@
   <div id="ra-body"></div>
 </section>
 
+<!-- SIGN-IN MODAL (gates GEX + Market Index) -->
+<div class="modal-backdrop" id="auth-modal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 data-i18n="auth.title">Sign in</h3>
+    <p data-i18n="auth.blurb">Sign in to unlock GEX and Market Index.</p>
+    <label for="auth-email" data-i18n="auth.email">Email</label>
+    <input id="auth-email" type="email" autocomplete="email" data-i18n-ph="auth.emailPh" placeholder="you@example.com"/>
+    <div class="err" id="auth-err"></div>
+    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:8px">
+      <button class="btn ghost" id="auth-cancel" data-i18n="auth.cancel">Cancel</button>
+      <button class="btn" id="auth-submit" data-i18n="auth.submit">Sign in</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // Backend base URL.
 //  - Served BY the backend (deployed, or one-server local) -> same origin ("").
@@ -499,6 +530,11 @@ const I18N = {
     "loading.computing":"computing…","loading.default":"loading…",
     "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
     "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
+    "auth.signin":"Sign in","auth.signout":"Sign out","auth.title":"Sign in",
+    "auth.blurb":"Sign in to unlock GEX and Market Index.",
+    "auth.email":"Email","auth.emailPh":"you@example.com",
+    "auth.cancel":"Cancel","auth.submit":"Sign in","auth.needEmail":"Please enter a valid email.",
+    "auth.locked":"Sign in required — click to sign in","auth.hi":"Hi",
   },
   zh:{
     "nav.chart":"图表","nav.sectors":"板块","nav.news":"新闻","nav.gex":"伽马敞口",
@@ -526,6 +562,11 @@ const I18N = {
     "loading.computing":"计算中…","loading.default":"加载中…",
     "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
     "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
+    "auth.signin":"登录","auth.signout":"退出","auth.title":"登录",
+    "auth.blurb":"登录后可解锁「伽马敞口」和「市场指数」。",
+    "auth.email":"邮箱","auth.emailPh":"you@example.com",
+    "auth.cancel":"取消","auth.submit":"登录","auth.needEmail":"请输入有效的邮箱地址。",
+    "auth.locked":"需要登录 — 点击登录","auth.hi":"你好",
   },
 };
 const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
@@ -549,6 +590,48 @@ function applyStaticI18n(){
   document.querySelectorAll("[data-i18n-html]").forEach(el=>{ el.innerHTML=t(el.dataset.i18nHtml); });
   document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ el.placeholder=t(el.dataset.i18nPh); });
   const ll=$("#lang-label"); if(ll) ll.textContent = (LANG==="en" ? "中文" : "EN");
+  updateAuthUI();
+}
+
+/* ---------------- sign-in gate (GEX + Market Index) ---------------- */
+// Client-side gate: no backend auth yet, so this is a local sign-in that
+// unlocks the two premium sections. Persisted in localStorage.
+const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm"};
+function authUser(){ try{ return localStorage.getItem("authUser")||""; }catch(_){ return ""; } }
+function isAuthed(){ return !!authUser(); }
+let PENDING_PAGE = null;   // page to open right after a successful sign-in
+function updateAuthUI(){
+  const authed=isAuthed();
+  const btn=$("#signin");
+  if(btn){
+    btn.textContent = authed ? t("auth.signout") : t("auth.signin");
+    btn.title = authed ? (t("auth.hi")+" "+authUser()) : t("auth.blurb");
+  }
+  document.querySelectorAll('nav a[data-gated]').forEach(a=>{
+    a.classList.toggle("locked", !authed);
+    if(!authed) a.title=t("auth.locked");
+  });
+}
+function openAuth(pendingPage){
+  PENDING_PAGE = pendingPage||null;
+  $("#auth-err").textContent="";
+  const m=$("#auth-modal"); m.classList.add("open");
+  const inp=$("#auth-email"); inp.value=""; setTimeout(()=>inp.focus(),30);
+}
+function closeAuth(){ $("#auth-modal").classList.remove("open"); PENDING_PAGE=null; }
+function submitAuth(){
+  const email=($("#auth-email").value||"").trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $("#auth-err").textContent=t("auth.needEmail"); return; }
+  try{ localStorage.setItem("authUser", email); }catch(_){}
+  const go=PENDING_PAGE; closeAuth(); updateAuthUI();
+  if(go) showPage(go);
+}
+function signOut(){
+  try{ localStorage.removeItem("authUser"); }catch(_){}
+  updateAuthUI();
+  // if currently viewing a gated page, fall back to the chart
+  if($("#page-gex").classList.contains("open")||$("#page-fbm").classList.contains("open"))
+    showPage("chart");
 }
 
 const fmt=(x,d=2)=>x==null?"—":(x>0?"+":"")+(+x).toFixed(d);
@@ -809,6 +892,8 @@ let SENT_LOADED=false, GEX_LOADED=false, FBM_LOADED=false, RA_LOADED=false;
 
 // views: the chart dashboard ('chart') and the full pages ('gex','fbm','ra')
 function showPage(name){
+  // GEX + Market Index require sign-in; open the sign-in modal instead
+  if(GATED_PAGES[name] && !isAuthed()){ openAuth(name); return; }
   $("#grid").style.display = name==="chart" ? "grid" : "none";
   $("#page-gex").classList.toggle("open", name==="gex");
   $("#page-fbm").classList.toggle("open", name==="fbm");
@@ -1427,13 +1512,20 @@ function boot(){
   $("#ra-refresh").onclick=()=>loadRiskAppetite();
   // Esc anywhere (outside an input) returns to the chart
   window.addEventListener("keydown",e=>{
-    if(e.key==="Escape"&&!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||""))
-      showPage("chart");
+    if(e.key!=="Escape") return;
+    if($("#auth-modal").classList.contains("open")){ closeAuth(); return; }
+    if(!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||"")) showPage("chart");
   });
-  // restore the last view (analytics pages only re-open if previously open)
+  // restore the last view (skip gated pages when signed out — no modal on boot)
   try{const v=localStorage.getItem("view");
-    if(["gex","fbm","ra"].includes(v)) showPage(v);}catch(_){}
-  $("#signin").onclick=()=>alert("Auth tier coming next — guest sees limited charts, login unlocks the full screener & alerts.");
+    if(v==="ra" || (GATED_PAGES[v] && isAuthed())) showPage(v);}catch(_){}
+  // sign-in gate: button toggles sign-in / sign-out; modal handles sign-in
+  updateAuthUI();
+  $("#signin").onclick=()=>{ isAuthed() ? signOut() : openAuth(null); };
+  $("#auth-cancel").onclick=closeAuth;
+  $("#auth-submit").onclick=submitAuth;
+  $("#auth-email").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();submitAuth();} });
+  $("#auth-modal").addEventListener("mousedown",e=>{ if(e.target===$("#auth-modal")) closeAuth(); });
   $("#g-reset").onclick=()=>selectIndex('KLCI');
   // dark / light theme toggle (logo letters + chart follow the theme; persists)
   function setTheme(light){
