@@ -915,16 +915,21 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
   const dtick=i=>`<text x="${X(i)}" y="${H-8}" font-size="8.5" fill="var(--muted)"`+
     ` text-anchor="${i===0?'start':i===close.length-1?'end':'middle'}">${dates[i]}</text>`;
   out+=dtick(0)+dtick(Math.floor(close.length/2))+dtick(close.length-1);
-  // right panel: horizontal net-GEX bars sharing the price (y) axis
-  const gx0=splitX+30, gxMax=pxR-4;                     // zero at gx0 (bars go left, negative)
-  out+=`<line x1="${gx0}" y1="${padT}" x2="${gx0}" y2="${H-padB}" stroke="var(--line2)"/>`+
-    `<text x="${(gx0+gxMax)/2}" y="${padT-4}" font-size="9" fill="var(--muted)" text-anchor="middle">GEX by strike (RM mn/1%)</text>`;
-  const bh=Math.max(3,band*1.4);
-  byStrike.forEach(b=>{ const g=b.net_gex/1e6, w=(gx0-splitX-34)*Math.abs(g)/(gmax/1e6);
-    out+=`<rect x="${(gx0-w).toFixed(1)}" y="${(Y(b.strike)-bh/2).toFixed(1)}" width="${w.toFixed(1)}"`+
-      ` height="${bh.toFixed(1)}" fill="#c62828" opacity=".8"><title>K=${b.strike}: RM ${g.toFixed(1)} mn/1%</title></rect>`; });
-  out+=`<line x1="${gx0}" y1="${Y(spot)}" x2="${gxMax}" y2="${Y(spot)}" stroke="var(--accent)" stroke-dasharray="4 3"/>`+
-    `<line x1="${gx0}" y1="${Y(trough)}" x2="${gxMax}" y2="${Y(trough)}" stroke="#a855f7" stroke-dasharray="2 3"/>`;
+  // right panel: horizontal net-GEX bars sharing the price (y) axis. Every
+  // net GEX is negative (issuers short gamma) so bars grow LEFT from a zero
+  // axis at the panel's right edge.
+  const rpL=splitX+16, rpR=pxR, rpW=rpR-rpL, gmaxMn=gmax/1e6;
+  out+=`<line x1="${rpR}" y1="${padT}" x2="${rpR}" y2="${H-padB}" stroke="var(--line2)"/>`+  // zero axis (right)
+    `<text x="${(rpL+rpR)/2}" y="${padT-4}" font-size="9" fill="var(--muted)" text-anchor="middle">GEX by strike (RM mn/1%)</text>`;
+  const bh=Math.max(4,band*1.4);
+  byStrike.forEach(b=>{ const g=b.net_gex/1e6, w=rpW*Math.abs(g)/gmaxMn;
+    out+=`<rect x="${(rpR-w).toFixed(1)}" y="${(Y(b.strike)-bh/2).toFixed(1)}" width="${w.toFixed(1)}"`+
+      ` height="${bh.toFixed(1)}" fill="#c62828" opacity=".82"><title>K=${b.strike}: net GEX RM ${g.toFixed(1)} mn/1%</title></rect>`+
+      `<text x="${(rpR-w-3).toFixed(1)}" y="${(Y(b.strike)+3).toFixed(1)}" font-size="8" fill="var(--muted)" text-anchor="end">${b.strike}</text>`; });
+  out+=`<line x1="${rpL}" y1="${Y(spot)}" x2="${rpR}" y2="${Y(spot)}" stroke="var(--accent)" stroke-dasharray="4 3"/>`+
+    `<line x1="${rpL}" y1="${Y(trough)}" x2="${rpR}" y2="${Y(trough)}" stroke="#a855f7" stroke-dasharray="2 3"/>`+
+    `<text x="${rpL}" y="${H-8}" font-size="8" fill="var(--muted)">−${gmaxMn.toFixed(0)}</text>`+
+    `<text x="${rpR-2}" y="${H-8}" font-size="8" fill="var(--muted)" text-anchor="end">0</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
 }
 
