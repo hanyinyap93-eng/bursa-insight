@@ -137,6 +137,14 @@ def _compute_lock_for(key):
 # background-refresh de-dup (one in-flight rebuild per key)
 _refreshing: set = set()
 _refresh_lock = threading.Lock()
+# last failure per key so a warming endpoint can report WHY instead of
+# appearing to build forever (e.g. Yahoo blocking the cloud host's IP)
+_last_errors: dict = {}
+
+
+def build_error(key):
+    """Message of the most recent failed background build for `key`, if any."""
+    return _last_errors.get(key)
 
 
 def _spawn_refresh(key, builder):
@@ -149,8 +157,9 @@ def _spawn_refresh(key, builder):
     def _run():
         try:
             _cache.set(key, builder())
-        except Exception:  # noqa: BLE001
-            pass
+            _last_errors.pop(key, None)
+        except Exception as exc:  # noqa: BLE001
+            _last_errors[key] = f"{type(exc).__name__}: {exc}"
         finally:
             with _refresh_lock:
                 _refreshing.discard(key)
@@ -313,11 +322,14 @@ def get_index_price_panel(lookback: str = "2y", force: bool = False):
     return _swr(key, TTL_SECONDS * 2, lambda: _build_index_panel(lookback), force=force)
 
 
-def get_analyst_sentiment(index: str = "KLCI", force: bool = False) -> dict:
+def get_analyst_sentiment(index: str = "KLCI", force: bool = False,
+                          nowait: bool = False):
     """Malaysia analyst sentiment over the KLCI constituents (SWR-cached).
 
-    Slow first build (~30 yfinance recommendation calls), so it is cached with
-    a long TTL and persisted to disk.
+    Slow first build (~30 yfinance recommendation calls that can hang for
+    minutes when Yahoo throttles/blocks the host), so it is cached with a long
+    TTL and persisted to disk. nowait=True never blocks on a cold build —
+    returns None (warming in the background) instead.
     """
     from . import sentiment as sent_mod
 
@@ -327,6 +339,8 @@ def get_analyst_sentiment(index: str = "KLCI", force: bool = False) -> dict:
         meta = get_constituents()
         return sent_mod.build_sentiment(meta, index=index)
 
+    if nowait:
+        return _cached_or_warm(key, TTL_SECONDS * 12, _build)
     return _swr(key, TTL_SECONDS * 12, _build, force=force)  # 6h TTL
 
 

@@ -793,11 +793,14 @@ async function getCached(p, ttlMs, ms, force){
   try{ if(!(d&&d.warming)) sessionStorage.setItem(key, JSON.stringify({t:Date.now(), d})); }catch(_){}
   return d;
 }
-// server is still building this heavy view — show a note and auto-retry
-function warmingRetry(el, fn, msg){
-  el.innerHTML=`<div class="muted" style="padding:8px">⏳ ${msg} <a class="reset-link" id="warm-now">check now</a></div>`;
+// server is still building this heavy view — show a note and auto-retry.
+// If the last background build FAILED, show why (e.g. the data provider
+// blocking the server) instead of pretending it is still building.
+function warmingRetry(el, fn, msg, err){
+  const detail=err?`<div class="muted" style="padding:2px 8px 8px;font-size:11px;color:var(--red)">last attempt failed: ${err}</div>`:"";
+  el.innerHTML=`<div class="muted" style="padding:8px">⏳ ${msg} <a class="reset-link" id="warm-now">check now</a></div>${detail}`;
   const b=el.querySelector("#warm-now"); if(b) b.onclick=()=>{ clearTimeout(fn._wt); fn(); };
-  clearTimeout(fn._wt); fn._wt=setTimeout(fn, 12000);
+  clearTimeout(fn._wt); fn._wt=setTimeout(fn, err?30000:12000);   // back off when failing
 }
 const heat=v=>{const t=Math.max(-100,Math.min(100,v))/100;return t>=0?`rgba(8,153,129,${.12+.7*t})`:`rgba(242,54,69,${.12+.7*-t})`;};
 const lbLabel=lb=>({'1mo':'1M','3mo':'3M','6mo':'6M','1y':'1Y','2y':'2Y'}[lb]||(lb||'').toUpperCase());
@@ -1116,6 +1119,7 @@ async function loadSentiment(retried,force){
     // ensure quotes are available for the sector-weights sub-panel
     if(!(QUOTES&&QUOTES.length)){ try{ QUOTES=await get(`/api/quotes?lookback=${LB}`); }catch(_){} }
     const s=await getCached("/api/sentiment/analyst",30*60000,300000,force);
+    if(s&&s.warming){ warmingRetry(body, ()=>loadSentiment(), "Preparing analyst sentiment (~30 rating lookups)…", s.error); return; }
     SENT_LOADED=true;
     const o=s.overall, pos=((o.score+1)/2*100).toFixed(1);
     $("#sent-sub").textContent=`as of ${s.as_of.replace("T"," ")} · ${o.total_ratings} ratings across `+
@@ -1309,7 +1313,7 @@ async function loadGex(retried,force){
   body.innerHTML=skeleton(4);
   try{
     const g=await getCached("/api/gex/klci",15*60000,300000,force);
-    if(g&&g.warming){ warmingRetry(body, ()=>loadGex(), "Preparing GEX data (first build scrapes the warrant chain, ~1 min)…"); return; }
+    if(g&&g.warming){ warmingRetry(body, ()=>loadGex(), "Preparing GEX data — the first build after a redeploy scrapes the warrant chain and can take a few minutes. This fills in automatically…", g.error); return; }
     GEX_LOADED=true;
     // KLCI close for the price+gamma-bands chart (fast; best-effort)
     let kl=null; try{ kl=await getCached("/api/index/KLCI/ohlc?lookback=6mo",15*60000,60000,force); }catch(_){ kl=null; }
@@ -1416,9 +1420,10 @@ async function loadFbmIndex(key,retried,force){
   const term=FBM_TERM[key]||(FBM_TERM[key]=TERM);   // default to the saved horizon
   try{
     const d=await getCached(`/api/fbm/${key.toLowerCase()}?lookback=1y&term=${term}`,15*60000,300000,force);
-    if(d&&d.warming){ el.innerHTML=`<h3>${FBM_NAMES[key]}</h3><div class="muted" style="padding:6px">⏳ preparing… <a class="reset-link">check now</a></div>`;
+    if(d&&d.warming){ el.innerHTML=`<h3>${FBM_NAMES[key]}</h3><div class="muted" style="padding:6px">⏳ preparing… <a class="reset-link">check now</a></div>`+
+        (d.error?`<div class="muted" style="padding:2px 6px;font-size:11px;color:var(--red)">last attempt failed: ${d.error}</div>`:"");
       const b=el.querySelector('.reset-link'); if(b)b.onclick=()=>loadFbmIndex(key);
-      clearTimeout(el._wt); el._wt=setTimeout(()=>loadFbmIndex(key),12000); return; }
+      clearTimeout(el._wt); el._wt=setTimeout(()=>loadFbmIndex(key), d.error?30000:12000); return; }
     // diverging health sparkline (same style as the right-rail gauge)
     const mx=Math.max(1,...d.spark.map(Math.abs));
     const spark=d.spark.map(x=>{
@@ -1568,7 +1573,7 @@ async function loadRiskAppetite(retried,force){
   body.innerHTML=skeleton(4);
   try{
     const d=await getCached("/api/risk-appetite",10*60000,300000,force);
-    if(d&&d.warming){ warmingRetry(body, ()=>loadRiskAppetite(), "Preparing risk-appetite data…"); return; }
+    if(d&&d.warming){ warmingRetry(body, ()=>loadRiskAppetite(), "Preparing risk-appetite data…", d.error); return; }
     $("#ra-sub").textContent=`as of ${d.as_of} · ${d.history} history, charts show last `+
       `${d.display_years}y · ${d.notes.score}`;
     const spreadCards=d.spreads.map(s=>`

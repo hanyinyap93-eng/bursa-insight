@@ -227,11 +227,16 @@ def screener_run(req: ScreenRequest):
 @app.get("/api/sentiment/analyst")
 def analyst_sentiment(index: str = "KLCI", force: bool = False):
     """Malaysia analyst sentiment over the KLCI constituents: per-stock
-    recommendation counts + -1..+1 scores and the overall gauge."""
+    recommendation counts + -1..+1 scores and the overall gauge. Never blocks:
+    serves the cache or returns {warming:true} (+ the last build error, e.g.
+    Yahoo blocking the host's IP) while building in the background."""
     if index != "KLCI":
         raise HTTPException(404, f"analyst sentiment not available for {index}")
     try:
-        return service.get_analyst_sentiment(index, force=force)
+        r = service.get_analyst_sentiment(index, nowait=True)
+        if r is not None:
+            return r
+        return {"warming": True, "error": service.build_error(f"sentiment:{index}")}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"analyst sentiment failed: {exc}")
 
@@ -245,7 +250,9 @@ def klci_gex(force: bool = False):
     the background (12h TTL, stale-while-revalidate)."""
     try:
         r = service.get_klci_gex(nowait=True)
-        return r if r is not None else {"warming": True}
+        if r is not None:
+            return r
+        return {"warming": True, "error": service.build_error("gex:KLCI")}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"GEX compute failed: {exc}")
 
@@ -260,7 +267,9 @@ def risk_appetite(force: bool = False):
     seasonality with t-stats, and rebased relative performance."""
     try:
         r = service.get_risk_appetite(nowait=True)
-        return r if r is not None else {"warming": True}
+        if r is not None:
+            return r
+        return {"warming": True, "error": service.build_error("riskapp:1")}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"risk appetite failed: {exc}")
 
@@ -280,7 +289,10 @@ def fbm_health(key: str, lookback: str = "1y", term: str = "short", force: bool 
     or returns {warming:true} while it builds in the background (8h TTL)."""
     try:
         r = service.get_fbm_health(key, lookback, term, nowait=True)
-        return r if r is not None else {"warming": True, "key": key.upper()}
+        if r is not None:
+            return r
+        return {"warming": True, "key": key.upper(),
+                "error": service.build_error(f"fbm:{key.upper()}:{lookback}:{term}")}
     except ValueError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:  # noqa: BLE001
