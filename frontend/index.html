@@ -244,14 +244,14 @@
   .sr .sc{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);}
   .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);margin-top:10px;}
   .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
-  /* clickable legend: click a series to show/hide its line */
-  .legend-toggle{gap:6px;}
-  .legend-toggle .lg{cursor:pointer;user-select:none;padding:2px 7px;border-radius:var(--radius-pill);
+  /* clickable legend: click a series/category to show/hide it */
+  .legend-toggle,.legend-cat{gap:6px;}
+  .legend-toggle .lg,.legend-cat .lg{cursor:pointer;user-select:none;padding:2px 7px;border-radius:var(--radius-pill);
     border:1px solid transparent;transition:background .12s,opacity .12s,border-color .12s;}
-  .legend-toggle .lg:hover{background:var(--hover);border-color:var(--line2);}
-  .legend-toggle .lg:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
-  .legend-toggle .lg.off{opacity:.4;text-decoration:line-through;}
-  .legend-toggle .lg.off i{filter:grayscale(1);}
+  .legend-toggle .lg:hover,.legend-cat .lg:hover{background:var(--hover);border-color:var(--line2);}
+  .legend-toggle .lg:focus-visible,.legend-cat .lg:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .legend-toggle .lg.off,.legend-cat .lg.off{opacity:.4;text-decoration:line-through;}
+  .legend-toggle .lg.off i,.legend-cat .lg.off i{filter:grayscale(1);}
 
   /* ---------- usability polish ---------- */
   nav{overflow-x:auto;scrollbar-width:none;}
@@ -805,8 +805,8 @@ function gexStrikeSVG(byStrike,spot,H=230){
   let bars="",labels="";
   byStrike.forEach(r=>{
     const x=X(r.strike),c=Math.abs(r.call_gex)/1e6*S,p=Math.abs(r.put_gex)/1e6*S;
-    if(r.call_gex)bars+=`<rect x="${(x-bw-1).toFixed(1)}" y="${zero}" width="${bw}" height="${c.toFixed(1)}" fill="var(--green)" opacity=".85"><title>K=${r.strike} calls RM ${(r.call_gex/1e6).toFixed(1)} mn/1%</title></rect>`;
-    if(r.put_gex)bars+=`<rect x="${(x+1).toFixed(1)}" y="${zero}" width="${bw}" height="${p.toFixed(1)}" fill="var(--red)" opacity=".85"><title>K=${r.strike} puts RM ${(r.put_gex/1e6).toFixed(1)} mn/1%</title></rect>`;
+    if(r.call_gex)bars+=`<rect data-w="call" x="${(x-bw-1).toFixed(1)}" y="${zero}" width="${bw}" height="${c.toFixed(1)}" fill="var(--green)" opacity=".85"><title>K=${r.strike} calls RM ${(r.call_gex/1e6).toFixed(1)} mn/1%</title></rect>`;
+    if(r.put_gex)bars+=`<rect data-w="put" x="${(x+1).toFixed(1)}" y="${zero}" width="${bw}" height="${p.toFixed(1)}" fill="var(--red)" opacity=".85"><title>K=${r.strike} puts RM ${(r.put_gex/1e6).toFixed(1)} mn/1%</title></rect>`;
     labels+=`<text x="${x.toFixed(1)}" y="${H-10}" font-size="9" fill="var(--muted)" text-anchor="middle">${r.strike}</text>`;
   });
   const xs=X(spot);
@@ -974,8 +974,9 @@ async function loadGex(retried){
       <div class="gx-grid">
         <div class="gx-panel"><h3>Issuer GEX by strike (RM mn per 1% move)</h3>
           ${gexStrikeSVG(g.by_strike,g.spot)}
-          <div class="legend"><span><i style="background:var(--green)"></i>Call warrants</span>
-            <span><i style="background:var(--red)"></i>Put warrants</span>
+          <div class="legend legend-cat" title="Click to show/hide">
+            <span class="lg" data-w="call"><i style="background:var(--green)"></i>Call warrants</span>
+            <span class="lg" data-w="put"><i style="background:var(--red)"></i>Put warrants</span>
             <span>bars grow downward — issuers are short gamma</span></div></div>
         <div class="gx-panel"><h3>Net GEX vs index level — trough marks the max hedging-pressure zone</h3>
           ${gexProfileSVG(g.profile,g.spot)}</div>
@@ -1009,6 +1010,7 @@ async function loadGex(retried){
       {key:"gex_rm_per_1pct", label:"GEX RM mn/1%", num:true, render:w=>`<td class="num ${cls(w.gex_rm_per_1pct)}">${(w.gex_rm_per_1pct/1e6).toFixed(2)}</td>`},
       {key:"discovery_source", label:"Source", render:w=>`<td class="muted">${w.discovery_source}</td>`},
     ], {sortKey:"gex_rm_per_1pct", dir:1});   // most-negative (strongest short gamma) first
+    wireCatLegends(body);   // Call/Put legend toggles on the GEX-by-strike chart
   }catch(e){
     if(e.message==="timeout"&&!retried){autoRetry(body,loadGex,"The warrant GEX map",20);return;}
     const msg=e.message==="timeout"?"still building the GEX map (first build scrapes ~20 warrant pages — retry in a minute)…":e.message;
@@ -1118,6 +1120,27 @@ function wireLegends(scope){
       item.onclick=()=>toggle(item);
       item.ondblclick=()=>isolate(item);
       item.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle(item);} };
+    });
+  });
+}
+
+// category legend (e.g. Call/Put): each item toggles all rects with the
+// matching data-w in the sibling <svg>. Keeps at least one category visible.
+function wireCatLegends(scope){
+  scope.querySelectorAll(".legend-cat").forEach(leg=>{
+    const svg=leg.parentElement.querySelector("svg");
+    if(!svg)return;
+    const items=[...leg.querySelectorAll(".lg[data-w]")];
+    items.forEach(item=>{
+      item.onclick=()=>{
+        const on=item.classList.contains("off");
+        if(!on && items.filter(i=>!i.classList.contains("off")).length<=1) return; // keep >=1
+        item.classList.toggle("off");
+        const hide=item.classList.contains("off");
+        svg.querySelectorAll(`rect[data-w="${item.dataset.w}"]`).forEach(r=>r.style.display=hide?"none":"");
+      };
+      item.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();item.onclick();} };
+      item.setAttribute("role","button"); item.setAttribute("tabindex","0");
     });
   });
 }
