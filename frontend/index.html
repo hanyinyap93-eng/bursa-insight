@@ -76,6 +76,8 @@
   .btn:hover{opacity:.85;}
   .btn.ghost{background:var(--panel2);color:var(--text);}
   .btn.ghost:hover{background:var(--hover);opacity:1;}
+  /* language toggle */
+  #lang{padding:8px 12px;} #lang #lang-label{font-size:13px;font-weight:700;letter-spacing:.3px;}
   /* theme toggle: lightbulb icon */
   #theme{display:inline-flex;align-items:center;justify-content:center;padding:8px 11px;border-radius:var(--radius-pill);}
   #theme .bulb{display:block;color:var(--muted);transition:color .15s;}
@@ -291,13 +293,16 @@
   <div class="logo" title="Ether"><span class="e1">E</span><span class="lt">T</span><span class="lt">H</span><span class="e2">E</span><span class="lt">R</span></div>
   <div class="search">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-    <input id="search" placeholder="Search code or symbol e.g. 5337 or ECOSHOP" autocomplete="off"/>
+    <input id="search" data-i18n-ph="search.ph" placeholder="Search code or symbol e.g. 5337 or ECOSHOP" autocomplete="off"/>
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active" id="nav-chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" title="Local + global market news (right panel)">News</a><a id="nav-gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
+    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
   </nav>
   <div class="spacer"></div>
+  <button class="btn ghost" id="lang" title="Switch language / 切换语言" aria-label="Switch language">
+    <span id="lang-label">中文</span>
+  </button>
   <button class="btn ghost" id="theme" title="Toggle dark / light mode" aria-label="Toggle theme">
     <svg class="bulb" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -313,7 +318,7 @@
       <line x1="10.5" y1="21" x2="13.5" y2="21"/>
     </svg>
   </button>
-  <button class="btn ghost" id="signin">Sign in</button>
+  <button class="btn ghost" id="signin" data-i18n="signin">Sign in</button>
 </header>
 
 <div class="tape"><div class="track" id="tape">Loading market…</div></div>
@@ -334,7 +339,7 @@
     <div id="chart" style="position:relative"><span class="pane-label" id="lbl-price"></span></div>
     <div id="corr-panel">
       <div class="corr-head">
-        <span class="corr-title">Correlation of <b id="corr-sym">—</b> to indexes</span>
+        <span class="corr-title"><span data-i18n="corr.of">Correlation of</span> <b id="corr-sym">—</b> <span data-i18n="corr.to">to indexes</span></span>
         <div class="corr-lb" id="corr-lb">
           <button data-lb="1mo">1M</button><button data-lb="3mo">3M</button><button data-lb="6mo" class="active">6M</button><button data-lb="1y">1Y</button><button data-lb="2y">2Y</button>
         </div>
@@ -348,8 +353,8 @@
     <div class="resizer" id="rresizer" title="Drag to resize"></div>
     <div class="panel">
       <div class="sec-title" style="align-items:center">
-        <span><span id="g-title">KLCI Index Health</span>
-          <a id="g-reset" class="reset-link" style="display:none">← KLCI</a></span>
+        <span><span id="g-title" data-i18n="rail.klciHealth">KLCI Index Health</span>
+          <a id="g-reset" class="reset-link" data-i18n="rail.resetKlci" style="display:none">← KLCI</a></span>
         <div class="lookback termmini" id="g-term" title="Index Health horizon — short 10/25, mid 20/50, long 50/100"></div>
       </div>
       <div class="gauge">
@@ -360,19 +365,19 @@
         <div class="muted" id="g-sub" style="font-size:11px"></div>
         <div class="mini-cap muted" id="g-idxcap">FBM KLCI</div>
         <div class="idxchart" id="g-index"></div>
-        <div class="mini-cap muted">Index Health (% breadth)</div>
+        <div class="mini-cap muted" data-i18n="rail.indexHealthPct">Index Health (% breadth)</div>
         <div class="spark" id="g-spark"></div>
       </div>
-      <div class="mini-cap muted" id="g-corr-cap" style="padding:0 12px">Top correlated stocks</div>
-      <div class="cm-head"><span>Stock</span><span id="g-corr-col">Corr</span><span>Return %</span></div>
+      <div class="mini-cap muted" id="g-corr-cap" style="padding:0 12px" data-i18n="rail.topCorr">Top correlated stocks</div>
+      <div class="cm-head"><span data-i18n="rail.stock">Stock</span><span id="g-corr-col">Corr</span><span data-i18n="rail.returnPct">Return %</span></div>
       <div id="g-corr" class="corr-mini"></div>
     </div>
     <div class="panel">
-      <div class="sec-title">Indexes <span class="muted">breadth health</span></div>
+      <div class="sec-title"><span data-i18n="rail.indexes">Indexes</span> <span class="muted" data-i18n="rail.breadthHealth">breadth health</span></div>
       <div id="rotation"><div class="loading" style="padding:8px 12px">computing…</div></div>
     </div>
     <div class="panel" style="flex:1">
-      <div class="sec-title">News <span class="muted">local + global</span></div>
+      <div class="sec-title"><span data-i18n="rail.news">News</span> <span class="muted" data-i18n="rail.localGlobal">local + global</span></div>
       <div class="news" id="news"><div class="loading" style="padding:8px 12px">loading…</div></div>
     </div>
   </aside>
@@ -382,11 +387,11 @@
 <!-- GEX PAGE: Malaysia analyst sentiment + KLCI warrant Gamma Exposure -->
 <section class="page" id="page-gex">
   <div class="page-tools">
-    <button class="chip" id="gex-refresh" title="Re-fetch both sections">↻ Refresh</button>
-    <span class="muted" style="font-size:11px">Esc returns to the chart · data is cached server-side</span>
+    <button class="chip" id="gex-refresh" data-i18n="common.refresh" title="Re-fetch both sections">↻ Refresh</button>
+    <span class="muted" style="font-size:11px" data-i18n="common.escHint">Esc returns to the chart · data is cached server-side</span>
   </div>
-  <h2>Malaysia analyst sentiment <span class="muted" style="font-weight:400">— KLCI constituents</span></h2>
-  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+  <h2><span data-i18n="gex.sentTitle">Malaysia analyst sentiment</span> <span class="muted" style="font-weight:400" data-i18n="gex.sentTitleSub">— KLCI constituents</span></h2>
+  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="gex.sentExplain">
     Each bar shows how professional analysts currently rate one KLCI stock, from <b>Strong Buy</b>
     (dark green) to <b>Strong Sell</b> (red). The <b>score</b> next to each bar squeezes those ratings
     into one number from <b>−1</b> (everyone says sell) to <b>+1</b> (everyone says buy), with the
@@ -397,8 +402,8 @@
   <div class="sub" id="sent-sub">loading…</div>
   <div id="sent-body"></div>
 
-  <h2 style="margin-top:30px">KLCI Warrant Gamma Exposure (GEX) <span class="muted" style="font-weight:400">— issuer hedging map</span></h2>
-  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+  <h2 style="margin-top:30px"><span data-i18n="gex.gexTitle">KLCI Warrant Gamma Exposure (GEX)</span> <span class="muted" style="font-weight:400" data-i18n="gex.gexTitleSub">— issuer hedging map</span></h2>
+  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="gex.gexExplain">
     Banks that issue KLCI warrants must constantly buy and sell FKLI futures to hedge them. This page
     maps where that hedging is concentrated. Bars grow <b>downward</b> because issuers are always
     "short gamma" — near those strikes their hedging <b>amplifies</b> market moves instead of damping
@@ -413,11 +418,11 @@
 <!-- MARKET INDEX PAGE: FBM Mid 70 / ACE / EMAS / Fledgling index health -->
 <section class="page" id="page-fbm">
   <div class="page-tools">
-    <button class="chip" id="fbm-refresh" title="Re-fetch all four indexes">↻ Refresh</button>
-    <span class="muted" style="font-size:11px">Esc returns to the chart · first build can take a minute per index</span>
+    <button class="chip" id="fbm-refresh" data-i18n="common.refresh" title="Re-fetch all four indexes">↻ Refresh</button>
+    <span class="muted" style="font-size:11px" data-i18n="common.escHintFbm">Esc returns to the chart · first build can take a minute per index</span>
   </div>
-  <h2>Malaysia market indexes <span class="muted" style="font-weight:400">— FBM index health &amp; per-sector health (%)</span></h2>
-  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+  <h2><span data-i18n="fbm.title">Malaysia market indexes</span> <span class="muted" style="font-weight:400" data-i18n="fbm.titleSub">— FBM index health &amp; per-sector health (%)</span></h2>
+  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="fbm.explain">
     <b>Index Health %</b> measures how broadly an index is rising: every constituent is checked on four
     signals — above its moving average, making new highs vs new lows, positive momentum, and RSI — and
     the results are averaged. <b>+100%</b> means every stock passes every check, <b>−100%</b> means every
@@ -432,11 +437,11 @@
 <!-- R-APPETITE PAGE: ACE / MID 70 / KLCI index spreads (Ziemba) -->
 <section class="page" id="page-ra">
   <div class="page-tools">
-    <button class="chip" id="ra-refresh" title="Re-fetch the spread analysis">↻ Refresh</button>
-    <span class="muted" style="font-size:11px">Esc returns to the chart</span>
+    <button class="chip" id="ra-refresh" data-i18n="common.refresh" title="Re-fetch the spread analysis">↻ Refresh</button>
+    <span class="muted" style="font-size:11px" data-i18n="common.escHint">Esc returns to the chart</span>
   </div>
-  <h2>Risk appetite <span class="muted" style="font-weight:400">— FBM ACE / MID 70 / KLCI index spreads (Ziemba turn-of-year &amp; size effect)</span></h2>
-  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+  <h2><span data-i18n="ra.title">Risk appetite</span> <span class="muted" style="font-weight:400" data-i18n="ra.titleSub">— FBM ACE / MID 70 / KLCI index spreads (Ziemba turn-of-year &amp; size effect)</span></h2>
+  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="ra.explain">
     When investors feel confident they buy risky small companies (<b>FBM ACE</b>) faster than the safe
     big ones (<b>FBM KLCI</b>); when they get nervous the reverse happens. Each score tracks that gap:
     <b>above 60</b> the risky index is outrunning the safe one (risk-on), <b>below 40</b> money is hiding
@@ -463,6 +468,88 @@ let SYMBOL = {ticker:"1155.KL", code:"1155", name:"MAYBANK"};
 let QUOTES = [];
 let CHART_INIT = false;
 let CORR_LB = "6mo";           // lookback for the stock→indexes correlation panel
+
+/* ---------------- i18n (English / 简体中文) ---------------- */
+let LANG = "en";
+try{ const l=localStorage.getItem("lang"); if(l==="zh"||l==="en") LANG=l; }catch(_){}
+const I18N = {
+  en:{
+    "nav.chart":"Chart","nav.sectors":"Sectors","nav.news":"News","nav.gex":"GEX",
+    "nav.marketIndex":"Market Index","nav.rAppetite":"R-Appetite",
+    "search.ph":"Search code or symbol e.g. 5337 or ECOSHOP","signin":"Sign in",
+    "rail.klciHealth":"KLCI Index Health","rail.resetKlci":"← KLCI",
+    "rail.indexHealthPct":"Index Health (% breadth)","rail.topCorr":"Top correlated stocks",
+    "rail.stock":"Stock","rail.corr":"Corr","rail.returnPct":"Return %",
+    "rail.indexes":"Indexes","rail.breadthHealth":"breadth health",
+    "rail.news":"News","rail.localGlobal":"local + global","rail.toIndexes":"to indexes",
+    "common.refresh":"↻ Refresh","common.escHint":"Esc returns to the chart · data is cached server-side",
+    "common.escHintFbm":"Esc returns to the chart · first build can take a minute per index",
+    "common.whatLooking":"What am I looking at?",
+    "gex.sentTitle":"Malaysia analyst sentiment","gex.sentTitleSub":"— KLCI constituents",
+    "gex.sentExplain":"Each bar shows how professional analysts currently rate one KLCI stock, from <b>Strong Buy</b> (dark green) to <b>Strong Sell</b> (red). The <b>score</b> next to each bar squeezes those ratings into one number from <b>−1</b> (everyone says sell) to <b>+1</b> (everyone says buy), with the number of analysts in brackets — more analysts means a more reliable score. The gauge on the right combines every rating on every stock into one overall market mood. Click a stock's name to open its price chart.",
+    "gex.gexTitle":"KLCI Warrant Gamma Exposure (GEX)","gex.gexTitleSub":"— issuer hedging map",
+    "gex.gexExplain":"Banks that issue KLCI warrants must constantly buy and sell FKLI futures to hedge them. This page maps where that hedging is concentrated. Bars grow <b>downward</b> because issuers are always \"short gamma\" — near those strikes their hedging <b>amplifies</b> market moves instead of damping them. The <b>gamma trough</b> (purple line) marks the index level with the strongest such pressure: expect faster, choppier moves if the KLCI trades into that zone. The readout box combines this with today's market breadth into one practical takeaway.",
+    "fbm.title":"Malaysia market indexes","fbm.titleSub":"— FBM index health & per-sector health (%)",
+    "fbm.intro":"Breadth-and-momentum Index Health over each index's constituents (equal-weight proxy — these indexes have no Yahoo symbol). First build downloads every member's prices, so a panel can take a minute.",
+    "fbm.explain":"<b>Index Health %</b> measures how broadly an index is rising: every constituent is checked on four signals — above its moving average, making new highs vs new lows, positive momentum, and RSI — and the results are averaged. <b>+100%</b> means every stock passes every check, <b>−100%</b> means every stock fails; around <b>0</b> the market is mixed. The green/red histogram shows how that health has evolved; the line above it is the index itself (an equal-weight proxy, since these indexes have no public price feed). The sector bars underneath show which industries inside the index are driving or dragging it, with the number of member stocks in brackets and the 5-day change.",
+    "ra.title":"Risk appetite","ra.titleSub":"— FBM ACE / MID 70 / KLCI index spreads (Ziemba turn-of-year & size effect)",
+    "ra.explain":"When investors feel confident they buy risky small companies (<b>FBM ACE</b>) faster than the safe big ones (<b>FBM KLCI</b>); when they get nervous the reverse happens. Each score tracks that gap: <b>above 60</b> the risky index is outrunning the safe one (risk-on), <b>below 40</b> money is hiding in large caps (defensive). <b>H_RiskAppetite</b> (black line) is the overall mood. The monthly table tests Ziemba's <b>turn-of-year effect</b> — small caps historically outperforming around Dec–Jan (shaded) — where a t-stat beyond ±2 marks a month whose edge is statistically meaningful, not luck.",
+    "health.suffix":" Index Health","verdict.expanding":"expanding","verdict.contracting":"contracting",
+    "sub.asOf":"as of","sub.stocks":"stocks","sub.aboveSma":"above SMA","sub.5d":"5d",
+    "loading.computing":"computing…","loading.default":"loading…",
+    "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
+    "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
+  },
+  zh:{
+    "nav.chart":"图表","nav.sectors":"板块","nav.news":"新闻","nav.gex":"伽马敞口",
+    "nav.marketIndex":"市场指数","nav.rAppetite":"风险偏好",
+    "search.ph":"搜索代码或名称，例如 5337 或 ECOSHOP","signin":"登录",
+    "rail.klciHealth":"KLCI 指数健康","rail.resetKlci":"← KLCI",
+    "rail.indexHealthPct":"指数健康（广度 %）","rail.topCorr":"相关性最高的股票",
+    "rail.stock":"股票","rail.corr":"相关","rail.returnPct":"回报 %",
+    "rail.indexes":"指数","rail.breadthHealth":"广度健康",
+    "rail.news":"新闻","rail.localGlobal":"本地 + 全球","rail.toIndexes":"对各指数",
+    "common.refresh":"↻ 刷新","common.escHint":"按 Esc 返回图表 · 数据由服务器缓存",
+    "common.escHintFbm":"按 Esc 返回图表 · 首次加载每个指数约需一分钟",
+    "common.whatLooking":"这是什么？",
+    "gex.sentTitle":"马来西亚分析师情绪","gex.sentTitleSub":"— KLCI 成分股",
+    "gex.sentExplain":"每根柱状图显示专业分析师目前对一只 KLCI 成分股的评级，从<b>强力买入</b>（深绿）到<b>强力卖出</b>（红）。柱旁的<b>评分</b>将这些评级归纳为一个数值，从 <b>−1</b>（全部看空）到 <b>+1</b>（全部看多），括号内为分析师人数——人数越多评分越可靠。右侧的仪表将所有股票的所有评级汇总为整体市场情绪。点击股票名称可打开其价格图表。",
+    "gex.gexTitle":"KLCI 权证伽马敞口 (GEX)","gex.gexTitleSub":"— 发行商对冲图",
+    "gex.gexExplain":"发行 KLCI 权证的银行必须不断买卖 FKLI 期货来对冲。本页显示这些对冲集中在何处。柱状图向<b>下</b>延伸，因为发行商始终“做空伽马”——在这些行使价附近，其对冲会<b>放大</b>而非抑制市场波动。<b>伽马谷</b>（紫线）标示对冲压力最强的指数水平：若 KLCI 进入该区域，预计波动更快、更震荡。解读框将其与当日市场广度结合为一个实用结论。",
+    "fbm.title":"马来西亚市场指数","fbm.titleSub":"— FBM 指数健康与各板块健康（%）",
+    "fbm.intro":"基于广度与动量的指数健康，覆盖每个指数的成分股（等权代理——这些指数没有 Yahoo 代码）。首次加载会下载每只成分股的价格，因此每个面板可能需要约一分钟。",
+    "fbm.explain":"<b>指数健康 %</b> 衡量指数上涨的广泛程度：对每只成分股检查四个信号——高于其均线、创新高对创新低、正动量、以及 RSI——并取平均。<b>+100%</b> 表示每只股票都通过所有检查，<b>−100%</b> 表示全部未通过；接近 <b>0</b> 表示市场分化。绿/红柱状图显示健康度的演变；上方的线是指数本身（等权代理，因为这些指数没有公开价格源）。下方的板块条显示指数内部哪些行业在带动或拖累，括号内为成分股数量及 5 日变化。",
+    "ra.title":"风险偏好","ra.titleSub":"— FBM ACE / MID 70 / KLCI 指数价差（Ziemba 年末效应与规模效应）",
+    "ra.explain":"当投资者有信心时，他们买入高风险小型公司（<b>FBM ACE</b>）的速度快于安全的大型公司（<b>FBM KLCI</b>）；当他们紧张时则相反。每个评分追踪这一差距：<b>高于 60</b> 表示高风险指数跑赢安全指数（风险偏好），<b>低于 40</b> 表示资金躲入大盘股（防御）。<b>H_RiskAppetite</b>（黑线）为整体情绪。月度表格检验 Ziemba 的<b>年末效应</b>——历史上小盘股在 12 月至 1 月前后跑赢（阴影）——其中 t 值超过 ±2 表示该月的优势具有统计显著性，而非偶然。",
+    "health.suffix":" 指数健康","verdict.expanding":"扩张中","verdict.contracting":"收缩中",
+    "sub.asOf":"截至","sub.stocks":"只成分股","sub.aboveSma":"高于均线","sub.5d":"5日",
+    "loading.computing":"计算中…","loading.default":"加载中…",
+    "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
+    "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
+  },
+};
+const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+function setLang(lang){
+  if(lang===LANG) return;
+  LANG=lang; try{localStorage.setItem("lang",lang);}catch(_){}
+  applyStaticI18n();
+  // re-render dynamic views so their generated labels pick up the new language
+  loadHealth(); loadRotation(); loadNews();           // chart-page panels
+  const openGex=$("#page-gex").classList.contains("open");
+  const openFbm=$("#page-fbm").classList.contains("open");
+  const openRa=$("#page-ra").classList.contains("open");
+  SENT_LOADED=GEX_LOADED=FBM_LOADED=RA_LOADED=false;   // force re-render when reopened
+  if(openGex){ SENT_LOADED=GEX_LOADED=true; loadSentiment(); loadGex(); }
+  else if(openFbm){ FBM_LOADED=true; loadFbm(); }
+  else if(openRa){ RA_LOADED=true; loadRiskAppetite(); }
+}
+function applyStaticI18n(){
+  document.documentElement.lang = (LANG==="zh"?"zh-Hans":"en");
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ el.textContent=t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-html]").forEach(el=>{ el.innerHTML=t(el.dataset.i18nHtml); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ el.placeholder=t(el.dataset.i18nPh); });
+  const ll=$("#lang-label"); if(ll) ll.textContent = (LANG==="en" ? "中文" : "EN");
+}
 
 const fmt=(x,d=2)=>x==null?"—":(x>0?"+":"")+(+x).toFixed(d);
 const fmtP=(x,d=2)=>x==null?"—":(+x).toFixed(d);
@@ -641,17 +728,17 @@ function selectIndex(key){ HEALTH_TARGET = key||"KLCI"; loadHealth();
 
 async function loadHealth(){
   const isSector = HEALTH_TARGET !== "KLCI";
-  $("#g-title").textContent = (isSector ? HEALTH_TARGET : "KLCI") + " Index Health";
+  $("#g-title").textContent = isSector ? (HEALTH_TARGET + t("health.suffix")) : t("rail.klciHealth");
   $("#g-reset").style.display = isSector ? "inline" : "none";
   try{
     // the index's top-correlated list is always over a fixed 6-month window
     const o = isSector ? await get(`/api/sector/${HEALTH_TARGET}?lookback=${LB}&corr_window=6mo&term=${TERM}`)
                        : await get(`/api/breadth/overview?lookback=${LB}&corr_window=6mo&term=${TERM}`);
-    if(isSector) $("#g-title").textContent = (o.name||HEALTH_TARGET) + " Index Health";
+    if(isSector) $("#g-title").textContent = (o.name||HEALTH_TARGET) + t("health.suffix");
     $("#g-val").textContent=fmt(o.health_pct)+"%"; $("#g-val").className="big "+cls(o.health_pct);
-    const v=$("#g-verdict"); v.textContent=o.verdict; v.className="verdict "+(o.verdict==='expanding'?'pos':'neg');
+    const v=$("#g-verdict"); v.textContent=t("verdict."+o.verdict); v.className="verdict "+(o.verdict==='expanding'?'pos':'neg');
     const tp=o.term_periods?` · ${TERM} (SMA ${o.term_periods.period}/HL ${o.term_periods.hl_period})`:"";
-    $("#g-sub").innerHTML=`as of ${o.as_of} · ${o.constituents} stocks · ${o.pct_above_sma}% above SMA · 5d ${o.trend_5d}${tp}`;
+    $("#g-sub").innerHTML=`${t("sub.asOf")} ${o.as_of} · ${o.constituents} ${t("sub.stocks")} · ${o.pct_above_sma}% ${t("sub.aboveSma")} · ${t("sub.5d")} ${o.trend_5d}${tp}`;
     // index price line chart (above the health indicator)
     if(o.index_spark && o.index_spark.length){
       const label = isSector ? `${o.name||HEALTH_TARGET} (eq-wt index)` : "FBM KLCI";
@@ -667,8 +754,8 @@ async function loadHealth(){
     // stocks most correlated to the selected index
     const corr=o.correlated||[];
     const idxName = isSector ? (o.name||HEALTH_TARGET) : 'KLCI';
-    $("#g-corr-cap").textContent = `Top correlated to ${idxName}`;
-    $("#g-corr-col").textContent = "6M Corr";
+    $("#g-corr-cap").textContent = `${t("rail.topCorrTo")} ${idxName}`;
+    $("#g-corr-col").textContent = t("rail.corr6m");
     $("#g-corr").innerHTML = corr.length ? corr.map(c=>`
       <div class="cm-row" data-ticker="${c.code}.KL" data-code="${c.code}" data-name="${c.name}">
         <span class="nm"><b>${c.name}</b> <span class="muted">${c.code}</span></span>
@@ -711,7 +798,7 @@ async function loadNews(){
     const items=await get('/api/news?limit=14');
     $("#news").innerHTML=items.length?items.map(n=>`<a href="${n.link}" target="_blank">${n.title||'(untitled)'}
       <div class="meta">${n.source} · ${n.scope}${n.sectors.length?' · '+n.sectors.join(', '):''}</div></a>`).join("")
-      :'<div class="muted" style="padding:8px 12px">no news (feeds may be blocked here)</div>';
+      :`<div class="muted" style="padding:8px 12px">${t("news.none")}</div>`;
   }catch(e){$("#news").innerHTML=`<div class="muted" style="padding:8px 12px">${e.message}</div>`;}
 }
 
@@ -1108,7 +1195,7 @@ async function loadFbmIndex(key,retried){
         <span class="big ${cls(d.health_pct)}" style="font-size:28px;font-weight:700">${fmt(d.health_pct)}%</span>
         <span class="row" style="gap:8px;align-items:center">
           <div class="lookback termmini fbm-term" data-key="${key}" title="Index Health horizon for ${d.name}">${termToggleHTML(term)}</div>
-          <span class="verdict ${d.health_pct>=0?'pos':'neg'}">${d.verdict}</span>
+          <span class="verdict ${d.health_pct>=0?'pos':'neg'}">${t("verdict."+d.verdict)}</span>
         </span>
       </div>
       <div class="muted" style="font-size:11px;margin:2px 0 8px">as of ${d.as_of} · ${d.constituents} constituents
@@ -1356,6 +1443,9 @@ function boot(){
   }
   $("#theme").onclick=()=>setTheme(!document.body.classList.contains('light'));
   try{setTheme(localStorage.getItem('theme')==='light');}catch(_){}
+  // language toggle (English / 简体中文) — persists, re-renders the open views
+  applyStaticI18n();
+  $("#lang").onclick=()=>setLang(LANG==="en"?"zh":"en");
   // resizable right panel (drag the left edge; width persists)
   (function(){
     const rz=$("#rresizer"); let dragging=false;
