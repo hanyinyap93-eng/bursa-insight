@@ -712,6 +712,19 @@ async function get(p,ms){
   finally{ if(t)clearTimeout(t); }
 }
 async function post(p,b){const r=await fetch(API+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});if(!r.ok)throw new Error((await r.text()).slice(0,120));return r.json();}
+// browser-side cache for the heavy analytics pages: serve a recent response
+// instantly (per URL, so each term/page is cached separately). `force`
+// bypasses it (used by the Refresh buttons). Keyed in sessionStorage.
+async function getCached(p, ttlMs, ms, force){
+  const key="c:"+p;
+  if(!force){
+    try{ const raw=sessionStorage.getItem(key);
+      if(raw){ const o=JSON.parse(raw); if(Date.now()-o.t < ttlMs) return o.d; } }catch(_){}
+  }
+  const d=await get(p, ms);
+  try{ sessionStorage.setItem(key, JSON.stringify({t:Date.now(), d})); }catch(_){}
+  return d;
+}
 const heat=v=>{const t=Math.max(-100,Math.min(100,v))/100;return t>=0?`rgba(8,153,129,${.12+.7*t})`:`rgba(242,54,69,${.12+.7*-t})`;};
 const lbLabel=lb=>({'1mo':'1M','3mo':'3M','6mo':'6M','1y':'1Y','2y':'2Y'}[lb]||(lb||'').toUpperCase());
 // mini line chart from a numeric array; each daily segment is colored
@@ -1014,13 +1027,13 @@ function sectorWeightsHTML(){
     `<div class="muted" style="font-size:10px;margin-top:6px">Share of total market cap across ${sw.n} constituents (≈ RM ${(sw.total/1000).toFixed(0)} bn). Uncategorised names grouped as "Other".</div>`;
 }
 
-async function loadSentiment(retried){
+async function loadSentiment(retried,force){
   const body=$("#sent-body");
   body.innerHTML=skeleton(5);
   try{
     // ensure quotes are available for the sector-weights sub-panel
     if(!(QUOTES&&QUOTES.length)){ try{ QUOTES=await get(`/api/quotes?lookback=${LB}`); }catch(_){} }
-    const s=await get("/api/sentiment/analyst",300000);
+    const s=await getCached("/api/sentiment/analyst",30*60000,300000,force);
     SENT_LOADED=true;
     const o=s.overall, pos=((o.score+1)/2*100).toFixed(1);
     $("#sent-sub").textContent=`as of ${s.as_of.replace("T"," ")} · ${o.total_ratings} ratings across `+
@@ -1209,14 +1222,14 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
 }
 
-async function loadGex(retried){
+async function loadGex(retried,force){
   const body=$("#gex-body");
   body.innerHTML=skeleton(4);
   try{
-    const g=await get("/api/gex/klci",300000);
+    const g=await getCached("/api/gex/klci",15*60000,300000,force);
     GEX_LOADED=true;
     // KLCI close for the price+gamma-bands chart (fast; best-effort)
-    let kl=null; try{ kl=await get("/api/index/KLCI/ohlc?lookback=6mo",60000); }catch(_){ kl=null; }
+    let kl=null; try{ kl=await getCached("/api/index/KLCI/ohlc?lookback=6mo",15*60000,60000,force); }catch(_){ kl=null; }
     $("#gex-sub").textContent=`as of ${g.as_of.replace("T"," ")} · spot ${g.spot.toLocaleString()} · `+
       `${g.warrants_live} live warrants (${g.calls} calls, ${g.puts} puts) · issuers short gamma; negative = destabilising hedge flow`;
     const r=g.readout||{};
@@ -1308,18 +1321,18 @@ function termToggleHTML(current){
 }
 const FBM_TERM={};   // per-index term on the Market Index page
 
-function loadFbm(){
+function loadFbm(force){
   $("#fbm-grid").innerHTML=FBM_KEYS.map(k=>`<div class="gx-panel" id="fbm-${k}">
     <h3>${FBM_NAMES[k]}</h3>${skeleton(4)}
   </div>`).join("");
-  FBM_KEYS.forEach(k=>loadFbmIndex(k));    // all four load independently
+  FBM_KEYS.forEach(k=>loadFbmIndex(k,false,force));   // all four load independently
 }
 
-async function loadFbmIndex(key,retried){
+async function loadFbmIndex(key,retried,force){
   const el=$("#fbm-"+key);
   const term=FBM_TERM[key]||(FBM_TERM[key]=TERM);   // default to the saved horizon
   try{
-    const d=await get(`/api/fbm/${key.toLowerCase()}?lookback=1y&term=${term}`,300000);
+    const d=await getCached(`/api/fbm/${key.toLowerCase()}?lookback=1y&term=${term}`,15*60000,300000,force);
     // diverging health sparkline (same style as the right-rail gauge)
     const mx=Math.max(1,...d.spark.map(Math.abs));
     const spark=d.spark.map(x=>{
@@ -1464,11 +1477,11 @@ function multiLineSVG(dates,seriesList,{H=230,ymin=null,ymax=null,guides=[],fmtT
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
 }
 
-async function loadRiskAppetite(retried){
+async function loadRiskAppetite(retried,force){
   const body=$("#ra-body");
   body.innerHTML=skeleton(4);
   try{
-    const d=await get("/api/risk-appetite",300000);
+    const d=await getCached("/api/risk-appetite",10*60000,300000,force);
     $("#ra-sub").textContent=`as of ${d.as_of} · ${d.history} history, charts show last `+
       `${d.display_years}y · ${d.notes.score}`;
     const spreadCards=d.spreads.map(s=>`
@@ -1571,9 +1584,9 @@ function boot(){
     loadHealth(); loadRotation();
   });
   // per-page refresh buttons re-fetch (server serves cached + refreshes behind)
-  $("#gex-refresh").onclick=()=>{loadSentiment();loadGex();};
-  $("#fbm-refresh").onclick=loadFbm;
-  $("#ra-refresh").onclick=()=>loadRiskAppetite();
+  $("#gex-refresh").onclick=()=>{loadSentiment(false,true);loadGex(false,true);};
+  $("#fbm-refresh").onclick=()=>loadFbm(true);
+  $("#ra-refresh").onclick=()=>loadRiskAppetite(false,true);
   // Esc anywhere (outside an input) returns to the chart
   window.addEventListener("keydown",e=>{
     if(e.key!=="Escape") return;

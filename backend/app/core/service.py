@@ -351,13 +351,39 @@ def get_risk_appetite(force: bool = False) -> dict:
 
 
 def warm_all():
-    """Rebuild the heavy caches (force). Used on startup and by the scheduler."""
-    for fn in (lambda: get_health("KLCI", force=True),
-               lambda: get_sector_health(force=True),
-               lambda: get_index_price_panel(force=True),
-               # not forced: these scrape slowly; SWR keeps them fresh enough
-               lambda: get_analyst_sentiment("KLCI"),
-               lambda: get_klci_gex()):
+    """Pre-warm every heavy view so users always hit a populated cache.
+
+    Runs on startup and on the scheduler (always-on host). The core KLCI /
+    sector short-term views + index panel are force-refreshed so intraday
+    prices and breadth stay current; the short build downloads the prices once
+    and the mid/long recomputes + the FBM indexes reuse those cached prices.
+    The slow scrapes (sentiment, GEX) and everything else are warmed without
+    force — SWR only rebuilds them in the background when their long TTLs lapse.
+    """
+    from . import fbm_indexes as fbm_mod
+
+    jobs = [
+        # core — forced so prices/breadth stay fresh (short shares its prices)
+        lambda: get_health("KLCI", term="short", force=True),
+        lambda: get_sector_health(term="short", force=True),
+        lambda: get_index_price_panel(force=True),
+        # KLCI + sector mid/long — cheap recompute over the just-cached prices
+        lambda: get_health("KLCI", term="mid"),
+        lambda: get_health("KLCI", term="long"),
+        lambda: get_sector_health(term="mid"),
+        lambda: get_sector_health(term="long"),
+        # slow scrapes — long TTL, SWR keeps them fresh
+        lambda: get_analyst_sentiment("KLCI"),
+        lambda: get_klci_gex(),
+        lambda: get_risk_appetite(),
+    ]
+    # FBM market indexes × terms — prices shared per index; per-term recompute
+    # is cheap, so the Market Index page is never a cold on-request build.
+    for k in fbm_mod.FBM_INDEXES:
+        for term in ("short", "mid", "long"):
+            jobs.append(lambda k=k, term=term: get_fbm_health(k, term=term))
+
+    for fn in jobs:
         try:
             fn()
         except Exception:  # noqa: BLE001
