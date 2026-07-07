@@ -195,6 +195,12 @@
   th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;background:var(--panel2);}
   td.num{text-align:right;font-variant-numeric:tabular-nums;}
   tr.click{cursor:pointer;} tr.click:hover td{background:var(--hover);}
+  /* sortable table headers */
+  th.th-sort{cursor:pointer;user-select:none;transition:color .12s;}
+  th.th-sort:hover{color:var(--text);}
+  th.th-sort.active{color:var(--accent);}
+  th.th-sort .sarr{font-size:9px;opacity:.45;}
+  th.th-sort.active .sarr{opacity:1;}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
   .chip{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:5px 12px;font-size:11.5px;}
   .chip:hover,.chip.active{border-color:var(--accent);color:#fff;background:var(--accent);}
@@ -840,12 +846,96 @@ function gexProfileSVG(prof,spot,H=238){
     ${ticks}</svg>`;
 }
 
+// generic client-sortable table rendered into `container`.
+// cols: [{key,label,num?,get?,render?}]. Click a header to sort; click again to flip.
+function renderSortableTable(container,rows,cols,opts={}){
+  let sortKey=opts.sortKey||null, dir=opts.dir||1;   // dir: 1 asc, -1 desc
+  const get=(r,c)=>c.get?c.get(r):r[c.key];
+  const sorted=()=>{
+    if(!sortKey)return rows;
+    const c=cols.find(x=>x.key===sortKey);
+    return rows.slice().sort((a,b)=>{
+      let va=get(a,c),vb=get(b,c);
+      if(c.num){ va=(va==null||isNaN(va))?-Infinity:+va; vb=(vb==null||isNaN(vb))?-Infinity:+vb;
+        return (va-vb)*dir; }
+      va=(va==null?"":va).toString().toLowerCase(); vb=(vb==null?"":vb).toString().toLowerCase();
+      return va<vb?-dir:va>vb?dir:0;
+    });
+  };
+  const draw=()=>{
+    const head=cols.map(c=>{
+      const active=sortKey===c.key, arr=active?(dir>0?"▲":"▼"):"⇅";
+      return `<th class="th-sort${c.num?' num':''}${active?' active':''}" data-k="${c.key}"`+
+        ` title="Sort by ${c.label}">${c.label} <span class="sarr">${arr}</span></th>`;
+    }).join("");
+    const bd=sorted().map(r=>"<tr>"+cols.map(c=>
+      c.render?c.render(r):`<td class="${c.num?'num':''}">${get(r,c)??''}</td>`).join("")+"</tr>").join("");
+    container.innerHTML=`<table><thead><tr>${head}</tr></thead><tbody>${bd}</tbody></table>`;
+    container.querySelectorAll("th.th-sort").forEach(th=>th.onclick=()=>{
+      const k=th.dataset.k;
+      if(sortKey===k) dir=-dir;
+      else { sortKey=k; dir=cols.find(c=>c.key===k).num?-1:1; }   // numbers default high->low
+      draw();
+    });
+  };
+  draw();
+}
+
+// KLCI close + issuer gamma bands (left) sharing its price axis with a
+// horizontal GEX-by-strike bar panel (right) — the notebook's Health x GEX
+// Panels A & B. Bands shade red ∝ |net GEX| at each strike.
+function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
+  const W=920,H=360,padT=16,padB=26,padL=44,splitR=250; // right GEX panel width
+  const pxR=W-8, pxL=padL, splitX=pxR-splitR;            // price panel: padL..splitX
+  const strikes=byStrike.map(b=>b.strike);
+  const lo=Math.min(Math.min(...close),Math.min(...strikes))-15;
+  const hi=Math.max(Math.max(...close),Math.max(...strikes))+15;
+  const Y=v=>padT+(H-padT-padB)*(hi-v)/((hi-lo)||1);
+  const gmax=Math.max(1,...byStrike.map(b=>Math.abs(b.net_gex)));
+  const band=(hi-lo)*0.006+1.5;
+  let out="";
+  // price y-axis ticks
+  for(let t=0;t<=4;t++){ const v=lo+(hi-lo)*t/4;
+    out+=`<line x1="${pxL}" y1="${Y(v)}" x2="${splitX}" y2="${Y(v)}" stroke="var(--line2)" opacity=".4"/>`+
+      `<text x="${pxL-5}" y="${Y(v)+3}" font-size="9" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}</text>`; }
+  // gamma bands at each strike (left panel), red alpha ∝ |net gex|
+  byStrike.forEach(b=>{ const a=Math.min(0.5,0.5*Math.abs(b.net_gex)/gmax);
+    out+=`<rect x="${pxL}" y="${(Y(b.strike)-band).toFixed(1)}" width="${splitX-pxL}"`+
+      ` height="${(2*band).toFixed(1)}" fill="#c62828" opacity="${a.toFixed(3)}"><title>K=${b.strike}: net GEX RM ${(b.net_gex/1e6).toFixed(1)} mn/1%</title></rect>`; });
+  // price line
+  const X=i=>pxL+(splitX-pxL)*i/Math.max(1,close.length-1);
+  out+=`<polyline points="${close.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}"`+
+    ` fill="none" stroke="var(--text)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+  // trough + spot lines across the price panel
+  out+=`<line x1="${pxL}" y1="${Y(trough)}" x2="${splitX}" y2="${Y(trough)}" stroke="#a855f7" stroke-dasharray="2 3" stroke-width="1.4"/>`+
+    `<text x="${pxL+3}" y="${Y(trough)-3}" font-size="9" fill="#a855f7">gamma trough ${trough.toFixed(0)}</text>`;
+  out+=`<line x1="${pxL}" y1="${Y(spot)}" x2="${splitX}" y2="${Y(spot)}" stroke="var(--accent)" stroke-dasharray="4 3" stroke-width="1.4"/>`+
+    `<text x="${splitX-3}" y="${Y(spot)-3}" font-size="9" fill="var(--accent)" text-anchor="end">spot ${spot.toFixed(0)}</text>`;
+  // date ticks on the price panel
+  const dtick=i=>`<text x="${X(i)}" y="${H-8}" font-size="8.5" fill="var(--muted)"`+
+    ` text-anchor="${i===0?'start':i===close.length-1?'end':'middle'}">${dates[i]}</text>`;
+  out+=dtick(0)+dtick(Math.floor(close.length/2))+dtick(close.length-1);
+  // right panel: horizontal net-GEX bars sharing the price (y) axis
+  const gx0=splitX+30, gxMax=pxR-4;                     // zero at gx0 (bars go left, negative)
+  out+=`<line x1="${gx0}" y1="${padT}" x2="${gx0}" y2="${H-padB}" stroke="var(--line2)"/>`+
+    `<text x="${(gx0+gxMax)/2}" y="${padT-4}" font-size="9" fill="var(--muted)" text-anchor="middle">GEX by strike (RM mn/1%)</text>`;
+  const bh=Math.max(3,band*1.4);
+  byStrike.forEach(b=>{ const g=b.net_gex/1e6, w=(gx0-splitX-34)*Math.abs(g)/(gmax/1e6);
+    out+=`<rect x="${(gx0-w).toFixed(1)}" y="${(Y(b.strike)-bh/2).toFixed(1)}" width="${w.toFixed(1)}"`+
+      ` height="${bh.toFixed(1)}" fill="#c62828" opacity=".8"><title>K=${b.strike}: RM ${g.toFixed(1)} mn/1%</title></rect>`; });
+  out+=`<line x1="${gx0}" y1="${Y(spot)}" x2="${gxMax}" y2="${Y(spot)}" stroke="var(--accent)" stroke-dasharray="4 3"/>`+
+    `<line x1="${gx0}" y1="${Y(trough)}" x2="${gxMax}" y2="${Y(trough)}" stroke="#a855f7" stroke-dasharray="2 3"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
+}
+
 async function loadGex(retried){
   const body=$("#gex-body");
   body.innerHTML=skeleton(4);
   try{
     const g=await get("/api/gex/klci",300000);
     GEX_LOADED=true;
+    // KLCI close for the price+gamma-bands chart (fast; best-effort)
+    let kl=null; try{ kl=await get("/api/index/KLCI/ohlc?lookback=6mo",60000); }catch(_){ kl=null; }
     $("#gex-sub").textContent=`as of ${g.as_of.replace("T"," ")} · spot ${g.spot.toLocaleString()} · `+
       `${g.warrants_live} live warrants (${g.calls} calls, ${g.puts} puts) · issuers short gamma; negative = destabilising hedge flow`;
     const r=g.readout||{};
@@ -853,14 +943,14 @@ async function loadGex(retried){
       <td><b>${t.name}</b></td><td class="num">${t.strike}</td><td>${t.type}</td>
       <td class="muted">${t.maturity}</td><td class="num">${(t.iv*100).toFixed(0)}%</td>
       <td class="num ${cls(t.gex_rm_per_1pct)}">${(t.gex_rm_per_1pct/1e6).toFixed(2)}</td></tr>`).join("");
-    const wRows=(g.warrants||[]).map(w=>`<tr>
-      <td><b>${w.name}</b> <span class="muted">${w.code}</span></td><td>${w.type}</td>
-      <td class="num">${w.strike}</td><td class="muted">${w.maturity}</td>
-      <td class="num">${w.ratio}</td><td class="num">${w.price==null?"—":w.price.toFixed(3)}</td>
-      <td class="num">${(w.iv*100).toFixed(0)}%</td>
-      <td class="num">${w.units==null?"—":(w.units/1e6).toFixed(0)}M <span class="muted">(${w.units_basis})</span></td>
-      <td class="num ${cls(w.gex_rm_per_1pct)}">${(w.gex_rm_per_1pct/1e6).toFixed(2)}</td>
-      <td class="muted">${w.discovery_source}</td></tr>`).join("");
+    const troughLevel=(r.trough??g.profile.trough);
+    // price + gamma-bands panel (only when the KLCI close series is available)
+    const bandsPanel=(kl&&kl.close&&kl.close.length)?`
+      <div class="gx-panel" style="margin-top:14px"><h3>KLCI close + issuer gamma bands (darker = more short gamma) · GEX by strike</h3>
+        <div style="overflow-x:auto">${gexPriceBandsSVG(kl.dates,kl.close,g.by_strike,g.spot,troughLevel)}</div>
+        <div class="legend"><span><i style="background:#c62828"></i>issuer gamma band / GEX at strike</span>
+          <span><i style="background:var(--accent)"></i>spot ${g.spot.toFixed(0)}</span>
+          <span><i style="background:#a855f7"></i>gamma trough ${troughLevel.toFixed(0)}</span></div></div>`:"";
     body.innerHTML=`
       <div class="cards">
         <div class="card"><div class="k">Net issuer GEX</div>
@@ -885,6 +975,7 @@ async function loadGex(retried){
         <div class="gx-panel"><h3>Net GEX vs index level — trough marks the max hedging-pressure zone</h3>
           ${gexProfileSVG(g.profile,g.spot)}</div>
       </div>
+      ${bandsPanel}
       <div class="gx-grid" style="margin-top:14px">
         <div class="gx-panel"><h3>Top 5 gamma concentrations</h3>
           <table><thead><tr><th>Warrant</th><th class="num">Strike</th><th>Type</th><th>Expiry</th>
@@ -897,11 +988,22 @@ async function loadGex(retried){
             delta-hedge via FKLI, so issuer gamma is negative for calls and puts — the map shows
             destabilising hedge-flow zones, not SPX-style pinning.</div></div>
       </div>
-      <div class="gx-panel" style="margin-top:14px"><h3>Live warrant chain (${g.warrants_live})</h3>
-        <div style="overflow-x:auto"><table><thead><tr><th>Warrant</th><th>Type</th><th class="num">Strike</th>
-          <th>Expiry</th><th class="num">Ratio</th><th class="num">Price</th><th class="num">IV</th>
-          <th class="num">Units</th><th class="num">GEX RM mn/1%</th><th>Source</th></tr></thead>
-          <tbody>${wRows}</tbody></table></div></div>`;
+      <div class="gx-panel" style="margin-top:14px"><h3>Live warrant chain (${g.warrants_live}) <span style="text-transform:none;letter-spacing:0;font-weight:400">— click a column to sort</span></h3>
+        <div id="warrant-chain" style="overflow-x:auto"></div></div>`;
+    // sortable warrant chain (default: largest |GEX| first)
+    const chain=(g.warrants||[]).map(w=>({...w, abs_gex:Math.abs(w.gex_rm_per_1pct||0)}));
+    renderSortableTable($("#warrant-chain"), chain, [
+      {key:"name", label:"Warrant", render:w=>`<td><b>${w.name}</b> <span class="muted">${w.code}</span></td>`},
+      {key:"type", label:"Type", render:w=>`<td>${w.type}</td>`},
+      {key:"strike", label:"Strike", num:true},
+      {key:"maturity", label:"Expiry", render:w=>`<td class="muted">${w.maturity}</td>`},
+      {key:"ratio", label:"Ratio", num:true},
+      {key:"price", label:"Price", num:true, render:w=>`<td class="num">${w.price==null?"—":w.price.toFixed(3)}</td>`},
+      {key:"iv", label:"IV", num:true, render:w=>`<td class="num">${(w.iv*100).toFixed(0)}%</td>`},
+      {key:"units", label:"Units", num:true, render:w=>`<td class="num">${w.units==null?"—":(w.units/1e6).toFixed(0)+"M"} <span class="muted">(${w.units_basis})</span></td>`},
+      {key:"gex_rm_per_1pct", label:"GEX RM mn/1%", num:true, render:w=>`<td class="num ${cls(w.gex_rm_per_1pct)}">${(w.gex_rm_per_1pct/1e6).toFixed(2)}</td>`},
+      {key:"discovery_source", label:"Source", render:w=>`<td class="muted">${w.discovery_source}</td>`},
+    ], {sortKey:"gex_rm_per_1pct", dir:1});   // most-negative (strongest short gamma) first
   }catch(e){
     if(e.message==="timeout"&&!retried){autoRetry(body,loadGex,"The warrant GEX map",20);return;}
     const msg=e.message==="timeout"?"still building the GEX map (first build scrapes ~20 warrant pages — retry in a minute)…":e.message;
