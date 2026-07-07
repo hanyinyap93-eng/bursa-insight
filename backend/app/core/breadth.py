@@ -213,9 +213,22 @@ def index_ohlc(key: str, lookback: str = "5y") -> dict:
     return out
 
 
-def _sector_data(key: str, lookback: str, term: str = "short"):
-    """Heavy per-sector data (constituents + prices), cached so window changes
-    don't trigger a re-scrape. Returns (meta, HealthResult)."""
+def _build_sector_data(code, cache_key, lookback, term):
+    """Scrape + download one sector's constituents and compute health."""
+    cfg = service._cfg("KLCI", lookback, term)
+    meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
+    if meta.empty:
+        raise ValueError("no constituents")
+    close = ih.download_prices(meta["Ticker"].tolist(), cfg)
+    res = ih.compute_health(cfg, tickers_meta=meta, close=close)
+    service._cache.set(cache_key, (meta, res))
+    return meta, res
+
+
+def _sector_data(key: str, lookback: str, term: str = "short", nowait: bool = False):
+    """Heavy per-sector data (constituents + prices), cached. Returns
+    (meta, HealthResult) — or None (warming in the background) when nowait=True
+    and it is not cached yet, so a request never blocks on the heavy build."""
     code = ih.SECTOR_INDEX_CODES.get(key)
     if not code:
         raise ValueError(f"unknown sector '{key}'")
@@ -223,14 +236,11 @@ def _sector_data(key: str, lookback: str, term: str = "short"):
     cached = service._cache.get(cache_key, ttl=service.TTL_SECONDS * 2)
     if cached is not None:
         return cached
-    cfg = service._cfg("KLCI", lookback, term)
-    meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
-    if meta.empty:
-        raise ValueError(f"no constituents for sector '{key}'")
-    close = ih.download_prices(meta["Ticker"].tolist(), cfg)
-    res = ih.compute_health(cfg, tickers_meta=meta, close=close)
-    service._cache.set(cache_key, (meta, res))
-    return meta, res
+    if nowait:
+        service._spawn_refresh(
+            cache_key, lambda: _build_sector_data(code, cache_key, lookback, term))
+        return None
+    return _build_sector_data(code, cache_key, lookback, term)
 
 
 def sector_detail(key: str, lookback: str = "1y", corr_window: str = None,
@@ -241,7 +251,10 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None,
     equal-weighted price index of those constituents. The top-correlated list is
     computed over `corr_window` (1mo..2y) so it can share the UI's lookback.
     """
-    meta, res = _sector_data(key, lookback, term)
+    data = _sector_data(key, lookback, term, nowait=True)
+    if data is None:                    # heavy build running in the background
+        return {"key": key, "warming": True}
+    meta, res = data
     warm = min(res.cfg.warmup, max(len(res.health_pct) - 2, 0))
     hp = res.health_pct.iloc[warm:]
 
@@ -251,12 +264,14 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None,
     eq = eq_full.iloc[warm:]
 
     # stocks most correlated to this sector's index, over the chosen window.
-    # Correlate against the SAME index series the stock->indexes panel uses
-    # (service.get_index_price_panel) so a stock's value matches in both panels.
+    # Use the CACHED index panel only (never trigger its heavy build here);
+    # fall back to the local eq-weight index.
     win = _CORR_WINDOW.get(corr_window) if corr_window else None
+    idx_series = eq_full
     try:
-        panel = service.get_index_price_panel()
-        idx_series = panel[key].reindex(res.close.index) if key in panel.columns else eq_full
+        got = service._cache.get_stale("indexpanel:2y")
+        if got is not None and key in got[0].columns:
+            idx_series = got[0][key].reindex(res.close.index)
     except Exception:  # noqa: BLE001
         idx_series = eq_full
     rets = res.close.pct_change()
@@ -284,15 +299,11 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None,
     n = res.close.shape[1]
     above_sma = int(res.signals["sma"]["up"].iloc[-1].sum())
 
-    # Use the SAME eq-wt index as the chart (index_ohlc, 5y-anchored) so the
-    # panel's index level matches the chart. Fall back to the local 1y series.
-    try:
-        oh = index_ohlc(key, "5y")
-        index_level = round(oh["close"][-1], 2)
-        index_spark = [round(x, 2) for x in oh["close"][-60:]]
-    except Exception:  # noqa: BLE001
-        index_level = round(float(eq.iloc[-1]), 2)
-        index_spark = [round(float(x), 2) for x in eq.reindex(hp.index).ffill().tail(60)]
+    # index level/spark from the local eq-weight series (no extra download —
+    # index_ohlc would re-download the sector's constituents and can crash a
+    # memory-constrained worker; the chart fetches its own OHLC separately)
+    index_level = round(float(eq.iloc[-1]), 2)
+    index_spark = [round(float(x), 2) for x in eq.reindex(hp.index).ffill().tail(60)]
 
     return {
         "key": key, "name": SECTOR_DISPLAY.get(key, key),
@@ -395,8 +406,11 @@ def sector_rotation(lookback: str = "1y", term: str = "short") -> dict:
     over each sector's own constituents). Returns a ranked latest snapshot plus
     a downsampled matrix for the heatmap.
     """
-    ih_df = service.get_sector_health(lookback, term)
-    if ih_df is None or ih_df.empty:
+    ih_df = service.get_sector_health(lookback, term, nowait=True)
+    if ih_df is None:
+        return {"as_of": None, "warming": True, "ranked": [],
+                "heatmap": {"dates": [], "sectors": [], "values": {}}}
+    if ih_df.empty:
         return {"as_of": None, "ranked": [], "heatmap": {"dates": [], "sectors": [], "values": {}}}
     warm = min(service._cfg("KLCI", lookback, term).warmup, max(len(ih_df) - 2, 0))
     ih_df = ih_df.iloc[warm:].dropna(how="all")

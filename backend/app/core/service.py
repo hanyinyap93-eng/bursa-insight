@@ -269,15 +269,20 @@ def get_health(index: str = "KLCI", lookback: str = "1y", term: str = "short",
     return _swr(key, TTL_SECONDS, lambda: _build_health(index, lookback, term, force), force=force)
 
 
-def get_sector_health(lookback: str = "1y", term: str = "short", force: bool = False):
+def get_sector_health(lookback: str = "1y", term: str = "short",
+                      force: bool = False, nowait: bool = False):
     """Per-sector breadth Index Health % (sector rotation), SWR-cached.
 
-    (Date x sector) DataFrame; heavy (scrapes + downloads 13 sector member sets).
+    (Date x sector) DataFrame; heavy (scrapes + downloads 13 sector member
+    sets). nowait=True never blocks on a cold build (returns None, warms in bg).
     """
     key = f"sector:{lookback}:{term}"
     cfg = _cfg("KLCI", lookback, term)
     cfg.refresh_cache = force
-    return _swr(key, TTL_SECONDS * 2, lambda: ih.sector_rotation_health(cfg), force=force)
+    builder = lambda: ih.sector_rotation_health(cfg)
+    if nowait:
+        return _cached_or_warm(key, TTL_SECONDS * 2, builder)
+    return _swr(key, TTL_SECONDS * 2, builder, force=force)
 
 
 def _build_index_panel(lookback):

@@ -190,7 +190,7 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None,
     except ValueError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"sector detail failed: {exc}")
+        raise HTTPException(500, f"sector detail failed: {type(exc).__name__}: {exc}")
 
 
 @app.get("/api/sectors/rotation")
@@ -198,7 +198,7 @@ def sector_rotation(lookback: str = "1y", term: str = "short"):
     try:
         return breadth_mod.sector_rotation(lookback, term)
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"sector rotation failed: {exc}")
+        raise HTTPException(500, f"sector rotation failed: {type(exc).__name__}: {exc}")
 
 
 # --------------------------------------------------------------------------- #

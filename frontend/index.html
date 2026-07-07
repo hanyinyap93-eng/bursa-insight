@@ -978,6 +978,8 @@ async function loadHealth(){
     // the index's top-correlated list is always over a fixed 6-month window
     const o = isSector ? await get(`/api/sector/${HEALTH_TARGET}?lookback=${LB}&corr_window=6mo&term=${TERM}`)
                        : await get(`/api/breadth/overview?lookback=${LB}&corr_window=6mo&term=${TERM}`);
+    if(o&&o.warming){ $("#g-sub").textContent="preparing sector health (first load)…";
+      clearTimeout(loadHealth._t); loadHealth._t=setTimeout(loadHealth, 10000); return; }
     if(isSector) $("#g-title").textContent = (o.name||HEALTH_TARGET) + t("health.suffix");
     $("#g-val").textContent=fmt(o.health_pct)+"%"; $("#g-val").className="big "+cls(o.health_pct);
     const tr=healthTrend(o.health_pct);
@@ -1018,6 +1020,8 @@ async function loadRotation(){
       get(`/api/sectors/rotation?lookback=${LB}&term=${TERM}`, 120000),
       get(`/api/breadth/overview?lookback=${LB}&term=${TERM}`).catch(()=>null)
     ]);
+    if(s&&s.warming){ $("#rotation").innerHTML='<div class="loading" style="padding:8px 12px">preparing sector health (first load)…</div>';
+      clearTimeout(loadRotation._t); loadRotation._t=setTimeout(loadRotation, 10000); return; }
     const cellsHTML=arr=>arr.filter(v=>v!=null).slice(-60)
       .map(v=>`<div class="c" style="background:${heat(v)}"></div>`).join("");
     const rows=[];
