@@ -366,7 +366,10 @@ def warm_all():
         # core — forced so prices/breadth stay fresh (short shares its prices)
         lambda: get_health("KLCI", term="short", force=True),
         lambda: get_sector_health(term="short", force=True),
-        lambda: get_index_price_panel(force=True),
+        # panel: NOT forced — a forced rebuild re-downloads all 13 sector
+        # constituent sets (~7 min on a rate-limited host). Non-force reuses
+        # the disk cache; SWR refreshes it in the background when it goes stale.
+        lambda: get_index_price_panel(),
         # KLCI + sector mid/long — cheap recompute over the just-cached prices
         lambda: get_health("KLCI", term="mid"),
         lambda: get_health("KLCI", term="long"),

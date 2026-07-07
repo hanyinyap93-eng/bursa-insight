@@ -95,17 +95,31 @@ def stock_index_correlations(ticker: str, lookback: str = "6mo") -> dict:
     """Correlation of a stock's daily returns to every index (KLCI + sectors).
 
     Computed over the trailing window given by `lookback`. Returns the list
-    sorted by correlation (descending)."""
+    sorted by correlation (descending).
+
+    The (Date x index) price panel is heavy to build (~7 min cold on a
+    rate-limited cloud host), so this NEVER triggers a synchronous build: it
+    serves the cached panel (even if slightly stale) and, if the panel has
+    never been built yet, kicks off a background warm and returns `warming`
+    so the request stays fast instead of hanging past the client timeout.
+    """
     import pandas as pd
+    panel_key = "indexpanel:2y"
+    got = service._cache.get_stale(panel_key)
+    if got is None:
+        service._spawn_refresh(panel_key, lambda: service._build_index_panel("2y"))
+        return {"ticker": ticker, "lookback": lookback, "correlations": [],
+                "warming": True}
+    panel = got[0]
+    if panel is None or getattr(panel, "empty", True):
+        return {"ticker": ticker, "lookback": lookback, "correlations": [],
+                "warming": True}
     cfg = service._cfg("KLCI", "2y")
     sclose = ih.download_prices([ticker], cfg)
     if ticker in sclose.columns:
         s = sclose[ticker]
     else:
         s = sclose.iloc[:, 0]
-    panel = service.get_index_price_panel()
-    if panel is None or panel.empty:
-        return {"ticker": ticker, "lookback": lookback, "correlations": []}
     df = panel.copy()
     df["__STOCK__"] = s
     df = df.dropna(subset=["__STOCK__"]).sort_index()
