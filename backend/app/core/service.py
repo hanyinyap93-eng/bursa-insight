@@ -178,14 +178,15 @@ def _swr(key, ttl, builder, force=False):
         return value
 
 
-def _cfg(index: str = "KLCI", lookback: str = "1y") -> ih.BreadthConfig:
+def _cfg(index: str = "KLCI", lookback: str = "1y", term: str = "short") -> ih.BreadthConfig:
     meta = INDEXES.get(index, INDEXES["KLCI"])
-    return ih.BreadthConfig(
+    cfg = ih.BreadthConfig(
         lookback=lookback,
         index_symbol=meta["symbol"],
         cache_dir=CACHE_DIR,
         constituents_source="klse",
     )
+    return ih.apply_term(cfg, term)   # short/mid/long -> SMA & H/L lookbacks
 
 
 _CONST_FILE = CACHE_DIR / "klci_constituents.json"
@@ -222,26 +223,31 @@ def get_constituents(force: bool = False):
     return df
 
 
-def _build_health(index, lookback, force):
-    cfg = _cfg(index, lookback)
+def _build_health(index, lookback, term, force):
+    cfg = _cfg(index, lookback, term)
     cfg.refresh_cache = force
     meta = get_constituents() if index == "KLCI" else None
     return ih.compute_health(cfg, tickers_meta=meta)
 
 
-def get_health(index: str = "KLCI", lookback: str = "1y", force: bool = False) -> ih.HealthResult:
-    """Breadth Index Health (stale-while-revalidate cached). KLCI only in MVP."""
-    key = f"health:{index}:{lookback}"
-    return _swr(key, TTL_SECONDS, lambda: _build_health(index, lookback, force), force=force)
+def get_health(index: str = "KLCI", lookback: str = "1y", term: str = "short",
+               force: bool = False) -> ih.HealthResult:
+    """Breadth Index Health (stale-while-revalidate cached). KLCI only in MVP.
+
+    term: short (10/25) | mid (20/50) | long (50/100) — SMA/momentum/RSI and
+    new-high/low lookbacks.
+    """
+    key = f"health:{index}:{lookback}:{term}"
+    return _swr(key, TTL_SECONDS, lambda: _build_health(index, lookback, term, force), force=force)
 
 
-def get_sector_health(lookback: str = "1y", force: bool = False):
+def get_sector_health(lookback: str = "1y", term: str = "short", force: bool = False):
     """Per-sector breadth Index Health % (sector rotation), SWR-cached.
 
     (Date x sector) DataFrame; heavy (scrapes + downloads 13 sector member sets).
     """
-    key = f"sector:{lookback}"
-    cfg = _cfg("KLCI", lookback)
+    key = f"sector:{lookback}:{term}"
+    cfg = _cfg("KLCI", lookback, term)
     cfg.refresh_cache = force
     return _swr(key, TTL_SECONDS * 2, lambda: ih.sector_rotation_health(cfg), force=force)
 
@@ -316,19 +322,20 @@ def get_klci_gex(force: bool = False) -> dict:
     return _swr(key, TTL_SECONDS * 24, _build, force=force)  # 12h TTL
 
 
-def get_fbm_health(key: str, lookback: str = "1y", force: bool = False) -> dict:
+def get_fbm_health(key: str, lookback: str = "1y", term: str = "short",
+                   force: bool = False) -> dict:
     """FBM market-index health (Mid 70 / ACE / EMAS / Fledgling), SWR-cached.
 
     Heavy first build: scrapes the constituent list from investingmalaysia and
     downloads every member's prices (EMAS is ~200+ stocks), so it is cached
-    with a long TTL and persisted to disk.
+    with a long TTL and persisted to disk. term: short | mid | long.
     """
     from . import fbm_indexes as fbm_mod
 
     k = key.upper()
-    cache_key = f"fbm:{k}:{lookback}"
+    cache_key = f"fbm:{k}:{lookback}:{term}"
     return _swr(cache_key, TTL_SECONDS * 4,  # 2h TTL
-                lambda: fbm_mod.build_fbm_health(k, lookback), force=force)
+                lambda: fbm_mod.build_fbm_health(k, lookback, term), force=force)
 
 
 def get_risk_appetite(force: bool = False) -> dict:

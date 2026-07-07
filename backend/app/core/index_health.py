@@ -169,6 +169,25 @@ class BreadthConfig:
     warmup: int = 25
 
 
+# Time-horizon presets for the Index Health indicator. "period" drives the
+# SMA / momentum / RSI lookback; "hl_period" is the new-high/low window.
+# "short" matches the notebooks' default (10 / 25).
+TERM_PRESETS = {
+    "short": {"period": 10, "hl_period": 25},
+    "mid":   {"period": 20, "hl_period": 50},
+    "long":  {"period": 50, "hl_period": 100},
+}
+
+
+def apply_term(cfg: "BreadthConfig", term: str = "short") -> "BreadthConfig":
+    """Set the health lookbacks on `cfg` from a term preset (unknown -> short)."""
+    p = TERM_PRESETS.get((term or "short").lower(), TERM_PRESETS["short"])
+    cfg.mom_period = cfg.h_rsi_period = cfg.h_sma_period = p["period"]
+    cfg.hl_period = p["hl_period"]
+    cfg.warmup = p["hl_period"]      # drop the (hl_period) NaN warm-up bars
+    return cfg
+
+
 # --------------------------------------------------------------------------- #
 # Indicators (verbatim methodology from the notebooks)
 # --------------------------------------------------------------------------- #

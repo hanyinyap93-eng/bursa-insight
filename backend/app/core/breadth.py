@@ -22,9 +22,10 @@ def _trend(series: pd.Series, n: int = 5) -> str:
     return "expanding" if delta > 0.5 else "contracting" if delta < -0.5 else "flat"
 
 
-def breadth_overview(index: str = "KLCI", lookback: str = "1y", corr_window: str = None) -> dict:
+def breadth_overview(index: str = "KLCI", lookback: str = "1y", corr_window: str = None,
+                     term: str = "short") -> dict:
     """Single-payload market-breadth snapshot for the overview page."""
-    result = service.get_health(index, lookback)
+    result = service.get_health(index, lookback, term)
     warm = result.cfg.warmup
     health_pct = result.health_pct.iloc[warm:]
     cur = service.latest(health_pct)
@@ -55,6 +56,8 @@ def breadth_overview(index: str = "KLCI", lookback: str = "1y", corr_window: str
 
     return {
         "index": index,
+        "term": term,
+        "term_periods": {"period": result.cfg.h_sma_period, "hl_period": result.cfg.hl_period},
         "correlated": correlated,            # top stocks correlated to the index
         "corr_window": corr_window or lookback,
         "as_of": str(result.health_pct.index[-1].date()),
@@ -194,17 +197,17 @@ def index_ohlc(key: str, lookback: str = "5y") -> dict:
     return out
 
 
-def _sector_data(key: str, lookback: str):
+def _sector_data(key: str, lookback: str, term: str = "short"):
     """Heavy per-sector data (constituents + prices), cached so window changes
     don't trigger a re-scrape. Returns (meta, HealthResult)."""
     code = ih.SECTOR_INDEX_CODES.get(key)
     if not code:
         raise ValueError(f"unknown sector '{key}'")
-    cache_key = f"sectordata:{key}:{lookback}"
+    cache_key = f"sectordata:{key}:{lookback}:{term}"
     cached = service._cache.get(cache_key, ttl=service.TTL_SECONDS * 2)
     if cached is not None:
         return cached
-    cfg = service._cfg("KLCI", lookback)
+    cfg = service._cfg("KLCI", lookback, term)
     meta = ih.get_index_tickers(code, cfg.max_retries, cfg.retry_wait)
     if meta.empty:
         raise ValueError(f"no constituents for sector '{key}'")
@@ -214,14 +217,15 @@ def _sector_data(key: str, lookback: str):
     return meta, res
 
 
-def sector_detail(key: str, lookback: str = "1y", corr_window: str = None) -> dict:
+def sector_detail(key: str, lookback: str = "1y", corr_window: str = None,
+                  term: str = "short") -> dict:
     """Index Health + index-price proxy for one Bursa sector (clicked in the UI).
 
     Health = breadth over the sector's constituents; the index price is an
     equal-weighted price index of those constituents. The top-correlated list is
     computed over `corr_window` (1mo..2y) so it can share the UI's lookback.
     """
-    meta, res = _sector_data(key, lookback)
+    meta, res = _sector_data(key, lookback, term)
     warm = min(res.cfg.warmup, max(len(res.health_pct) - 2, 0))
     hp = res.health_pct.iloc[warm:]
 
@@ -289,9 +293,9 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None) -> di
     }
 
 
-def health_series(index: str = "KLCI", lookback: str = "1y") -> dict:
+def health_series(index: str = "KLCI", lookback: str = "1y", term: str = "short") -> dict:
     """Time series for the Index Health chart (health % + index overlay)."""
-    result = service.get_health(index, lookback)
+    result = service.get_health(index, lookback, term)
     warm = result.cfg.warmup
     h = result.health_pct.iloc[warm:]
     payload = {
@@ -368,17 +372,17 @@ def quotes(index: str = "KLCI", lookback: str = "1y") -> list[dict]:
     return head + body
 
 
-def sector_rotation(lookback: str = "1y") -> dict:
+def sector_rotation(lookback: str = "1y", term: str = "short") -> dict:
     """Latest per-sector breadth health, ranked — the sector rotation heatmap.
 
     Consumes the (Date x sector) health-% DataFrame from the service (breadth
     over each sector's own constituents). Returns a ranked latest snapshot plus
     a downsampled matrix for the heatmap.
     """
-    ih_df = service.get_sector_health(lookback)
+    ih_df = service.get_sector_health(lookback, term)
     if ih_df is None or ih_df.empty:
         return {"as_of": None, "ranked": [], "heatmap": {"dates": [], "sectors": [], "values": {}}}
-    warm = min(service._cfg().warmup, max(len(ih_df) - 2, 0))
+    warm = min(service._cfg("KLCI", lookback, term).warmup, max(len(ih_df) - 2, 0))
     ih_df = ih_df.iloc[warm:].dropna(how="all")
 
     latest_row = ih_df.iloc[-1]

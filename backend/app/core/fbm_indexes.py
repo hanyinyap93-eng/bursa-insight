@@ -185,8 +185,11 @@ def _sector_table(result, meta):
     return rows
 
 
-def build_fbm_health(key: str, lookback: str = "1y") -> dict:
-    """Full JSON payload for one FBM index: overall health, sparks, sectors."""
+def build_fbm_health(key: str, lookback: str = "1y", term: str = "short") -> dict:
+    """Full JSON payload for one FBM index: overall health, sparks, sectors.
+
+    term: short (10/25) | mid (20/50) | long (50/100) health lookbacks.
+    """
     key = key.upper()
     if key not in FBM_INDEXES:
         raise ValueError(f"unknown FBM index '{key}' "
@@ -196,13 +199,14 @@ def build_fbm_health(key: str, lookback: str = "1y") -> dict:
     # distinct index_symbol per index so the price caches don't collide
     cfg = ih.BreadthConfig(lookback=lookback, cache_dir=CACHE_DIR,
                            index_symbol=f"EW_{key}")
+    ih.apply_term(cfg, term)
     close = ih.download_prices(meta["Ticker"].tolist(), cfg)
     # No Yahoo symbol for these indexes -> equal-weight proxy (rebased mean)
     reb = close.apply(lambda s: s / s.dropna().iloc[0])
     close[cfg.index_symbol] = reb.mean(axis=1) * 100.0
     result = ih.compute_health(cfg, tickers_meta=meta, close=close.copy())
 
-    hp = result.health_pct.dropna().iloc[25:]        # warm-up bars are NaN-ish
+    hp = result.health_pct.dropna().iloc[cfg.warmup:]   # drop the warm-up bars
     latest = float(hp.iloc[-1])
     prev5 = float(hp.iloc[-6]) if len(hp) > 6 else latest
     comp = result.component_pct.dropna().iloc[-1]
@@ -215,6 +219,8 @@ def build_fbm_health(key: str, lookback: str = "1y") -> dict:
         "name": info["name"],
         "as_of": str(hp.index[-1].date()),
         "lookback": lookback,
+        "term": term,
+        "term_periods": {"period": cfg.h_sma_period, "hl_period": cfg.hl_period},
         "constituents": int(len(meta)),
         "priced": int(result.close.shape[1]),
         "source": meta.attrs.get("source", "?"),

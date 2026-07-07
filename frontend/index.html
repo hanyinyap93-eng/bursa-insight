@@ -67,6 +67,10 @@
   .lookback{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
   .lookback button{background:none;border:none;color:var(--muted);padding:6px 12px;font-size:12px;border-radius:var(--radius-pill);}
   .lookback button.active{background:var(--accent);color:#fff;}
+  /* Index Health term selector (short / mid / long) */
+  .termsel{display:flex;align-items:center;gap:7px;}
+  .termsel-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+  @media (max-width:900px){ .termsel-lbl{display:none;} }
   .btn{background:var(--text);color:var(--bg);border:none;border-radius:var(--radius-pill);
     padding:9px 18px;font-weight:600;font-size:13px;transition:opacity .12s;}
   .btn:hover{opacity:.85;}
@@ -294,6 +298,12 @@
     <a class="active" id="nav-chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" title="Local + global market news (right panel)">News</a><a id="nav-gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
   </nav>
   <div class="spacer"></div>
+  <div class="termsel" title="Index Health time horizon — short 10/25, mid 20/50, long 50/100 (SMA·mom·RSI / new-high-low lookbacks)">
+    <span class="termsel-lbl">Term</span>
+    <div class="lookback" id="term-sel">
+      <button data-term="short" class="active">Short</button><button data-term="mid">Mid</button><button data-term="long">Long</button>
+    </div>
+  </div>
   <button class="btn ghost" id="theme" title="Toggle dark / light mode" aria-label="Toggle theme">
     <svg class="bulb" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -449,6 +459,8 @@ const API = (location.protocol === "file:" || location.port === "5500")
   ? "http://127.0.0.1:8000" : "";
 const $ = s=>document.querySelector(s);
 let LB = "1y";                 // panel data lookback (health / indexes / quotes)
+let TERM = "short";            // Index Health horizon: short 10/25, mid 20/50, long 50/100
+try{ const t=localStorage.getItem("term"); if(["short","mid","long"].includes(t)) TERM=t; }catch(_){}
 const CHART_LB = "5y";         // chart fetches long history; scroll-wheel zoom changes the view
 let SYMBOL = {ticker:"1155.KL", code:"1155", name:"MAYBANK"};
 let QUOTES = [];
@@ -636,12 +648,13 @@ async function loadHealth(){
   $("#g-reset").style.display = isSector ? "inline" : "none";
   try{
     // the index's top-correlated list is always over a fixed 6-month window
-    const o = isSector ? await get(`/api/sector/${HEALTH_TARGET}?lookback=${LB}&corr_window=6mo`)
-                       : await get(`/api/breadth/overview?lookback=${LB}&corr_window=6mo`);
+    const o = isSector ? await get(`/api/sector/${HEALTH_TARGET}?lookback=${LB}&corr_window=6mo&term=${TERM}`)
+                       : await get(`/api/breadth/overview?lookback=${LB}&corr_window=6mo&term=${TERM}`);
     if(isSector) $("#g-title").textContent = (o.name||HEALTH_TARGET) + " Index Health";
     $("#g-val").textContent=fmt(o.health_pct)+"%"; $("#g-val").className="big "+cls(o.health_pct);
     const v=$("#g-verdict"); v.textContent=o.verdict; v.className="verdict "+(o.verdict==='expanding'?'pos':'neg');
-    $("#g-sub").innerHTML=`as of ${o.as_of} · ${o.constituents} stocks · ${o.pct_above_sma}% above SMA · 5d ${o.trend_5d}`;
+    const tp=o.term_periods?` · ${TERM} (SMA ${o.term_periods.period}/HL ${o.term_periods.hl_period})`:"";
+    $("#g-sub").innerHTML=`as of ${o.as_of} · ${o.constituents} stocks · ${o.pct_above_sma}% above SMA · 5d ${o.trend_5d}${tp}`;
     // index price line chart (above the health indicator)
     if(o.index_spark && o.index_spark.length){
       const label = isSector ? `${o.name||HEALTH_TARGET} (eq-wt index)` : "FBM KLCI";
@@ -673,8 +686,8 @@ async function loadRotation(){
   try{
     // sectors + the KLCI itself (so the main index is selectable in the list)
     const [s,o]=await Promise.all([
-      get(`/api/sectors/rotation?lookback=${LB}`, 120000),
-      get(`/api/breadth/overview?lookback=${LB}`).catch(()=>null)
+      get(`/api/sectors/rotation?lookback=${LB}&term=${TERM}`, 120000),
+      get(`/api/breadth/overview?lookback=${LB}&term=${TERM}`).catch(()=>null)
     ]);
     const cellsHTML=arr=>arr.filter(v=>v!=null).slice(-60)
       .map(v=>`<div class="c" style="background:${heat(v)}"></div>`).join("");
@@ -1063,7 +1076,7 @@ function loadFbm(){
 async function loadFbmIndex(key,retried){
   const el=$("#fbm-"+key);
   try{
-    const d=await get(`/api/fbm/${key.toLowerCase()}?lookback=1y`,300000);
+    const d=await get(`/api/fbm/${key.toLowerCase()}?lookback=1y&term=${TERM}`,300000);
     // diverging health sparkline (same style as the right-rail gauge)
     const mx=Math.max(1,...d.spark.map(Math.abs));
     const spark=d.spark.map(x=>{
@@ -1294,6 +1307,16 @@ function boot(){
   $("#nav-gex").onclick=()=>showPage("gex");
   $("#nav-fbm").onclick=()=>showPage("fbm");
   $("#nav-ra").onclick=()=>showPage("ra");
+  // Index Health term selector (short / mid / long) — drives every health view
+  document.querySelectorAll('#term-sel button').forEach(b=>b.classList.toggle('active',b.dataset.term===TERM));
+  document.querySelectorAll('#term-sel button').forEach(b=>b.onclick=()=>{
+    if(b.dataset.term===TERM) return;
+    TERM=b.dataset.term;
+    document.querySelectorAll('#term-sel button').forEach(x=>x.classList.toggle('active',x===b));
+    try{localStorage.setItem('term',TERM);}catch(_){}
+    loadHealth(); loadRotation();                 // KLCI / sector health
+    if(FBM_LOADED) loadFbm();                      // FBM indexes if that page was opened
+  });
   // per-page refresh buttons re-fetch (server serves cached + refreshes behind)
   $("#gex-refresh").onclick=()=>{loadSentiment();loadGex();};
   $("#fbm-refresh").onclick=loadFbm;

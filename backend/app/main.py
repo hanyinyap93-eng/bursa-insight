@@ -82,17 +82,18 @@ def indices():
 
 
 @app.get("/api/breadth/overview")
-def breadth_overview(index: str = "KLCI", lookback: str = "1y", corr_window: str = None):
+def breadth_overview(index: str = "KLCI", lookback: str = "1y", corr_window: str = None,
+                     term: str = "short"):
     try:
-        return breadth_mod.breadth_overview(index, lookback, corr_window)
+        return breadth_mod.breadth_overview(index, lookback, corr_window, term)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"breadth compute failed: {exc}")
 
 
 @app.get("/api/breadth/series")
-def breadth_series(index: str = "KLCI", lookback: str = "1y"):
+def breadth_series(index: str = "KLCI", lookback: str = "1y", term: str = "short"):
     try:
-        return breadth_mod.health_series(index, lookback)
+        return breadth_mod.health_series(index, lookback, term)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"series compute failed: {exc}")
 
@@ -165,9 +166,10 @@ def quotes(index: str = "KLCI", lookback: str = "1y"):
 
 
 @app.get("/api/sector/{key}")
-def sector_detail(key: str, lookback: str = "1y", corr_window: str = None):
+def sector_detail(key: str, lookback: str = "1y", corr_window: str = None,
+                  term: str = "short"):
     try:
-        return breadth_mod.sector_detail(key, lookback, corr_window)
+        return breadth_mod.sector_detail(key, lookback, corr_window, term)
     except ValueError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:  # noqa: BLE001
@@ -175,9 +177,9 @@ def sector_detail(key: str, lookback: str = "1y", corr_window: str = None):
 
 
 @app.get("/api/sectors/rotation")
-def sector_rotation(lookback: str = "1y"):
+def sector_rotation(lookback: str = "1y", term: str = "short"):
     try:
-        return breadth_mod.sector_rotation(lookback)
+        return breadth_mod.sector_rotation(lookback, term)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"sector rotation failed: {exc}")
 
@@ -268,12 +270,12 @@ def fbm_indexes():
 
 
 @app.get("/api/fbm/{key}")
-def fbm_health(key: str, lookback: str = "1y", force: bool = False):
+def fbm_health(key: str, lookback: str = "1y", term: str = "short", force: bool = False):
     """Index Health + per-sector Health % for one FBM market index.
-    First build scrapes constituents and downloads all member prices (slow);
-    results are cached (2h TTL, stale-while-revalidate)."""
+    term: short (10/25) | mid (20/50) | long (50/100). First build scrapes
+    constituents and downloads all member prices (slow); cached (2h TTL)."""
     try:
-        return service.get_fbm_health(key, lookback, force=force)
+        return service.get_fbm_health(key, lookback, term, force=force)
     except ValueError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:  # noqa: BLE001
