@@ -1038,7 +1038,6 @@ async function loadGex(retried){
       {key:"iv", label:"IV", num:true, render:w=>`<td class="num">${(w.iv*100).toFixed(0)}%</td>`},
       {key:"units", label:"Units", num:true, render:w=>`<td class="num">${w.units==null?"—":(w.units/1e6).toFixed(0)+"M"} <span class="muted">(${w.units_basis})</span></td>`},
       {key:"gex_rm_per_1pct", label:"GEX RM mn/1%", num:true, render:w=>`<td class="num ${cls(w.gex_rm_per_1pct)}">${(w.gex_rm_per_1pct/1e6).toFixed(2)}</td>`},
-      {key:"discovery_source", label:"Source", render:w=>`<td class="muted">${w.discovery_source}</td>`},
     ], {sortKey:"gex_rm_per_1pct", dir:1});   // most-negative (strongest short gamma) first
     wireCatLegends(body);   // Call/Put legend toggles on the GEX-by-strike chart
   }catch(e){
