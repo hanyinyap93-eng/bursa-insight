@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import os
 import re
 import time
 import urllib.request
@@ -29,7 +30,8 @@ import pandas as pd
 
 from . import index_health as ih
 
-CACHE_DIR = Path(__file__).resolve().parents[2] / "_cache"
+CACHE_DIR = Path(os.environ.get("BURSA_CACHE_DIR")
+                 or Path(__file__).resolve().parents[2] / "_cache")
 SECTOR_MAP_CSV = CACHE_DIR / "im_sector_map.csv"   # shared code->sector cache
 # Packaged seed data (checked into the repo): investingmalaysia blocks some
 # cloud IPs, so a fresh server with an empty cache still needs constituents.

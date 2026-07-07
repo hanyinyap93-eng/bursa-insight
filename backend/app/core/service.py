@@ -8,6 +8,7 @@ refresh().
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -18,7 +19,10 @@ import pandas as pd
 
 from . import index_health as ih
 
-CACHE_DIR = Path(__file__).resolve().parents[2] / "_cache"
+# On-disk cache location. Set BURSA_CACHE_DIR to a persistent-disk mount path
+# (e.g. on Render) so the caches survive redeploys; defaults to backend/_cache.
+CACHE_DIR = Path(os.environ.get("BURSA_CACHE_DIR")
+                 or Path(__file__).resolve().parents[2] / "_cache")
 TTL_SECONDS = 60 * 30  # 30 minutes
 
 # Index registry: what the app exposes. KLCI = breadth over constituents.

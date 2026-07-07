@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import math
+import os
 import re as _re
 import time as _time
 from pathlib import Path
@@ -41,7 +42,8 @@ from bs4 import BeautifulSoup as _BS
 
 from .index_health import HEADERS
 
-CACHE_DIR = Path(__file__).resolve().parents[2] / "_cache"
+CACHE_DIR = Path(os.environ.get("BURSA_CACHE_DIR")
+                 or Path(__file__).resolve().parents[2] / "_cache")
 
 GEX_BASE = "https://www.klsescreener.com"
 GEX_HEADERS = {"User-Agent": HEADERS["User-Agent"],
