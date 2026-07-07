@@ -13,7 +13,7 @@
      "Sign in with Google" button (…apps.googleusercontent.com). Leave empty
      to fall back to the email sign-in. Add your site's origin(s) to the
      client's "Authorized JavaScript origins" in Google Cloud Console. -->
-<meta name="google-client-id" content="" />
+<meta name="google-client-id" content="1005786557822-q5i4b4eqbkslkolnro3stbesa4kjg368.apps.googleusercontent.com" />
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="vendor/lightweight-charts.js"></script>
 <style>
@@ -642,9 +642,11 @@ function initGoogle(){
   google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID, callback:handleGoogleCredential});
   _gsiReady=true; return true;
 }
+let _gbtnRetry=null;
 function renderGoogleButton(){
   const wrap=$("#gbtn-wrap"), box=$("#gbtn");
   if(!GOOGLE_CLIENT_ID){ wrap.style.display="none"; return; }
+  if(_gbtnRetry){ clearInterval(_gbtnRetry); _gbtnRetry=null; }   // no overlapping retries
   const draw=()=>{
     if(!initGoogle()) return false;
     box.innerHTML="";
@@ -655,7 +657,7 @@ function renderGoogleButton(){
   };
   if(draw()) return;
   // GIS script may still be loading — retry briefly, then give up (email fallback stays)
-  let n=0; const iv=setInterval(()=>{ if(draw()||++n>25) clearInterval(iv); }, 200);
+  let n=0; _gbtnRetry=setInterval(()=>{ if(draw()||++n>25){ clearInterval(_gbtnRetry); _gbtnRetry=null; } }, 200);
 }
 let PENDING_PAGE = null;   // page to open right after a successful sign-in
 function updateAuthUI(){
