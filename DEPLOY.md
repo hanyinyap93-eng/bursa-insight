@@ -86,6 +86,28 @@ git push
 
 ---
 
+## Google Sign-In (GEX + Market Index gate)
+
+The GEX and Market Index sections require signing in. The app uses **Google
+Identity Services**, with an email sign-in as a fallback. To turn on the
+"Sign in with Google" button:
+
+1. Go to **Google Cloud Console → APIs & Services → Credentials → Create
+   Credentials → OAuth client ID → Web application**.
+2. Under **Authorized JavaScript origins**, add every origin the app is served
+   from, e.g. `https://bursa-insight.onrender.com`, `http://localhost:8000`,
+   `http://127.0.0.1:8000` (and `http://127.0.0.1:5500` if you use the static
+   dev server). No redirect URI is needed for the button flow.
+3. Copy the **Client ID** (`…apps.googleusercontent.com`) and paste it into the
+   one meta tag near the top of `frontend/index.html`:
+   `<meta name="google-client-id" content="PASTE_CLIENT_ID_HERE" />`
+4. Redeploy. Leaving it empty keeps the email fallback only.
+
+> This is a client-side gate (it controls the UI). It verifies the Google ID
+> token in the browser but does not yet protect the API — for real access
+> control, verify the token server-side (JWT audience = your Client ID) and
+> guard the `/api/gex/*` and `/api/fbm/*` routes.
+
 ## Notes & troubleshooting
 
 - **Free tier sleeps** after ~15 min idle; the first visit then takes ~30s to wake.

@@ -9,6 +9,12 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <meta name="theme-color" content="#000000" />
+<!-- Google Sign-In: paste your OAuth 2.0 Web Client ID here to enable the
+     "Sign in with Google" button (…apps.googleusercontent.com). Leave empty
+     to fall back to the email sign-in. Add your site's origin(s) to the
+     client's "Authorized JavaScript origins" in Google Cloud Console. -->
+<meta name="google-client-id" content="" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="vendor/lightweight-charts.js"></script>
 <style>
   /* Trade Republic–inspired: soft near-black / clean white, muted grays,
@@ -79,6 +85,8 @@
     color:var(--text);padding:10px 12px;font-size:13px;outline:none;transition:border-color .15s;}
   .modal input:focus{border-color:var(--accent);}
   .modal .err{color:var(--red);font-size:11px;margin-top:6px;min-height:14px;}
+  .auth-or{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+  .auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line);}
   .spacer{flex:1;}
   .lookback{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
   .lookback button{background:none;border:none;color:var(--muted);padding:6px 12px;font-size:12px;border-radius:var(--radius-pill);}
@@ -474,6 +482,10 @@
   <div class="modal" role="dialog" aria-modal="true">
     <h3 data-i18n="auth.title">Sign in</h3>
     <p data-i18n="auth.blurb">Sign in to unlock GEX and Market Index.</p>
+    <div id="gbtn-wrap" style="display:none">
+      <div id="gbtn" style="display:flex;justify-content:center"></div>
+      <div class="auth-or"><span data-i18n="auth.or">or</span></div>
+    </div>
     <label for="auth-email" data-i18n="auth.email">Email</label>
     <input id="auth-email" type="email" autocomplete="email" data-i18n-ph="auth.emailPh" placeholder="you@example.com"/>
     <div class="err" id="auth-err"></div>
@@ -534,7 +546,7 @@ const I18N = {
     "auth.blurb":"Sign in to unlock GEX and Market Index.",
     "auth.email":"Email","auth.emailPh":"you@example.com",
     "auth.cancel":"Cancel","auth.submit":"Sign in","auth.needEmail":"Please enter a valid email.",
-    "auth.locked":"Sign in required — click to sign in","auth.hi":"Hi",
+    "auth.locked":"Sign in required — click to sign in","auth.hi":"Hi","auth.or":"or",
   },
   zh:{
     "nav.chart":"图表","nav.sectors":"板块","nav.news":"新闻","nav.gex":"伽马敞口",
@@ -566,7 +578,7 @@ const I18N = {
     "auth.blurb":"登录后可解锁「伽马敞口」和「市场指数」。",
     "auth.email":"邮箱","auth.emailPh":"you@example.com",
     "auth.cancel":"取消","auth.submit":"登录","auth.needEmail":"请输入有效的邮箱地址。",
-    "auth.locked":"需要登录 — 点击登录","auth.hi":"你好",
+    "auth.locked":"需要登录 — 点击登录","auth.hi":"你好","auth.or":"或",
   },
 };
 const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
@@ -594,11 +606,57 @@ function applyStaticI18n(){
 }
 
 /* ---------------- sign-in gate (GEX + Market Index) ---------------- */
-// Client-side gate: no backend auth yet, so this is a local sign-in that
-// unlocks the two premium sections. Persisted in localStorage.
+// Gate: GEX + Market Index require sign-in. Primary is Google Sign-In
+// (Google Identity Services); an email sign-in is kept as a fallback for when
+// no Google Client ID is configured. State persists in localStorage.
 const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm"};
+const GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
 function authUser(){ try{ return localStorage.getItem("authUser")||""; }catch(_){ return ""; } }
+function authName(){ try{ return localStorage.getItem("authName")||""; }catch(_){ return ""; } }
 function isAuthed(){ return !!authUser(); }
+
+// --- Google Identity Services ---
+let _gsiReady=false;
+function decodeJwt(tok){
+  try{
+    const b=tok.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    const json=decodeURIComponent(atob(b).split("").map(c=>
+      "%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+    return JSON.parse(json);
+  }catch(_){ return null; }
+}
+function handleGoogleCredential(resp){
+  const p=decodeJwt(resp&&resp.credential);
+  if(!p||!p.email){ $("#auth-err").textContent=t("auth.needEmail"); return; }
+  try{
+    localStorage.setItem("authUser", p.email);
+    if(p.name) localStorage.setItem("authName", p.name); else localStorage.removeItem("authName");
+    if(p.picture) localStorage.setItem("authPic", p.picture); else localStorage.removeItem("authPic");
+  }catch(_){}
+  const go=PENDING_PAGE; closeAuth(); updateAuthUI();
+  if(go) showPage(go);
+}
+function initGoogle(){
+  if(_gsiReady || !GOOGLE_CLIENT_ID) return _gsiReady;
+  if(!(window.google&&google.accounts&&google.accounts.id)) return false;
+  google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID, callback:handleGoogleCredential});
+  _gsiReady=true; return true;
+}
+function renderGoogleButton(){
+  const wrap=$("#gbtn-wrap"), box=$("#gbtn");
+  if(!GOOGLE_CLIENT_ID){ wrap.style.display="none"; return; }
+  const draw=()=>{
+    if(!initGoogle()) return false;
+    box.innerHTML="";
+    google.accounts.id.renderButton(box, {theme: document.body.classList.contains("light")?"outline":"filled_black",
+      size:"large", width:288, text:"signin_with",
+      locale: LANG==="zh"?"zh_CN":"en"});
+    wrap.style.display="block"; return true;
+  };
+  if(draw()) return;
+  // GIS script may still be loading — retry briefly, then give up (email fallback stays)
+  let n=0; const iv=setInterval(()=>{ if(draw()||++n>25) clearInterval(iv); }, 200);
+}
 let PENDING_PAGE = null;   // page to open right after a successful sign-in
 function updateAuthUI(){
   const authed=isAuthed();
@@ -607,6 +665,7 @@ function updateAuthUI(){
     btn.textContent = authed ? t("auth.signout") : t("auth.signin");
     btn.title = authed ? (t("auth.hi")+" "+authUser()) : t("auth.blurb");
   }
+  if(btn && authed){ btn.title=t("auth.hi")+" "+(authName()||authUser()); }
   document.querySelectorAll('nav a[data-gated]').forEach(a=>{
     a.classList.toggle("locked", !authed);
     if(!authed) a.title=t("auth.locked");
@@ -616,6 +675,7 @@ function openAuth(pendingPage){
   PENDING_PAGE = pendingPage||null;
   $("#auth-err").textContent="";
   const m=$("#auth-modal"); m.classList.add("open");
+  renderGoogleButton();                          // "Sign in with Google" if configured
   const inp=$("#auth-email"); inp.value=""; setTimeout(()=>inp.focus(),30);
 }
 function closeAuth(){ $("#auth-modal").classList.remove("open"); PENDING_PAGE=null; }
@@ -627,7 +687,9 @@ function submitAuth(){
   if(go) showPage(go);
 }
 function signOut(){
-  try{ localStorage.removeItem("authUser"); }catch(_){}
+  try{ localStorage.removeItem("authUser"); localStorage.removeItem("authName");
+       localStorage.removeItem("authPic"); }catch(_){}
+  try{ if(window.google&&google.accounts&&google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(_){}
   updateAuthUI();
   // if currently viewing a gated page, fall back to the chart
   if($("#page-gex").classList.contains("open")||$("#page-fbm").classList.contains("open"))
