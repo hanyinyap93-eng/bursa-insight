@@ -64,8 +64,25 @@ def _startup():
 
 @app.get("/api/info")
 def info():
+    import os
+    cache = service.CACHE_DIR
+    # cache diagnostics — confirm where the on-disk cache actually lives and
+    # that it is writable (used to verify a Render persistent-disk mount)
+    files = writable = None
+    try:
+        files = sum(1 for _ in cache.glob("*")) if cache.exists() else 0
+        probe = cache / ".write_probe"
+        cache.mkdir(parents=True, exist_ok=True)
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        writable = True
+    except Exception:  # noqa: BLE001
+        writable = False
     return {"app": settings.app_name, "version": settings.version,
-            "docs": "/docs", "indices": list(service.INDEXES)}
+            "docs": "/docs", "indices": list(service.INDEXES),
+            "cache_dir": str(cache),
+            "cache_dir_env": os.environ.get("BURSA_CACHE_DIR"),
+            "cache_files": files, "cache_writable": writable}
 
 
 @app.get("/health")
