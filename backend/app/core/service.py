@@ -449,6 +449,11 @@ def warm_all():
     for k in fbm_mod.FBM_INDEXES:
         for term in ("short", "mid", "long"):
             jobs.append(lambda k=k, term=term: get_fbm_health(k, term=term))
+    # Per-sector DETAIL data (default term) so clicking a sector in the right
+    # rail is instant instead of showing "preparing…" on every fresh session.
+    from . import breadth as _breadth
+    for skey in ih.SECTOR_INDEX_CODES:
+        jobs.append(lambda skey=skey: _breadth._sector_data(skey, "1y", "short"))
 
     for fn in jobs:
         try:

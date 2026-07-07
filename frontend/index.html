@@ -781,16 +781,18 @@ async function get(p,ms){
 async function post(p,b){const r=await fetch(API+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});if(!r.ok)throw new Error((await r.text()).slice(0,120));return r.json();}
 // browser-side cache for the heavy analytics pages: serve a recent response
 // instantly (per URL, so each term/page is cached separately). `force`
-// bypasses it (used by the Refresh buttons). Keyed in sessionStorage.
+// bypasses it (used by the Refresh buttons). Kept in localStorage so it
+// PERSISTS across sessions — a returning login renders the last-seen data
+// immediately instead of showing "preparing…" while it re-fetches.
 async function getCached(p, ttlMs, ms, force){
   const key="c:"+p;
   if(!force){
-    try{ const raw=sessionStorage.getItem(key);
+    try{ const raw=localStorage.getItem(key);
       if(raw){ const o=JSON.parse(raw); if(Date.now()-o.t < ttlMs) return o.d; } }catch(_){}
   }
   const d=await get(p, ms);
   // don't cache a "warming" placeholder — it must re-fetch until real data
-  try{ if(!(d&&d.warming)) sessionStorage.setItem(key, JSON.stringify({t:Date.now(), d})); }catch(_){}
+  try{ if(!(d&&d.warming)) localStorage.setItem(key, JSON.stringify({t:Date.now(), d})); }catch(_){}
   return d;
 }
 // server is still building this heavy view — show a note and auto-retry.
