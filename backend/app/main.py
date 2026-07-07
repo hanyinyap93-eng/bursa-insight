@@ -240,10 +240,12 @@ def analyst_sentiment(index: str = "KLCI", force: bool = False):
 def klci_gex(force: bool = False):
     """KLCI index-warrant Gamma Exposure: per-warrant issuer GEX, by-strike
     aggregation, net-GEX profile with the gamma trough, and the Index Health x
-    GEX regime readout. First build scrapes the warrant chain (slow); results
-    are cached (12h TTL, stale-while-revalidate)."""
+    GEX regime readout. The warrant-chain scrape is slow, so this never blocks:
+    it serves the cached payload or returns {warming:true} while it builds in
+    the background (12h TTL, stale-while-revalidate)."""
     try:
-        return service.get_klci_gex(force=force)
+        r = service.get_klci_gex(nowait=True)
+        return r if r is not None else {"warming": True}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"GEX compute failed: {exc}")
 
@@ -257,7 +259,8 @@ def risk_appetite(force: bool = False):
     turn-of-year & size effect) — H scores, rolling betas, monthly
     seasonality with t-stats, and rebased relative performance."""
     try:
-        return service.get_risk_appetite(force=force)
+        r = service.get_risk_appetite(nowait=True)
+        return r if r is not None else {"warming": True}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"risk appetite failed: {exc}")
 
@@ -272,10 +275,12 @@ def fbm_indexes():
 @app.get("/api/fbm/{key}")
 def fbm_health(key: str, lookback: str = "1y", term: str = "short", force: bool = False):
     """Index Health + per-sector Health % for one FBM market index.
-    term: short (10/25) | mid (20/50) | long (50/100). First build scrapes
-    constituents and downloads all member prices (slow); cached (2h TTL)."""
+    term: short (10/25) | mid (20/50) | long (50/100). The constituent scrape +
+    price download is slow, so this never blocks: it serves the cached payload
+    or returns {warming:true} while it builds in the background (8h TTL)."""
     try:
-        return service.get_fbm_health(key, lookback, term, force=force)
+        r = service.get_fbm_health(key, lookback, term, nowait=True)
+        return r if r is not None else {"warming": True, "key": key.upper()}
     except ValueError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:  # noqa: BLE001

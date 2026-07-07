@@ -178,6 +178,21 @@ def _swr(key, ttl, builder, force=False):
         return value
 
 
+def _cached_or_warm(key, ttl, builder):
+    """Non-blocking read: return the cached value (even if stale, refreshing in
+    the background) or None if it has never been built (warming in a background
+    thread). NEVER blocks on a cold build — used by the heavy analytics
+    endpoints so a first/cold request returns instantly instead of hanging."""
+    got = _cache.get_stale(key)
+    if got is not None:
+        value, age = got
+        if age > ttl:
+            _spawn_refresh(key, builder)
+        return value
+    _spawn_refresh(key, builder)
+    return None
+
+
 def _cfg(index: str = "KLCI", lookback: str = "1y", term: str = "short") -> ih.BreadthConfig:
     meta = INDEXES.get(index, INDEXES["KLCI"])
     cfg = ih.BreadthConfig(
@@ -315,12 +330,13 @@ def get_analyst_sentiment(index: str = "KLCI", force: bool = False) -> dict:
     return _swr(key, TTL_SECONDS * 12, _build, force=force)  # 6h TTL
 
 
-def get_klci_gex(force: bool = False) -> dict:
+def get_klci_gex(force: bool = False, nowait: bool = False):
     """KLCI warrant Gamma Exposure payload (SWR-cached).
 
     Very slow first build (discovers + scrapes the whole FBMKLCI warrant
     chain with polite delays), so it is cached with a long TTL, persisted to
-    disk, and served stale-while-revalidate.
+    disk, and served stale-while-revalidate. nowait=True never blocks on a
+    cold build — returns None (and warms in the background) instead.
     """
     from . import klci_gex as gex_mod
 
@@ -337,35 +353,43 @@ def get_klci_gex(force: bool = False) -> dict:
             pass
         return gex_mod.build_gex_payload(health_pct=health_pct)
 
+    if nowait:
+        return _cached_or_warm(key, TTL_SECONDS * 24, _build)
     return _swr(key, TTL_SECONDS * 24, _build, force=force)  # 12h TTL
 
 
 def get_fbm_health(key: str, lookback: str = "1y", term: str = "short",
-                   force: bool = False) -> dict:
+                   force: bool = False, nowait: bool = False):
     """FBM market-index health (Mid 70 / ACE / EMAS / Fledgling), SWR-cached.
 
     Heavy first build: scrapes the constituent list from investingmalaysia and
     downloads every member's prices (EMAS is ~200+ stocks), so it is cached
     with a long TTL and persisted to disk. term: short | mid | long.
+    nowait=True never blocks on a cold build (returns None, warms in bg).
     """
     from . import fbm_indexes as fbm_mod
 
     k = key.upper()
     cache_key = f"fbm:{k}:{lookback}:{term}"
-    return _swr(cache_key, TTL_SECONDS * 4,  # 2h TTL
-                lambda: fbm_mod.build_fbm_health(k, lookback, term), force=force)
+    builder = lambda: fbm_mod.build_fbm_health(k, lookback, term)
+    if nowait:
+        return _cached_or_warm(cache_key, TTL_SECONDS * 16, builder)   # serve stale up to 8h
+    return _swr(cache_key, TTL_SECONDS * 16, builder, force=force)     # 8h TTL
 
 
-def get_risk_appetite(force: bool = False) -> dict:
+def get_risk_appetite(force: bool = False, nowait: bool = False):
     """Risk-appetite index spreads (ACE / MID 70 vs KLCI), SWR-cached.
 
-    Light build (3 index histories from the klsescreener UDF feed), but cached
-    like everything else so the page loads instantly.
+    Light build (3 index histories from the klsescreener UDF feed) but slow on
+    a rate-limited cloud host, so cached like everything else. nowait=True
+    never blocks on a cold build (returns None, warms in the background).
     """
     from . import risk_appetite as ra_mod
 
-    return _swr("riskapp:1", TTL_SECONDS,  # 30 min TTL
-                lambda: ra_mod.build_risk_appetite(), force=force)
+    builder = lambda: ra_mod.build_risk_appetite()
+    if nowait:
+        return _cached_or_warm("riskapp:1", TTL_SECONDS * 6, builder)  # serve stale up to 3h
+    return _swr("riskapp:1", TTL_SECONDS * 6, builder, force=force)    # 3h TTL
 
 
 def warm_all():
@@ -385,21 +409,20 @@ def warm_all():
         lambda: get_health("KLCI", term="short", force=True),
         lambda: get_sector_health(term="short", force=True),
         # panel: NOT forced — a forced rebuild re-downloads all 13 sector
-        # constituent sets (~7 min on a rate-limited host). Non-force reuses
-        # the disk cache; SWR refreshes it in the background when it goes stale.
+        # constituent sets. Non-force reuses the disk cache; SWR refreshes it
+        # in the background when it goes stale.
         lambda: get_index_price_panel(),
         # KLCI + sector mid/long — cheap recompute over the just-cached prices
         lambda: get_health("KLCI", term="mid"),
         lambda: get_health("KLCI", term="long"),
         lambda: get_sector_health(term="mid"),
         lambda: get_sector_health(term="long"),
-        # slow scrapes — long TTL, SWR keeps them fresh
-        lambda: get_analyst_sentiment("KLCI"),
-        lambda: get_klci_gex(),
+        # R-Appetite (light) warmed here so it is never a cold on-request build
         lambda: get_risk_appetite(),
     ]
     # FBM market indexes × terms — prices shared per index; per-term recompute
-    # is cheap, so the Market Index page is never a cold on-request build.
+    # is cheap. Warmed here (before the slow scrapes) so the Market Index page
+    # is never a cold on-request build.
     for k in fbm_mod.FBM_INDEXES:
         for term in ("short", "mid", "long"):
             jobs.append(lambda k=k, term=term: get_fbm_health(k, term=term))
@@ -409,6 +432,12 @@ def warm_all():
             fn()
         except Exception:  # noqa: BLE001
             pass
+
+    # Slow / flaky scrapes LAST, each in its own background thread so neither
+    # can block the reliable warming above (the GEX warrant scrape can take
+    # minutes on a rate-limited host; it must not stall RA/FBM warming).
+    _spawn_refresh("sentiment:KLCI", lambda: get_analyst_sentiment("KLCI"))
+    _spawn_refresh("gex:KLCI", get_klci_gex)
 
 
 def refresh():
