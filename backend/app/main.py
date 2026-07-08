@@ -144,7 +144,14 @@ def public_config():
     Google client ID isn't frozen into the shipped HTML. The page reads this on
     load and falls back to the built-in <meta> value if it's unreachable."""
     return {"google_client_id": settings.google_client_id,
+            "email_auth_enabled": settings.email_auth_enabled,
             "signup_email_domains": sorted(_SIGNUP_DOMAINS)}
+
+
+def _require_email_auth():
+    """Reject email endpoints when email sign-in is switched off (Google-only)."""
+    if not settings.email_auth_enabled:
+        raise HTTPException(404, "email sign-in is disabled; use Google sign-in")
 
 
 @app.post("/api/auth/google")
@@ -185,6 +192,7 @@ def _send_verification(request: Request, email: str) -> dict:
 def auth_signup(req: EmailSignupRequest, request: Request):
     """Create an UNVERIFIED email+password account and email a confirmation link.
     Returns {pending:true} — no session token until the email is confirmed."""
+    _require_email_auth()
     if not _signup_domain_ok(users_mod._norm(req.email)):
         raise HTTPException(400, _signup_blocked_msg())
     try:
@@ -202,6 +210,7 @@ def auth_signup(req: EmailSignupRequest, request: Request):
 def auth_verify(req: VerifyRequest):
     """Confirm an account from the emailed token, then return a session token
     (so clicking the link signs the user straight in)."""
+    _require_email_auth()
     try:
         email = auth_mod.read_verify_token(req.token)
     except ValueError as exc:
@@ -217,6 +226,7 @@ def auth_verify(req: VerifyRequest):
 def auth_resend(req: ResendRequest, request: Request):
     """Resend the confirmation email. Always returns ok (doesn't reveal whether
     the address is registered); only actually sends for an unverified account."""
+    _require_email_auth()
     u = users_mod.get_user(req.email)
     if u is not None and not u["verified"]:
         try:
@@ -230,6 +240,7 @@ def auth_resend(req: ResendRequest, request: Request):
 def auth_login(req: EmailLoginRequest):
     """Log in with an email+password account and return a session token.
     Refuses unverified accounts (403) so the caller can prompt to confirm."""
+    _require_email_auth()
     try:
         u = users_mod.authenticate(req.email, req.password)
     except ValueError as exc:

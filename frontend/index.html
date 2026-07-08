@@ -542,28 +542,33 @@
 <!-- SIGN-IN MODAL (gates GEX + Market Index) -->
 <div class="modal-backdrop" id="auth-modal">
   <div class="modal" role="dialog" aria-modal="true">
-    <!-- FORM state: sign in / create account -->
+    <!-- FORM state: Google (always) + optional email/password section -->
     <div id="auth-form">
       <h3 id="auth-title" data-i18n="auth.title">Sign in</h3>
       <p data-i18n="auth.blurb">Sign in to unlock GEX, Market Index and R-Appetite.</p>
       <div id="gbtn-wrap" style="display:none">
         <div id="gbtn" style="display:flex;justify-content:center"></div>
-        <div class="auth-or" id="auth-or"><span data-i18n="auth.or">or</span></div>
       </div>
-      <label id="auth-name-label" for="auth-name" style="display:none" data-i18n="auth.name">Name (optional)</label>
-      <input id="auth-name" type="text" autocomplete="name" style="display:none" data-i18n-ph="auth.namePh" placeholder="Your name"/>
-      <label for="auth-email" data-i18n="auth.email">Email</label>
-      <input id="auth-email" type="email" autocomplete="email" data-i18n-ph="auth.emailPh" placeholder="you@example.com"/>
-      <div id="auth-domain-hint" class="muted" style="display:none;font-size:11px;margin-top:4px;line-height:1.4"></div>
-      <label for="auth-pass" style="margin-top:10px;display:block" data-i18n="auth.password">Password</label>
-      <input id="auth-pass" type="password" autocomplete="current-password" data-i18n-ph="auth.passPh" placeholder="At least 8 characters"/>
-      <div class="err" id="auth-err"></div>
-      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:14px">
-        <a id="auth-toggle" class="reset-link" data-i18n="auth.noAccount">Create an account</a>
-        <div class="row" style="gap:8px">
-          <button class="btn ghost" id="auth-cancel" data-i18n="auth.cancel">Cancel</button>
+      <div id="auth-noprovider" class="muted" style="display:none;font-size:12px;line-height:1.5"
+           data-i18n="auth.noProvider">Google sign-in isn't configured on this deployment.</div>
+      <!-- email/password — hidden unless email auth is enabled (Google-only by default) -->
+      <div id="auth-email-section" style="display:none">
+        <div class="auth-or" id="auth-or"><span data-i18n="auth.or">or</span></div>
+        <label id="auth-name-label" for="auth-name" style="display:none" data-i18n="auth.name">Name (optional)</label>
+        <input id="auth-name" type="text" autocomplete="name" style="display:none" data-i18n-ph="auth.namePh" placeholder="Your name"/>
+        <label for="auth-email" data-i18n="auth.email">Email</label>
+        <input id="auth-email" type="email" autocomplete="email" data-i18n-ph="auth.emailPh" placeholder="you@example.com"/>
+        <div id="auth-domain-hint" class="muted" style="display:none;font-size:11px;margin-top:4px;line-height:1.4"></div>
+        <label for="auth-pass" style="margin-top:10px;display:block" data-i18n="auth.password">Password</label>
+        <input id="auth-pass" type="password" autocomplete="current-password" data-i18n-ph="auth.passPh" placeholder="At least 8 characters"/>
+        <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:12px">
+          <a id="auth-toggle" class="reset-link" data-i18n="auth.noAccount">Create an account</a>
           <button class="btn" id="auth-submit" data-i18n="auth.submit">Sign in</button>
         </div>
+      </div>
+      <div class="err" id="auth-err"></div>
+      <div class="row" style="justify-content:flex-end;align-items:center;gap:8px;margin-top:14px">
+        <button class="btn ghost" id="auth-cancel" data-i18n="auth.cancel">Cancel</button>
       </div>
     </div>
     <!-- INFO state: "check your email" after signup, or "confirm first" on login -->
@@ -729,11 +734,13 @@ const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra"};
 // it per deployment so the ID isn't hard-frozen into the shipped HTML.
 let GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
 let SIGNUP_DOMAINS = [];   // allowed email-signup domains (empty = any)
+let EMAIL_AUTH = false;    // email+password sign-in shown? (Google-only when false)
 async function loadPublicConfig(){
   try{
     const c=await get("/api/config");
     if(c && c.google_client_id) GOOGLE_CLIENT_ID = c.google_client_id.trim();
     if(c && Array.isArray(c.signup_email_domains)) SIGNUP_DOMAINS = c.signup_email_domains.map(d=>d.toLowerCase());
+    EMAIL_AUTH = !!(c && c.email_auth_enabled);
   }catch(_){ /* keep the <meta> fallback */ }
 }
 function emailDomainAllowed(email){
@@ -845,9 +852,17 @@ function openAuth(pendingPage){
   const m=$("#auth-modal"); m.classList.add("open");
   renderGoogleButton();                          // "Sign in with Google" (if configured)
   showAuthForm();                                // (not the "check your email" panel)
-  $("#auth-email").value=""; $("#auth-pass").value=""; $("#auth-name").value="";
-  setAuthMode("login");                          // always open in sign-in mode
-  setTimeout(()=>$("#auth-email").focus(),30);
+  $("#auth-err").textContent="";
+  // email/password section only when enabled (Google-only by default)
+  const sec=$("#auth-email-section");
+  if(sec) sec.style.display = EMAIL_AUTH ? "" : "none";
+  if(EMAIL_AUTH){
+    $("#auth-email").value=""; $("#auth-pass").value=""; $("#auth-name").value="";
+    setAuthMode("login");
+    setTimeout(()=>$("#auth-email").focus(),30);
+  }
+  // show the "no provider" note only when there's truly no way to sign in
+  const np=$("#auth-noprovider"); if(np) np.style.display = (!GOOGLE_CLIENT_ID && !EMAIL_AUTH) ? "block" : "none";
 }
 function closeAuth(){ $("#auth-modal").classList.remove("open"); PENDING_PAGE=null; }
 

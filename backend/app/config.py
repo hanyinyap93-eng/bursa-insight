@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-insecure-change-me-via-BURSA_JWT_SECRET"
     jwt_ttl_hours: int = 24 * 7   # session lifetime
     verify_ttl_hours: int = 24    # email-confirmation link lifetime
+    # Master switch for email+password sign-in/sign-up. Off = Google-only (no
+    # email sending needed at all). Turn on (BURSA_EMAIL_AUTH_ENABLED=true) once
+    # a real sending domain is verified so confirmation emails deliver reliably.
+    email_auth_enabled: bool = False
 
     # --- outbound email (email-confirmation links) ---
     # Gmail: host smtp.gmail.com, port 587, user = your gmail, password = a
