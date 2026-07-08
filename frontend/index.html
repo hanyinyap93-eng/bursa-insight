@@ -1088,7 +1088,10 @@ function warmingRetry(el, fn, msg, err){
   const b=el.querySelector("#warm-now"); if(b) b.onclick=()=>{ clearTimeout(fn._wt); fn(); };
   clearTimeout(fn._wt); fn._wt=setTimeout(fn, err?30000:12000);   // back off when failing
 }
-const heat=v=>{const t=Math.max(-100,Math.min(100,v))/100;return t>=0?`rgba(8,153,129,${.12+.7*t})`:`rgba(242,54,69,${.12+.7*-t})`;};
+// diverging heatmap colour: brighter greens/reds + a non-linear (√-ish) ramp so
+// small breadth values are still clearly visible and extremes stay bold.
+const heat=v=>{const t=Math.max(-100,Math.min(100,v))/100,a=(0.28+0.72*Math.pow(Math.abs(t),0.6)).toFixed(3);
+  return t>=0?`rgba(0,201,122,${a})`:`rgba(244,73,84,${a})`;};
 const lbLabel=lb=>({'1mo':'1M','3mo':'3M','6mo':'6M','1y':'1Y','2y':'2Y'}[lb]||(lb||'').toUpperCase());
 // mini line chart from a numeric array; each daily segment is colored
 // green if that day closed >= the prior day, red otherwise.
