@@ -88,6 +88,10 @@
   .auth-or{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
   .auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line);}
   .spacer{flex:1;}
+  /* header greeting (shown when signed in with a name) */
+  .greet{color:var(--text);font-size:12.5px;font-weight:600;max-width:280px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.9;}
+  @media(max-width:980px){ .greet{display:none !important;} }
   .lookback{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
   .lookback button{background:none;border:none;color:var(--muted);padding:6px 12px;font-size:12px;border-radius:var(--radius-pill);}
   .lookback button.active{background:var(--accent);color:#fff;}
@@ -381,6 +385,7 @@
     <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
   </nav>
   <div class="spacer"></div>
+  <div id="greeting" class="greet" style="display:none"></div>
   <button class="btn ghost" id="lang" title="Switch language / 切换语言" aria-label="Switch language">
     <span id="lang-label">中文</span>
   </button>
@@ -801,6 +806,27 @@ function updateAuthUI(){
     a.classList.toggle("locked", !authed);
     if(!authed) a.title=t("auth.locked");
   });
+  renderGreeting();
+}
+// personalised header greeting — a random template per session, kept stable so
+// it doesn't flicker on re-renders; only shown when signed in WITH a name.
+const GREETINGS={
+  en:["👋 Hello, {name} — nice to have you back!","👋 Welcome back, {name}!",
+      "✨ Good to see you, {name}!","👋 Hey {name}, great to have you here!",
+      "🙌 Welcome back, {name} — let's dive in!"],
+  zh:["👋 你好，{name}，欢迎回来！","👋 {name}，很高兴再次见到你！",
+      "✨ 欢迎回来，{name}！","🙌 嗨 {name}，很高兴你回来了！",
+      "👋 {name}，我们开始吧！"],
+};
+let _greetIdx=null;
+function renderGreeting(){
+  const el=$("#greeting"); if(!el) return;
+  const name=(authName()||"").trim();
+  if(!isAuthed() || !name){ el.textContent=""; el.style.display="none"; _greetIdx=null; return; }
+  const list=GREETINGS[LANG]||GREETINGS.en;
+  if(_greetIdx===null || _greetIdx>=list.length) _greetIdx=Math.floor(Math.random()*list.length);
+  el.textContent=list[_greetIdx].replace("{name}", name);
+  el.style.display="";
 }
 function openAuth(pendingPage){
   PENDING_PAGE = pendingPage||null;
