@@ -1195,8 +1195,8 @@ function renderIndBar(){
 }
 /* indicator-parameter popover */
 let _indPop=null;
-function closeIndPop(){ if(_indPop){ _indPop.remove(); _indPop=null;
-  document.removeEventListener("mousedown",_indPopOutside,true); } }
+function closeIndPop(){ document.querySelectorAll(".ind-pop").forEach(p=>p.remove()); _indPop=null;
+  document.removeEventListener("mousedown",_indPopOutside,true); }
 function _indPopOutside(e){ if(_indPop && !_indPop.contains(e.target)) closeIndPop(); }
 function openIndSettings(ind, anchor){
   closeIndPop();
@@ -1208,6 +1208,7 @@ function openIndSettings(ind, anchor){
     `<div class="pactions"><button class="btn ghost" data-act="reset">${t("chart.reset")}</button>
        <button class="btn" data-act="done">${t("chart.done")}</button></div>`;
   document.body.appendChild(pop);
+  _indPop=pop;                       // track it so closeIndPop() actually closes it
   const r=anchor.getBoundingClientRect();
   pop.style.left=Math.max(8,Math.min(r.left, window.innerWidth-pop.offsetWidth-8))+"px";
   pop.style.top=Math.min(r.bottom+6, window.innerHeight-pop.offsetHeight-8)+"px";
