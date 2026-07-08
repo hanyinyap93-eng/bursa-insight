@@ -163,6 +163,24 @@
     border-radius:var(--radius-pill);padding:4px 11px;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .12s;}
   .ind-chip:hover{color:var(--text);border-color:var(--line2);}
   .ind-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  /* chip + settings-gear grouped as one pill */
+  .ind-group{display:inline-flex;align-items:stretch;}
+  .ind-group .ind-chip.has-gear{border-top-right-radius:0;border-bottom-right-radius:0;}
+  .ind-gear{background:var(--panel2);border:1px solid var(--line);border-left:none;color:var(--muted);
+    border-radius:0 var(--radius-pill) var(--radius-pill) 0;padding:0 8px;font-size:10.5px;cursor:pointer;
+    display:flex;align-items:center;transition:color .12s;}
+  .ind-gear:hover{color:var(--text);}
+  /* indicator-settings popover */
+  .ind-pop{position:fixed;z-index:320;background:var(--panel);border:1px solid var(--line2);
+    border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 14px;min-width:190px;}
+  .ind-pop h4{margin:0 0 8px;font-size:12px;font-weight:700;}
+  .ind-pop .prow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:7px 0;
+    font-size:12px;color:var(--muted);}
+  .ind-pop input{width:72px;background:var(--panel2);border:1px solid var(--line2);border-radius:6px;
+    color:var(--text);padding:5px 8px;font-size:12px;text-align:right;outline:none;}
+  .ind-pop input:focus{border-color:var(--accent);}
+  .ind-pop .pactions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+  .ind-pop .pactions .btn{padding:6px 14px;font-size:12px;}
   /* stacked oscillator sub-panes (RSI / MACD) */
   #osc-panes{display:flex;flex-direction:column;}
   #osc-panes:empty{display:none;}
@@ -644,7 +662,7 @@ const I18N = {
     "sub.asOf":"as of","sub.stocks":"stocks","sub.aboveSma":"above SMA","sub.5d":"5d",
     "loading.computing":"computing…","loading.default":"loading…",
     "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
-    "chart.indicators":"Indicators",
+    "chart.indicators":"Indicators","chart.settings":"Settings","chart.reset":"Reset","chart.done":"Done",
     "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
     "auth.signin":"Sign in","auth.signout":"Sign out","auth.title":"Sign in",
     "auth.blurb":"Sign in to unlock GEX, Market Index and R-Appetite.",
@@ -693,7 +711,7 @@ const I18N = {
     "sub.asOf":"截至","sub.stocks":"只成分股","sub.aboveSma":"高于均线","sub.5d":"5日",
     "loading.computing":"计算中…","loading.default":"加载中…",
     "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
-    "chart.indicators":"指标",
+    "chart.indicators":"指标","chart.settings":"设置","chart.reset":"重置","chart.done":"完成",
     "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
     "auth.signin":"登录","auth.signout":"退出","auth.title":"登录",
     "auth.blurb":"登录后可解锁「伽马敞口」「市场指数」和「风险偏好」。",
@@ -1146,16 +1164,74 @@ function initChart(){
 const IND_DEFS={ma:"MA",ema:"EMA",boll:"BOLL",vol:"Vol",rsi:"RSI",macd:"MACD"};
 let IND={ma:false,ema:false,boll:false,vol:true,rsi:false,macd:false};
 try{ const s=JSON.parse(localStorage.getItem("indicators")||"null"); if(s&&typeof s==="object") IND={...IND,...s}; }catch(_){}
+// editable parameters per indicator (Vol has none)
+const IND_DEFAULT_PARAMS={ma:{p1:20,p2:50,p3:200},ema:{p:20},boll:{p:20,mult:2},rsi:{p:14},macd:{fast:12,slow:26,signal:9}};
+const IND_PARAM_SCHEMA={
+  ma:[{key:"p1",label:"MA 1 period",min:1,max:400},{key:"p2",label:"MA 2 period",min:1,max:400},{key:"p3",label:"MA 3 period",min:1,max:400}],
+  ema:[{key:"p",label:"Period",min:1,max:400}],
+  boll:[{key:"p",label:"Period",min:1,max:400},{key:"mult",label:"Std Dev",min:0.5,max:5,step:0.1}],
+  rsi:[{key:"p",label:"Period",min:2,max:100}],
+  macd:[{key:"fast",label:"Fast EMA",min:1,max:200},{key:"slow",label:"Slow EMA",min:1,max:400},{key:"signal",label:"Signal EMA",min:1,max:100}],
+};
+let IND_PARAMS=JSON.parse(JSON.stringify(IND_DEFAULT_PARAMS));
+try{ const s=JSON.parse(localStorage.getItem("indParams")||"null");
+  if(s) for(const k in IND_PARAMS){ if(s[k]) IND_PARAMS[k]={...IND_PARAMS[k],...s[k]}; } }catch(_){}
+function saveIndParams(){ try{localStorage.setItem("indParams",JSON.stringify(IND_PARAMS));}catch(_){} }
 function renderIndBar(){
   const bar=$("#ind-bar"); if(!bar) return;
   bar.innerHTML=`<span class="ind-lbl">${t("chart.indicators")}</span>`+
-    Object.entries(IND_DEFS).map(([k,l])=>`<button class="ind-chip${IND[k]?' on':''}" data-ind="${k}" title="${l}">${l}</button>`).join("");
+    Object.entries(IND_DEFS).map(([k,l])=>{
+      const gear=IND_PARAM_SCHEMA[k]?`<button class="ind-gear" data-gear="${k}" title="${t("chart.settings")}" aria-label="${l} ${t("chart.settings")}">⚙</button>`:"";
+      const cls="ind-chip"+(IND_PARAM_SCHEMA[k]?" has-gear":"")+(IND[k]?" on":"");
+      return `<span class="ind-group"><button class="${cls}" data-ind="${k}" title="${l}">${l}</button>${gear}</span>`;
+    }).join("");
   bar.querySelectorAll(".ind-chip").forEach(b=>b.onclick=()=>{
     IND[b.dataset.ind]=!IND[b.dataset.ind];
     b.classList.toggle("on",IND[b.dataset.ind]);
     try{localStorage.setItem("indicators",JSON.stringify(IND));}catch(_){}
     applyIndicators();
   });
+  bar.querySelectorAll(".ind-gear").forEach(g=>g.onclick=e=>{ e.stopPropagation(); openIndSettings(g.dataset.gear, g); });
+}
+/* indicator-parameter popover */
+let _indPop=null;
+function closeIndPop(){ if(_indPop){ _indPop.remove(); _indPop=null;
+  document.removeEventListener("mousedown",_indPopOutside,true); } }
+function _indPopOutside(e){ if(_indPop && !_indPop.contains(e.target)) closeIndPop(); }
+function openIndSettings(ind, anchor){
+  closeIndPop();
+  const schema=IND_PARAM_SCHEMA[ind]; if(!schema) return;
+  const pop=document.createElement("div"); pop.className="ind-pop";
+  pop.innerHTML=`<h4>${IND_DEFS[ind]} · ${t("chart.settings")}</h4>`+
+    schema.map(f=>`<div class="prow"><span>${f.label}</span>
+      <input type="number" data-k="${f.key}" value="${IND_PARAMS[ind][f.key]}" min="${f.min}" max="${f.max}" step="${f.step||1}"></div>`).join("")+
+    `<div class="pactions"><button class="btn ghost" data-act="reset">${t("chart.reset")}</button>
+       <button class="btn" data-act="done">${t("chart.done")}</button></div>`;
+  document.body.appendChild(pop);
+  const r=anchor.getBoundingClientRect();
+  pop.style.left=Math.max(8,Math.min(r.left, window.innerWidth-pop.offsetWidth-8))+"px";
+  pop.style.top=Math.min(r.bottom+6, window.innerHeight-pop.offsetHeight-8)+"px";
+  const commit=()=>{
+    pop.querySelectorAll("input").forEach(inp=>{
+      let v=parseFloat(inp.value); const f=schema.find(x=>x.key===inp.dataset.k);
+      if(isNaN(v)){ inp.value=IND_PARAMS[ind][inp.dataset.k]; return; }
+      v=Math.max(f.min, Math.min(f.max, v));
+      if(!f.step || f.step>=1) v=Math.round(v);
+      inp.value=v; IND_PARAMS[ind][inp.dataset.k]=v;
+    });
+    saveIndParams();
+    if(!IND[ind]){ IND[ind]=true; const chip=$(`.ind-chip[data-ind="${ind}"]`); if(chip)chip.classList.add("on");
+      try{localStorage.setItem("indicators",JSON.stringify(IND));}catch(_){} }
+    applyIndicators();
+  };
+  pop.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",commit));
+  pop.querySelector('[data-act="done"]').onclick=closeIndPop;
+  pop.querySelector('[data-act="reset"]').onclick=()=>{
+    IND_PARAMS[ind]=JSON.parse(JSON.stringify(IND_DEFAULT_PARAMS[ind])); saveIndParams();
+    pop.querySelectorAll("input").forEach(inp=>inp.value=IND_PARAMS[ind][inp.dataset.k]);
+    if(IND[ind]) applyIndicators();
+  };
+  setTimeout(()=>document.addEventListener("mousedown",_indPopOutside,true),0);
 }
 function _mkSeries(arr){ return CHART_SRC.dates.map((tm,i)=>({time:tm,value:arr[i]})).filter(x=>x.value!=null); }
 function setOverlay(name,on,color,opt,data){
@@ -1186,14 +1262,17 @@ function removeOsc(key){ const o=oscCharts[key]; if(!o)return; try{o.unsub();}ca
   try{o.chart.remove();}catch(_){} o.wrap.remove(); delete oscCharts[key]; }
 function setOsc(key,on){
   if(!on){ removeOsc(key); return; }
-  const o=ensureOscChart(key), {close}=CHART_SRC;
+  const o=ensureOscChart(key), {close}=CHART_SRC, P=IND_PARAMS;
+  const lbl=o.wrap.querySelector(".pane-label");
   if(key==="rsi"){
+    if(lbl) lbl.textContent=`RSI ${P.rsi.p}`;
     if(!o.series.line){ o.series.line=o.chart.addLineSeries({color:"#a855f7",lineWidth:1.5,priceLineVisible:false});
       o.series.line.createPriceLine({price:70,color:"rgba(242,54,69,.45)",lineWidth:1,lineStyle:2,axisLabelVisible:false});
       o.series.line.createPriceLine({price:30,color:"rgba(0,194,129,.45)",lineWidth:1,lineStyle:2,axisLabelVisible:false}); }
-    o.series.line.setData(_mkSeries(_rsi(close,14)));
+    o.series.line.setData(_mkSeries(_rsi(close,P.rsi.p)));
   } else {
-    const m=_macd(close,12,26,9);
+    if(lbl) lbl.textContent=`MACD ${P.macd.fast},${P.macd.slow},${P.macd.signal}`;
+    const m=_macd(close,P.macd.fast,P.macd.slow,P.macd.signal);
     if(!o.series.hist) o.series.hist=o.chart.addHistogramSeries({priceLineVisible:false,lastValueVisible:false});
     o.series.hist.setData(CHART_SRC.dates.map((tm,i)=>({time:tm,value:m.hist[i],
       color:(m.hist[i]>=0?"rgba(0,194,129,.5)":"rgba(242,54,69,.5)")})).filter(x=>x.value!=null));
@@ -1206,13 +1285,13 @@ function setOsc(key,on){
 }
 function applyIndicators(){
   if(!chart||!CHART_SRC) return;
-  const {close}=CHART_SRC;
+  const {close}=CHART_SRC, P=IND_PARAMS;
   if(vol) vol.applyOptions({visible:!!IND.vol});
-  setOverlay("ma20", IND.ma,"#f5a623",{lineWidth:1.5},_sma(close,20));
-  setOverlay("ma50", IND.ma,"#3d7bff",{lineWidth:1.5},_sma(close,50));
-  setOverlay("ma200",IND.ma,"#a855f7",{lineWidth:1.5},_sma(close,200));
-  setOverlay("ema20",IND.ema,"#00c281",{lineWidth:1.5},_ema(close,20));
-  if(IND.boll){ const b=_boll(close,20,2);
+  setOverlay("ma1",IND.ma,"#f5a623",{lineWidth:1.5},_sma(close,P.ma.p1));
+  setOverlay("ma2",IND.ma,"#3d7bff",{lineWidth:1.5},_sma(close,P.ma.p2));
+  setOverlay("ma3",IND.ma,"#a855f7",{lineWidth:1.5},_sma(close,P.ma.p3));
+  setOverlay("ema1",IND.ema,"#00c281",{lineWidth:1.5},_ema(close,P.ema.p));
+  if(IND.boll){ const b=_boll(close,P.boll.p,P.boll.mult);
     setOverlay("bollU",true,"rgba(148,163,184,.9)",{lineWidth:1},b.up);
     setOverlay("bollM",true,"rgba(148,163,184,.55)",{lineWidth:1,lineStyle:2},b.mid);
     setOverlay("bollL",true,"rgba(148,163,184,.9)",{lineWidth:1},b.lo);
@@ -2061,6 +2140,7 @@ function boot(){
   // Esc anywhere (outside an input) returns to the chart
   window.addEventListener("keydown",e=>{
     if(e.key!=="Escape") return;
+    if(_indPop){ closeIndPop(); return; }
     if($("#auth-modal").classList.contains("open")){ closeAuth(); return; }
     if(!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||"")) showPage("chart");
   });
