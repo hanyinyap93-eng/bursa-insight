@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # Public base URL used to build confirmation links, e.g.
     # https://bursa-insight.onrender.com. If empty, derived from the request.
     public_url: str = ""
+    # Comma-separated allowlist of email domains permitted for email+password
+    # sign-up. Empty = allow any. Default limits to Gmail while sending from a
+    # personal Gmail (reliable Gmail→Gmail delivery) before a domain is verified.
+    # Google sign-in is unaffected (any Google account works).
+    signup_email_domains: str = "gmail.com,googlemail.com"
 
     class Config:
         env_prefix = "BURSA_"

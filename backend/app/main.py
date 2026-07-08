@@ -28,6 +28,7 @@ Endpoints (MVP):
 """
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -49,6 +50,8 @@ from .schemas import (
     EmailLoginRequest, EmailSignupRequest, GoogleAuthRequest, ResendRequest,
     ScreenRequest, VerifyRequest,
 )
+
+log = logging.getLogger("bursa.api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -118,12 +121,30 @@ def liveness():
 # Auth — verify a Google ID token server-side, then mint our own session JWT.
 # The gated routes below require that session JWT (see auth_mod.require_auth).
 # --------------------------------------------------------------------------- #
+_SIGNUP_DOMAINS = {d.strip().lower() for d in settings.signup_email_domains.split(",") if d.strip()}
+
+
+def _signup_domain_ok(email: str) -> bool:
+    """True if this email's domain is allowed to create an email+password account."""
+    if not _SIGNUP_DOMAINS:
+        return True
+    dom = email.rsplit("@", 1)[-1].strip().lower() if "@" in email else ""
+    return dom in _SIGNUP_DOMAINS
+
+
+def _signup_blocked_msg() -> str:
+    doms = " or ".join("@" + d for d in sorted(_SIGNUP_DOMAINS))
+    return (f"During our beta, email sign-up is limited to {doms} addresses. "
+            "You can use “Sign in with Google” with any Google account instead.")
+
+
 @app.get("/api/config")
 def public_config():
     """Public front-end config resolved at deploy time from env vars, so the
     Google client ID isn't frozen into the shipped HTML. The page reads this on
     load and falls back to the built-in <meta> value if it's unreachable."""
-    return {"google_client_id": settings.google_client_id}
+    return {"google_client_id": settings.google_client_id,
+            "signup_email_domains": sorted(_SIGNUP_DOMAINS)}
 
 
 @app.post("/api/auth/google")
@@ -152,6 +173,7 @@ def _send_verification(request: Request, email: str) -> dict:
     try:
         sent = mailer_mod.send_verification(email, link)
     except Exception as exc:  # noqa: BLE001 - SMTP failure shouldn't 500 the signup
+        log.warning("verification email to %s failed: %s", email, exc)
         raise HTTPException(502, f"could not send confirmation email: {exc}")
     resp = {"pending": True, "email": email}
     if not sent:                      # dev mode: expose the link for local testing
@@ -163,6 +185,8 @@ def _send_verification(request: Request, email: str) -> dict:
 def auth_signup(req: EmailSignupRequest, request: Request):
     """Create an UNVERIFIED email+password account and email a confirmation link.
     Returns {pending:true} — no session token until the email is confirmed."""
+    if not _signup_domain_ok(users_mod._norm(req.email)):
+        raise HTTPException(400, _signup_blocked_msg())
     try:
         users_mod.create_user(req.email, req.password, req.name or "")
     except ValueError as exc:
@@ -197,8 +221,8 @@ def auth_resend(req: ResendRequest, request: Request):
     if u is not None and not u["verified"]:
         try:
             mailer_mod.send_verification(u["email"], _verify_link(request, u["email"]))
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - don't reveal existence; just log
+            log.warning("resend to %s failed: %s", u["email"], exc)
     return {"ok": True}
 
 

@@ -18,7 +18,10 @@ services:
     rootDir: backend
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # --proxy-headers so request URLs use the real https scheme/host behind
+    # Render's proxy (needed to build correct email-confirmation links when
+    # BURSA_PUBLIC_URL isn't set).
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
