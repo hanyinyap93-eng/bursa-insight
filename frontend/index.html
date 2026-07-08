@@ -155,6 +155,18 @@
   .tf button{background:none;border:none;color:var(--muted);padding:5px 10px;font-size:11.5px;}
   .tf button.active{background:var(--hover);color:var(--text);}
   #chart{flex:1;min-height:0;}
+  /* indicator toolbar */
+  .ind-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:6px 16px;
+    border-bottom:1px solid var(--line);background:var(--panel);}
+  .ind-bar .ind-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-right:2px;}
+  .ind-chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+    border-radius:var(--radius-pill);padding:4px 11px;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .12s;}
+  .ind-chip:hover{color:var(--text);border-color:var(--line2);}
+  .ind-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  /* stacked oscillator sub-panes (RSI / MACD) */
+  #osc-panes{display:flex;flex-direction:column;}
+  #osc-panes:empty{display:none;}
+  .osc-pane{height:110px;border-top:1px solid var(--line);position:relative;min-height:0;}
   /* correlation-to-indexes panel below the chart */
   #corr-panel{height:150px;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0;}
   .corr-head{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 4px;}
@@ -422,7 +434,9 @@
       <div class="ohlc" id="ch-fund"></div>
       <div class="ohlc" id="ch-ohlc"></div>
     </div>
+    <div class="ind-bar" id="ind-bar"></div>
     <div id="chart" style="position:relative"><span class="pane-label" id="lbl-price"></span></div>
+    <div id="osc-panes"></div>
     <div id="corr-panel">
       <div class="corr-head">
         <span class="corr-title"><span data-i18n="corr.of">Correlation of</span> <b id="corr-sym">—</b> <span data-i18n="corr.to">to indexes</span></span>
@@ -630,6 +644,7 @@ const I18N = {
     "sub.asOf":"as of","sub.stocks":"stocks","sub.aboveSma":"above SMA","sub.5d":"5d",
     "loading.computing":"computing…","loading.default":"loading…",
     "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
+    "chart.indicators":"Indicators",
     "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
     "auth.signin":"Sign in","auth.signout":"Sign out","auth.title":"Sign in",
     "auth.blurb":"Sign in to unlock GEX, Market Index and R-Appetite.",
@@ -678,6 +693,7 @@ const I18N = {
     "sub.asOf":"截至","sub.stocks":"只成分股","sub.aboveSma":"高于均线","sub.5d":"5日",
     "loading.computing":"计算中…","loading.default":"加载中…",
     "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
+    "chart.indicators":"指标",
     "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
     "auth.signin":"登录","auth.signout":"退出","auth.title":"登录",
     "auth.blurb":"登录后可解锁「伽马敞口」「市场指数」和「风险偏好」。",
@@ -708,6 +724,7 @@ function setLang(lang){
   applyStaticI18n();
   // re-render dynamic views so their generated labels pick up the new language
   loadHealth(); loadRotation(); loadNews();           // chart-page panels
+  renderIndBar();                                     // indicator toolbar label
   const openGex=$("#page-gex").classList.contains("open");
   const openFbm=$("#page-fbm").classList.contains("open");
   const openRa=$("#page-ra").classList.contains("open");
@@ -1073,7 +1090,29 @@ function lineSVG(arr,h=48){
 }
 
 /* ---------------- chart (Lightweight Charts) ---------------- */
-let chart, candle, vol, smaLine, ro;
+let chart, candle, vol, ro;
+let CHART_SRC=null;                 // {dates,close,high,low} for indicator recompute
+const overlaySeries={};             // price-pane overlays (MA/EMA/BOLL) on the main chart
+const oscCharts={};                 // 'rsi'/'macd' -> synced sub-chart
+
+/* ---- indicator math (client-side, from the close series) ---- */
+function _sma(v,p){ const o=Array(v.length).fill(null);
+  for(let i=p-1;i<v.length;i++){ let s=0,ok=true; for(let j=i-p+1;j<=i;j++){ if(v[j]==null){ok=false;break;} s+=v[j]; } if(ok)o[i]=s/p; } return o; }
+function _ema(v,p){ const o=Array(v.length).fill(null); const k=2/(p+1); let prev=null,n=0;
+  for(let i=0;i<v.length;i++){ if(v[i]==null){o[i]=null;continue;} n++; prev=prev==null?v[i]:v[i]*k+prev*(1-k); if(n>=p)o[i]=prev; } return o; }
+function _boll(v,p,m){ const mid=_sma(v,p),up=Array(v.length).fill(null),lo=Array(v.length).fill(null);
+  for(let i=p-1;i<v.length;i++){ if(mid[i]==null)continue; let s=0,ok=true; for(let j=i-p+1;j<=i;j++){ if(v[j]==null){ok=false;break;} s+=(v[j]-mid[i])**2; }
+    if(ok){ const sd=Math.sqrt(s/p); up[i]=mid[i]+m*sd; lo[i]=mid[i]-m*sd; } } return {mid,up,lo}; }
+function _rsi(v,p){ const n=v.length,o=Array(n).fill(null); if(n<=p)return o;
+  let g=0,l=0; for(let i=1;i<=p;i++){ const c=v[i]-v[i-1]; g+=Math.max(0,c); l+=Math.max(0,-c); }
+  let ag=g/p,al=l/p; o[p]=al===0?100:100-100/(1+ag/al);
+  for(let i=p+1;i<n;i++){ const c=v[i]-v[i-1]; ag=(ag*(p-1)+Math.max(0,c))/p; al=(al*(p-1)+Math.max(0,-c))/p; o[i]=al===0?100:100-100/(1+ag/al); } return o; }
+function _macd(v,f,s,sig){ const ef=_ema(v,f),es=_ema(v,s);
+  const macd=v.map((_,i)=>(ef[i]!=null&&es[i]!=null)?ef[i]-es[i]:null);
+  const signal=_ema(macd,sig);
+  const hist=v.map((_,i)=>(macd[i]!=null&&signal[i]!=null)?macd[i]-signal[i]:null);
+  return {macd,signal,hist}; }
+
 function chartTheme(){
   const light=document.body.classList.contains('light');
   return {
@@ -1083,7 +1122,8 @@ function chartTheme(){
     timeScale:{borderColor:light?'#e3e7ee':'#2a2e39'},
   };
 }
-function applyChartTheme(){ if(chart){chart.applyOptions(chartTheme());} }
+function applyChartTheme(){ if(chart){chart.applyOptions(chartTheme());}
+  Object.values(oscCharts).forEach(o=>o.chart.applyOptions(chartTheme())); }
 function initChart(){
   const opts={
     autoSize:true,
@@ -1097,10 +1137,87 @@ function initChart(){
     wickUpColor:'#00c281',wickDownColor:'#f5555a'});
   vol=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol'});
   chart.priceScale('vol').applyOptions({scaleMargins:{top:0.82,bottom:0}});
-  smaLine=chart.addLineSeries({color:'#3d7bff',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
   chart.subscribeCrosshairMove(p=>updateOHLC(p));
   ro=new ResizeObserver(()=>{chart.applyOptions({});});
   ro.observe($("#chart"));
+}
+
+/* ---------------- indicators (toolbar + overlays + oscillators) ---------------- */
+const IND_DEFS={ma:"MA",ema:"EMA",boll:"BOLL",vol:"Vol",rsi:"RSI",macd:"MACD"};
+let IND={ma:false,ema:false,boll:false,vol:true,rsi:false,macd:false};
+try{ const s=JSON.parse(localStorage.getItem("indicators")||"null"); if(s&&typeof s==="object") IND={...IND,...s}; }catch(_){}
+function renderIndBar(){
+  const bar=$("#ind-bar"); if(!bar) return;
+  bar.innerHTML=`<span class="ind-lbl">${t("chart.indicators")}</span>`+
+    Object.entries(IND_DEFS).map(([k,l])=>`<button class="ind-chip${IND[k]?' on':''}" data-ind="${k}" title="${l}">${l}</button>`).join("");
+  bar.querySelectorAll(".ind-chip").forEach(b=>b.onclick=()=>{
+    IND[b.dataset.ind]=!IND[b.dataset.ind];
+    b.classList.toggle("on",IND[b.dataset.ind]);
+    try{localStorage.setItem("indicators",JSON.stringify(IND));}catch(_){}
+    applyIndicators();
+  });
+}
+function _mkSeries(arr){ return CHART_SRC.dates.map((tm,i)=>({time:tm,value:arr[i]})).filter(x=>x.value!=null); }
+function setOverlay(name,on,color,opt,data){
+  if(on){
+    if(!overlaySeries[name]) overlaySeries[name]=chart.addLineSeries(
+      {priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,...(opt||{})});
+    overlaySeries[name].applyOptions({color,...(opt||{})});
+    overlaySeries[name].setData(_mkSeries(data));
+  } else if(overlaySeries[name]){ chart.removeSeries(overlaySeries[name]); delete overlaySeries[name]; }
+}
+function ensureOscChart(key,sub){
+  if(oscCharts[key]) return oscCharts[key];
+  const wrap=document.createElement("div"); wrap.className="osc-pane";
+  const lbl=document.createElement("span"); lbl.className="pane-label";
+  lbl.textContent=(key==="rsi"?"RSI 14":"MACD 12,26,9"); wrap.appendChild(lbl);
+  const panes=$("#osc-panes"); (sub==="rsi"||key==="rsi")?panes.prepend(wrap):panes.appendChild(wrap);
+  const c=LightweightCharts.createChart(wrap,{autoSize:true,...chartTheme(),
+    timeScale:{...chartTheme().timeScale,timeVisible:false,visible:false},
+    handleScroll:false,handleScale:false,crosshair:{mode:0}});
+  // sync by TIME (not bar index): oscillator series have fewer bars (leading
+  // warm-up values are dropped), so index-based sync would misalign the dates.
+  const handler=r=>{ if(r){ try{ c.timeScale().setVisibleRange(r); }catch(_){} } };
+  chart.timeScale().subscribeVisibleTimeRangeChange(handler);
+  const o={chart:c,wrap,series:{},unsub:()=>chart.timeScale().unsubscribeVisibleTimeRangeChange(handler)};
+  oscCharts[key]=o; return o;
+}
+function removeOsc(key){ const o=oscCharts[key]; if(!o)return; try{o.unsub();}catch(_){}
+  try{o.chart.remove();}catch(_){} o.wrap.remove(); delete oscCharts[key]; }
+function setOsc(key,on){
+  if(!on){ removeOsc(key); return; }
+  const o=ensureOscChart(key), {close}=CHART_SRC;
+  if(key==="rsi"){
+    if(!o.series.line){ o.series.line=o.chart.addLineSeries({color:"#a855f7",lineWidth:1.5,priceLineVisible:false});
+      o.series.line.createPriceLine({price:70,color:"rgba(242,54,69,.45)",lineWidth:1,lineStyle:2,axisLabelVisible:false});
+      o.series.line.createPriceLine({price:30,color:"rgba(0,194,129,.45)",lineWidth:1,lineStyle:2,axisLabelVisible:false}); }
+    o.series.line.setData(_mkSeries(_rsi(close,14)));
+  } else {
+    const m=_macd(close,12,26,9);
+    if(!o.series.hist) o.series.hist=o.chart.addHistogramSeries({priceLineVisible:false,lastValueVisible:false});
+    o.series.hist.setData(CHART_SRC.dates.map((tm,i)=>({time:tm,value:m.hist[i],
+      color:(m.hist[i]>=0?"rgba(0,194,129,.5)":"rgba(242,54,69,.5)")})).filter(x=>x.value!=null));
+    if(!o.series.macd) o.series.macd=o.chart.addLineSeries({color:"#3d7bff",lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+    o.series.macd.setData(_mkSeries(m.macd));
+    if(!o.series.signal) o.series.signal=o.chart.addLineSeries({color:"#f5a623",lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+    o.series.signal.setData(_mkSeries(m.signal));
+  }
+  const r=chart.timeScale().getVisibleRange(); if(r){ try{ o.chart.timeScale().setVisibleRange(r); }catch(_){} }
+}
+function applyIndicators(){
+  if(!chart||!CHART_SRC) return;
+  const {close}=CHART_SRC;
+  if(vol) vol.applyOptions({visible:!!IND.vol});
+  setOverlay("ma20", IND.ma,"#f5a623",{lineWidth:1.5},_sma(close,20));
+  setOverlay("ma50", IND.ma,"#3d7bff",{lineWidth:1.5},_sma(close,50));
+  setOverlay("ma200",IND.ma,"#a855f7",{lineWidth:1.5},_sma(close,200));
+  setOverlay("ema20",IND.ema,"#00c281",{lineWidth:1.5},_ema(close,20));
+  if(IND.boll){ const b=_boll(close,20,2);
+    setOverlay("bollU",true,"rgba(148,163,184,.9)",{lineWidth:1},b.up);
+    setOverlay("bollM",true,"rgba(148,163,184,.55)",{lineWidth:1,lineStyle:2},b.mid);
+    setOverlay("bollL",true,"rgba(148,163,184,.9)",{lineWidth:1},b.lo);
+  } else { ["bollU","bollM","bollL"].forEach(n=>setOverlay(n,false)); }
+  setOsc("rsi",IND.rsi); setOsc("macd",IND.macd);
 }
 let LASTBARS=[];
 function updateOHLC(p){
@@ -1128,10 +1245,12 @@ async function loadChart(sym){
     candle.setData(bars);
     vol.setData(d.dates.map((t,i)=>({time:t,value:d.volume[i]||0,
       color:(d.close[i]>=d.open[i])?'rgba(38,166,154,.5)':'rgba(239,83,80,.5)'})));
-    smaLine.setData(d.dates.map((t,i)=>({time:t,value:d.sma10[i]})).filter(x=>x.value!=null));
+    // keep the source series so indicators can (re)compute on toggle without a refetch
+    CHART_SRC={dates:d.dates, close:d.close, high:d.high, low:d.low};
     // default view = last ~6 months (~126 trading days); scroll-wheel zooms out to 5y
     const N=bars.length, SHOW=126;
     chart.timeScale().setVisibleLogicalRange({from:Math.max(0,N-SHOW), to:N+1});
+    applyIndicators();   // draw whichever indicators are toggled on
     const last=d.close[d.close.length-1], prev=d.close[d.close.length-2]||last;
     const chg=last-prev, pct=prev?chg/prev*100:0;
     $("#ch-price").textContent=fmtP(last,3);
@@ -1914,6 +2033,7 @@ async function loadRiskAppetite(retried,force){
 function boot(){
   loadPublicConfig();   // resolve the Google client ID from the backend (per-deploy)
   initChart();
+  renderIndBar();       // indicator toolbar (MA/EMA/BOLL/Vol/RSI/MACD)
   loadQuotes();loadHealth();loadRotation();loadNews();
   // bottom panel selector drives only the stock→indexes panel; the index's
   // top-correlated list stays fixed at 6 months.
