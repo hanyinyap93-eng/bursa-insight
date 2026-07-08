@@ -28,38 +28,62 @@ Endpoints (MVP):
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .core import alerts as alerts_mod
+from .core import auth as auth_mod
 from .core import backtest as bt
 from .core import breadth as breadth_mod
 from .core import index_health as ih
+from .core import mailer as mailer_mod
 from .core import news as news_mod
 from .core import screener as screener_mod
 from .core import service
+from .core import users as users_mod
 from .schemas import (
-    AlertRequest, BacktestHealthRequest, BacktestScreenRequest, ScreenRequest,
+    AlertRequest, BacktestHealthRequest, BacktestScreenRequest,
+    EmailLoginRequest, EmailSignupRequest, GoogleAuthRequest, ResendRequest,
+    ScreenRequest, VerifyRequest,
 )
 
-app = FastAPI(title=settings.app_name, version=settings.version)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start the background scheduler: warms the heavy caches on boot (using the
+    on-disk cache if present) and re-warms them on an interval so users always
+    hit fresh, pre-built data instead of triggering an on-request rebuild."""
+    service.start_scheduler()
+    yield
 
+
+app = FastAPI(title=settings.app_name, version=settings.version, lifespan=lifespan)
+
+# Auth uses Bearer tokens (Authorization header), NOT cookies, so credentials are
+# not needed. Sending them alongside a wildcard origin is invalid and makes the
+# server reflect any origin — so we disable credentials and only allow "*" when
+# no explicit origin list is configured.
+_cors_wildcard = settings.cors_origins == "*"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.cors_origins == "*" else settings.cors_origins.split(","),
-    allow_credentials=True,
+    allow_origins=["*"] if _cors_wildcard else settings.cors_origins.split(","),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-@app.on_event("startup")
-def _startup():
-    """Start the background scheduler: warms the heavy caches on boot (using the
-    on-disk cache if present) and re-warms them on an interval so users always
-    hit fresh, pre-built data instead of triggering an on-request rebuild."""
-    service.start_scheduler()
+@app.middleware("http")
+async def _no_cache_html(request, call_next):
+    """Never let the browser cache the single-page HTML — otherwise a redeploy
+    (e.g. an updated sign-in form) can keep showing a stale page. Static assets
+    (JS/images) stay cacheable."""
+    resp = await call_next(request)
+    if resp.headers.get("content-type", "").startswith("text/html"):
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
 
 
 @app.get("/api/info")
@@ -88,6 +112,107 @@ def info():
 @app.get("/health")
 def liveness():
     return {"status": "ok"}
+
+
+# --------------------------------------------------------------------------- #
+# Auth — verify a Google ID token server-side, then mint our own session JWT.
+# The gated routes below require that session JWT (see auth_mod.require_auth).
+# --------------------------------------------------------------------------- #
+@app.get("/api/config")
+def public_config():
+    """Public front-end config resolved at deploy time from env vars, so the
+    Google client ID isn't frozen into the shipped HTML. The page reads this on
+    load and falls back to the built-in <meta> value if it's unreachable."""
+    return {"google_client_id": settings.google_client_id}
+
+
+@app.post("/api/auth/google")
+def auth_google(req: GoogleAuthRequest):
+    try:
+        claims = auth_mod.verify_google_idtoken(req.credential)
+    except ValueError as exc:
+        raise HTTPException(401, f"Google sign-in rejected: {exc}")
+    except Exception as exc:  # noqa: BLE001 - e.g. Google certs unreachable
+        raise HTTPException(502, f"could not verify Google token: {exc}")
+    return auth_mod.make_session_jwt(claims["email"], claims.get("name", ""))
+
+
+def _verify_link(request: Request, email: str) -> str:
+    """Build the confirmation link the user clicks (points at the SPA, which
+    posts the token to /api/auth/verify)."""
+    base = (settings.public_url or str(request.base_url)).rstrip("/")
+    return f"{base}/?verify={auth_mod.make_verify_token(email)}"
+
+
+def _send_verification(request: Request, email: str) -> dict:
+    """Send (or dev-log) the confirmation email; return the signup response.
+    In dev mode (no SMTP configured) the link is returned so it can be tested."""
+    link = _verify_link(request, email)
+    sent = False
+    try:
+        sent = mailer_mod.send_verification(email, link)
+    except Exception as exc:  # noqa: BLE001 - SMTP failure shouldn't 500 the signup
+        raise HTTPException(502, f"could not send confirmation email: {exc}")
+    resp = {"pending": True, "email": email}
+    if not sent:                      # dev mode: expose the link for local testing
+        resp["dev_link"] = link
+    return resp
+
+
+@app.post("/api/auth/signup")
+def auth_signup(req: EmailSignupRequest, request: Request):
+    """Create an UNVERIFIED email+password account and email a confirmation link.
+    Returns {pending:true} — no session token until the email is confirmed."""
+    try:
+        users_mod.create_user(req.email, req.password, req.name or "")
+    except ValueError as exc:
+        # if the email exists but is unconfirmed, just (re)send the link
+        existing = users_mod.get_user(req.email)
+        if "already exists" in str(exc) and existing and not existing["verified"]:
+            return _send_verification(request, existing["email"])
+        raise HTTPException(400, str(exc))
+    return _send_verification(request, users_mod._norm(req.email))
+
+
+@app.post("/api/auth/verify")
+def auth_verify(req: VerifyRequest):
+    """Confirm an account from the emailed token, then return a session token
+    (so clicking the link signs the user straight in)."""
+    try:
+        email = auth_mod.read_verify_token(req.token)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    u = users_mod.get_user(email)
+    if u is None:
+        raise HTTPException(404, "account not found")
+    users_mod.mark_verified(email)
+    return auth_mod.make_session_jwt(u["email"], u["name"])
+
+
+@app.post("/api/auth/resend")
+def auth_resend(req: ResendRequest, request: Request):
+    """Resend the confirmation email. Always returns ok (doesn't reveal whether
+    the address is registered); only actually sends for an unverified account."""
+    u = users_mod.get_user(req.email)
+    if u is not None and not u["verified"]:
+        try:
+            mailer_mod.send_verification(u["email"], _verify_link(request, u["email"]))
+        except Exception:  # noqa: BLE001
+            pass
+    return {"ok": True}
+
+
+@app.post("/api/auth/login")
+def auth_login(req: EmailLoginRequest):
+    """Log in with an email+password account and return a session token.
+    Refuses unverified accounts (403) so the caller can prompt to confirm."""
+    try:
+        u = users_mod.authenticate(req.email, req.password)
+    except ValueError as exc:
+        raise HTTPException(401, str(exc))
+    if not u["verified"]:
+        raise HTTPException(403, "Please confirm your email first — check your inbox for the link.")
+    return auth_mod.make_session_jwt(u["email"], u["name"])
 
 
 # --------------------------------------------------------------------------- #
@@ -241,7 +366,7 @@ def screener_run(req: ScreenRequest):
 # --------------------------------------------------------------------------- #
 # Analyst sentiment & warrant GEX (KLCI)
 # --------------------------------------------------------------------------- #
-@app.get("/api/sentiment/analyst")
+@app.get("/api/sentiment/analyst", dependencies=[Depends(auth_mod.require_auth)])
 def analyst_sentiment(index: str = "KLCI", force: bool = False):
     """Malaysia analyst sentiment over the KLCI constituents: per-stock
     recommendation counts + -1..+1 scores and the overall gauge. Never blocks:
@@ -258,7 +383,7 @@ def analyst_sentiment(index: str = "KLCI", force: bool = False):
         raise HTTPException(502, f"analyst sentiment failed: {exc}")
 
 
-@app.get("/api/gex/klci")
+@app.get("/api/gex/klci", dependencies=[Depends(auth_mod.require_auth)])
 def klci_gex(force: bool = False):
     """KLCI index-warrant Gamma Exposure: per-warrant issuer GEX, by-strike
     aggregation, net-GEX profile with the gamma trough, and the Index Health x
@@ -277,7 +402,7 @@ def klci_gex(force: bool = False):
 # --------------------------------------------------------------------------- #
 # FBM market indexes (Mid 70 / ACE / EMAS / Fledgling)
 # --------------------------------------------------------------------------- #
-@app.get("/api/risk-appetite")
+@app.get("/api/risk-appetite", dependencies=[Depends(auth_mod.require_auth)])
 def risk_appetite(force: bool = False):
     """Risk appetite: FBM ACE / MID 70 / KLCI index spreads (Ziemba
     turn-of-year & size effect) — H scores, rolling betas, monthly
@@ -291,14 +416,14 @@ def risk_appetite(force: bool = False):
         raise HTTPException(502, f"risk appetite failed: {exc}")
 
 
-@app.get("/api/fbm/indexes")
+@app.get("/api/fbm/indexes", dependencies=[Depends(auth_mod.require_auth)])
 def fbm_indexes():
     """Registry of the FBM market indexes served by /api/fbm/{key}."""
     from .core import fbm_indexes as fbm_mod
     return [{"key": k, **v} for k, v in fbm_mod.FBM_INDEXES.items()]
 
 
-@app.get("/api/fbm/{key}")
+@app.get("/api/fbm/{key}", dependencies=[Depends(auth_mod.require_auth)])
 def fbm_health(key: str, lookback: str = "1y", term: str = "short", force: bool = False):
     """Index Health + per-sector Health % for one FBM market index.
     term: short (10/25) | mid (20/50) | long (50/100). The constituent scrape +
@@ -395,7 +520,9 @@ def stock(ticker: str, lookback: str = "1y"):
             raw = None
         if raw is None or raw.empty:
             import yfinance as yf
-            raw = yf.Ticker(ticker).history(period=lookback, interval="1d", auto_adjust=False)
+            # cap the fallback so an unknown/slow ticker can't hang the request
+            raw = yf.Ticker(ticker).history(period=lookback, interval="1d",
+                                            auto_adjust=False, timeout=8)
         if raw is None or raw.empty:
             raise HTTPException(404, f"no data for {ticker}")
         if hasattr(raw.columns, "nlevels") and raw.columns.nlevels > 1:

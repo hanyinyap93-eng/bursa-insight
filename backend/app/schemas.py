@@ -47,3 +47,28 @@ class BacktestScreenRequest(BaseModel):
     require_above_sma: bool = True
     require_momentum_up: bool = True
     cost_bps: float = 0.0
+
+
+class GoogleAuthRequest(BaseModel):
+    """The Google ID token (JWT) returned by Google Identity Services on the
+    client, to be verified server-side before a session token is issued."""
+    credential: str
+
+
+class EmailSignupRequest(BaseModel):
+    email: str
+    password: str
+    name: Optional[str] = None
+
+
+class EmailLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class VerifyRequest(BaseModel):
+    token: str
+
+
+class ResendRequest(BaseModel):
+    email: str

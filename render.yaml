@@ -1,6 +1,16 @@
-# Render.com blueprint — deploys Bursa Insight as a single web service.
+# Render.com blueprint — deploys Bursa Insight as a web service + Postgres.
 # Push the `bursa-insight` folder as your GitHub repo root, then in Render:
 #   New + → Blueprint → pick the repo. It reads this file automatically.
+
+# Hosted Postgres so email/password accounts survive redeploys (SQLite on the
+# web service's disk would be wiped each deploy). The web service reads its URL
+# via the DATABASE_URL env var wired below.
+databases:
+  - name: bursa-db
+    plan: free
+    databaseName: bursa
+    user: bursa
+
 services:
   - type: web
     name: bursa-insight
@@ -12,3 +22,19 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      # Signs login/session tokens. Render generates a strong random value on
+      # first deploy and keeps it secret — never in git. Do not edit by hand
+      # (changing it just logs existing users out).
+      - key: BURSA_JWT_SECRET
+        generateValue: true
+      # Postgres connection string, injected automatically from the bursa-db
+      # database above. The app normalises the scheme and creates its table on
+      # first boot — no manual setup needed.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bursa-db
+          property: connectionString
+      # OPTIONAL: to point this deployment at a DIFFERENT Google "Sign in with
+      # Google" client, add an env var named BURSA_GOOGLE_CLIENT_ID in the Render
+      # dashboard (Environment tab). If you don't, the app uses its built-in
+      # default client ID — no action needed.

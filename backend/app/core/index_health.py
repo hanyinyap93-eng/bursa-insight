@@ -211,8 +211,11 @@ def rsi(close: pd.Series, period: int) -> pd.Series:
     for i in range(period + 1, n):
         avg_gain[i] = (avg_gain[i - 1] * (period - 1) + gain[i]) / period
         avg_loss[i] = (avg_loss[i - 1] * (period - 1) + loss[i]) / period
-    rs = avg_gain / avg_loss
-    out = 100.0 - (100.0 / (1.0 + rs))
+    # avg_loss == 0 (a window with no down days) is a valid RSI = 100 case,
+    # handled explicitly below; silence the expected div-by-zero / 0-0 warnings.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rs = avg_gain / avg_loss
+        out = 100.0 - (100.0 / (1.0 + rs))
     out = np.where(avg_loss == 0, 100.0, out)
     out[:period] = np.nan
     return pd.Series(out, index=s.index, name="RSI").reindex(close.index)

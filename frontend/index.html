@@ -537,18 +537,38 @@
 <!-- SIGN-IN MODAL (gates GEX + Market Index) -->
 <div class="modal-backdrop" id="auth-modal">
   <div class="modal" role="dialog" aria-modal="true">
-    <h3 data-i18n="auth.title">Sign in</h3>
-    <p data-i18n="auth.blurb">Sign in to unlock GEX, Market Index and R-Appetite.</p>
-    <div id="gbtn-wrap" style="display:none">
-      <div id="gbtn" style="display:flex;justify-content:center"></div>
-      <div class="auth-or"><span data-i18n="auth.or">or</span></div>
+    <!-- FORM state: sign in / create account -->
+    <div id="auth-form">
+      <h3 id="auth-title" data-i18n="auth.title">Sign in</h3>
+      <p data-i18n="auth.blurb">Sign in to unlock GEX, Market Index and R-Appetite.</p>
+      <div id="gbtn-wrap" style="display:none">
+        <div id="gbtn" style="display:flex;justify-content:center"></div>
+        <div class="auth-or" id="auth-or"><span data-i18n="auth.or">or</span></div>
+      </div>
+      <label id="auth-name-label" for="auth-name" style="display:none" data-i18n="auth.name">Name (optional)</label>
+      <input id="auth-name" type="text" autocomplete="name" style="display:none" data-i18n-ph="auth.namePh" placeholder="Your name"/>
+      <label for="auth-email" data-i18n="auth.email">Email</label>
+      <input id="auth-email" type="email" autocomplete="email" data-i18n-ph="auth.emailPh" placeholder="you@example.com"/>
+      <label for="auth-pass" style="margin-top:10px;display:block" data-i18n="auth.password">Password</label>
+      <input id="auth-pass" type="password" autocomplete="current-password" data-i18n-ph="auth.passPh" placeholder="At least 8 characters"/>
+      <div class="err" id="auth-err"></div>
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:14px">
+        <a id="auth-toggle" class="reset-link" data-i18n="auth.noAccount">Create an account</a>
+        <div class="row" style="gap:8px">
+          <button class="btn ghost" id="auth-cancel" data-i18n="auth.cancel">Cancel</button>
+          <button class="btn" id="auth-submit" data-i18n="auth.submit">Sign in</button>
+        </div>
+      </div>
     </div>
-    <label for="auth-email" data-i18n="auth.email">Email</label>
-    <input id="auth-email" type="email" autocomplete="email" data-i18n-ph="auth.emailPh" placeholder="you@example.com"/>
-    <div class="err" id="auth-err"></div>
-    <div class="row" style="justify-content:flex-end;gap:8px;margin-top:8px">
-      <button class="btn ghost" id="auth-cancel" data-i18n="auth.cancel">Cancel</button>
-      <button class="btn" id="auth-submit" data-i18n="auth.submit">Sign in</button>
+    <!-- INFO state: "check your email" after signup, or "confirm first" on login -->
+    <div id="auth-info" style="display:none">
+      <h3 id="auth-info-title" data-i18n="auth.checkEmailTitle">Check your email</h3>
+      <p id="auth-info-msg" style="font-size:12.5px;color:var(--muted);line-height:1.6"></p>
+      <div class="err" id="auth-info-err" style="color:var(--green)"></div>
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:14px">
+        <a id="auth-resend" class="reset-link" data-i18n="auth.resend">Resend link</a>
+        <button class="btn" id="auth-info-ok" data-i18n="auth.ok">OK</button>
+      </div>
     </div>
   </div>
 </div>
@@ -605,6 +625,19 @@ const I18N = {
     "auth.email":"Email","auth.emailPh":"you@example.com",
     "auth.cancel":"Cancel","auth.submit":"Sign in","auth.needEmail":"Please enter a valid email.",
     "auth.locked":"Sign in required — click to sign in","auth.hi":"Hi","auth.or":"or",
+    "auth.verifying":"Verifying with Google…","auth.failed":"Sign-in failed.",
+    "auth.noProvider":"Google sign-in isn't configured on this deployment.",
+    "auth.password":"Password","auth.passPh":"At least 8 characters",
+    "auth.name":"Name (optional)","auth.namePh":"Your name",
+    "auth.createTitle":"Create an account","auth.create":"Create account",
+    "auth.noAccount":"Create an account","auth.haveAccount":"Have an account? Sign in",
+    "auth.needPass":"Password must be at least 8 characters.",
+    "auth.working":"Please wait…",
+    "auth.checkEmailTitle":"Check your email","auth.ok":"OK","auth.resend":"Resend link",
+    "auth.checkEmailMsg":"We've sent a confirmation link to","auth.checkEmailMsg2":"Click it to finish creating your account, then sign in.",
+    "auth.unverifiedTitle":"Confirm your email","auth.unverifiedMsg":"This account hasn't been confirmed yet. Please click the link in the email we sent — or resend it below.",
+    "auth.resent":"Confirmation email sent — check your inbox.","auth.resendFail":"Couldn't resend right now. Try again shortly.",
+    "auth.verified":"Email confirmed — you're signed in.","auth.verifyFail":"This confirmation link is invalid or has expired. Try signing in to resend it.",
   },
   zh:{
     "nav.chart":"图表","nav.sectors":"板块","nav.news":"新闻","nav.gex":"伽马敞口",
@@ -638,6 +671,19 @@ const I18N = {
     "auth.email":"邮箱","auth.emailPh":"you@example.com",
     "auth.cancel":"取消","auth.submit":"登录","auth.needEmail":"请输入有效的邮箱地址。",
     "auth.locked":"需要登录 — 点击登录","auth.hi":"你好","auth.or":"或",
+    "auth.verifying":"正在通过 Google 验证…","auth.failed":"登录失败。",
+    "auth.noProvider":"此部署未配置 Google 登录。",
+    "auth.password":"密码","auth.passPh":"至少 8 位",
+    "auth.name":"姓名（可选）","auth.namePh":"你的姓名",
+    "auth.createTitle":"创建账户","auth.create":"注册",
+    "auth.noAccount":"创建账户","auth.haveAccount":"已有账户？登录",
+    "auth.needPass":"密码至少为 8 位。",
+    "auth.working":"请稍候…",
+    "auth.checkEmailTitle":"请查收邮件","auth.ok":"好的","auth.resend":"重新发送链接",
+    "auth.checkEmailMsg":"我们已将确认链接发送至","auth.checkEmailMsg2":"点击链接完成注册后即可登录。",
+    "auth.unverifiedTitle":"请确认邮箱","auth.unverifiedMsg":"此账户尚未确认。请点击我们发送的邮件中的链接，或在下方重新发送。",
+    "auth.resent":"确认邮件已发送——请查收。","auth.resendFail":"暂时无法重新发送，请稍后再试。",
+    "auth.verified":"邮箱已确认——您已登录。","auth.verifyFail":"此确认链接无效或已过期。请尝试登录以重新发送。",
   },
 };
 const t = k => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
@@ -669,10 +715,30 @@ function applyStaticI18n(){
 // (Google Identity Services); an email sign-in is kept as a fallback for when
 // no Google Client ID is configured. State persists in localStorage.
 const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra"};
-const GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
+// Start from the built-in <meta> value; the backend (/api/config) may override
+// it per deployment so the ID isn't hard-frozen into the shipped HTML.
+let GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
+async function loadPublicConfig(){
+  try{
+    const c=await get("/api/config");
+    if(c && c.google_client_id) GOOGLE_CLIENT_ID = c.google_client_id.trim();
+  }catch(_){ /* keep the <meta> fallback */ }
+}
 function authUser(){ try{ return localStorage.getItem("authUser")||""; }catch(_){ return ""; } }
 function authName(){ try{ return localStorage.getItem("authName")||""; }catch(_){ return ""; } }
-function isAuthed(){ return !!authUser(); }
+function authToken(){ try{ return localStorage.getItem("authToken")||""; }catch(_){ return ""; } }
+function clearAuth(){ try{ localStorage.removeItem("authToken"); localStorage.removeItem("authUser");
+  localStorage.removeItem("authName"); localStorage.removeItem("authPic"); }catch(_){} }
+// authed = we hold a session JWT that hasn't expired. This is a client-side UX
+// check only; the server independently verifies the signature + expiry on every
+// gated request, so tampering with localStorage can't unlock the real data.
+function isAuthed(){
+  const tok=authToken(); if(!tok) return false;
+  const p=decodeJwt(tok);
+  if(!p||!p.exp){ return false; }
+  if(Date.now()/1000 >= p.exp){ clearAuth(); return false; }
+  return true;
+}
 
 // --- Google Identity Services ---
 let _gsiReady=false;
@@ -684,14 +750,18 @@ function decodeJwt(tok){
     return JSON.parse(json);
   }catch(_){ return null; }
 }
-function handleGoogleCredential(resp){
-  const p=decodeJwt(resp&&resp.credential);
-  if(!p||!p.email){ $("#auth-err").textContent=t("auth.needEmail"); return; }
+async function handleGoogleCredential(resp){
+  const cred = resp && resp.credential;
+  if(!cred){ $("#auth-err").textContent=t("auth.failed"); return; }
+  $("#auth-err").textContent=t("auth.verifying");
   try{
-    localStorage.setItem("authUser", p.email);
-    if(p.name) localStorage.setItem("authName", p.name); else localStorage.removeItem("authName");
-    if(p.picture) localStorage.setItem("authPic", p.picture); else localStorage.removeItem("authPic");
-  }catch(_){}
+    // send the Google ID token to the backend, which verifies it against
+    // Google's public keys and returns OUR signed session token.
+    const r=await post("/api/auth/google", {credential:cred});
+    localStorage.setItem("authToken", r.token);
+    localStorage.setItem("authUser", r.email||"");
+    if(r.name) localStorage.setItem("authName", r.name); else localStorage.removeItem("authName");
+  }catch(e){ $("#auth-err").textContent=(t("auth.failed")+" "+(e.message||"")).trim(); return; }
   const go=PENDING_PAGE; closeAuth(); updateAuthUI();
   if(go) showPage(go);
 }
@@ -734,22 +804,113 @@ function updateAuthUI(){
 }
 function openAuth(pendingPage){
   PENDING_PAGE = pendingPage||null;
-  $("#auth-err").textContent="";
   const m=$("#auth-modal"); m.classList.add("open");
-  renderGoogleButton();                          // "Sign in with Google" if configured
-  const inp=$("#auth-email"); inp.value=""; setTimeout(()=>inp.focus(),30);
+  renderGoogleButton();                          // "Sign in with Google" (if configured)
+  showAuthForm();                                // (not the "check your email" panel)
+  $("#auth-email").value=""; $("#auth-pass").value=""; $("#auth-name").value="";
+  setAuthMode("login");                          // always open in sign-in mode
+  setTimeout(()=>$("#auth-email").focus(),30);
 }
 function closeAuth(){ $("#auth-modal").classList.remove("open"); PENDING_PAGE=null; }
-function submitAuth(){
+
+// modal has two states: the sign-in/create form, and an info panel ("check your
+// email" after signup, or "confirm first" when logging into an unverified account)
+let PENDING_EMAIL="";
+function showAuthForm(){ $("#auth-form").style.display=""; $("#auth-info").style.display="none"; }
+function showAuthInfo(title,msg){
+  $("#auth-info-title").textContent=title;
+  $("#auth-info-msg").textContent=msg;
+  $("#auth-info-err").textContent="";
+  $("#auth-form").style.display="none"; $("#auth-info").style.display="";
+}
+function setSession(r,fallbackEmail){
+  localStorage.setItem("authToken", r.token);
+  localStorage.setItem("authUser", r.email||fallbackEmail||"");
+  if(r.name) localStorage.setItem("authName", r.name); else localStorage.removeItem("authName");
+}
+// brief top-of-screen notice (verification result, resend confirmation, …)
+function toast(msg, kind){
+  const el=document.createElement("div");
+  el.textContent=msg;
+  el.style.cssText="position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:600;"+
+    "padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow);"+
+    "background:var(--panel);border:1px solid "+(kind==="ok"?"var(--green)":kind==="err"?"var(--red)":"var(--line2)")+
+    ";color:var(--text);max-width:90vw;text-align:center;";
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.transition="opacity .4s"; el.style.opacity="0"; setTimeout(()=>el.remove(),400); }, 4500);
+}
+
+// email/password: toggle between "Sign in" and "Create account" modes
+let AUTH_MODE="login";
+function setAuthMode(mode){
+  AUTH_MODE = mode==="signup" ? "signup" : "login";
+  const signup = AUTH_MODE==="signup";
+  $("#auth-title").textContent  = signup ? t("auth.createTitle") : t("auth.title");
+  $("#auth-submit").textContent = signup ? t("auth.create")      : t("auth.submit");
+  $("#auth-toggle").textContent = signup ? t("auth.haveAccount") : t("auth.noAccount");
+  $("#auth-name").style.display       = signup ? "" : "none";
+  $("#auth-name-label").style.display = signup ? "" : "none";
+  $("#auth-pass").setAttribute("autocomplete", signup ? "new-password" : "current-password");
+  $("#auth-err").textContent = "";
+}
+async function submitEmailAuth(){
   const email=($("#auth-email").value||"").trim();
+  const pass=$("#auth-pass").value||"";
+  const name=($("#auth-name").value||"").trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $("#auth-err").textContent=t("auth.needEmail"); return; }
-  try{ localStorage.setItem("authUser", email); }catch(_){}
+  if(pass.length<8){ $("#auth-err").textContent=t("auth.needPass"); return; }
+  const signup=AUTH_MODE==="signup", btn=$("#auth-submit");
+  btn.disabled=true; $("#auth-err").textContent=t("auth.working");
+  PENDING_EMAIL=email;
+  try{
+    if(signup){
+      // account created but UNVERIFIED — show "check your email", no session yet
+      const r=await post("/api/auth/signup",{email,password:pass,name});
+      if(r.dev_link) console.log("DEV confirmation link:", r.dev_link);
+      btn.disabled=false;
+      showAuthInfo(t("auth.checkEmailTitle"),
+                   t("auth.checkEmailMsg")+" "+email+". "+t("auth.checkEmailMsg2"));
+      return;
+    }
+    const r=await post("/api/auth/login",{email,password:pass});
+    setSession(r,email);
+  }catch(e){
+    btn.disabled=false;
+    if(!signup && e.status===403){          // exists but not confirmed yet
+      showAuthInfo(t("auth.unverifiedTitle"), t("auth.unverifiedMsg"));
+      return;
+    }
+    $("#auth-err").textContent = e.message || t("auth.failed");
+    return;
+  }
+  btn.disabled=false;
   const go=PENDING_PAGE; closeAuth(); updateAuthUI();
   if(go) showPage(go);
 }
+// resend the confirmation email (from the info panel)
+async function resendVerification(){
+  if(!PENDING_EMAIL) return;
+  const el=$("#auth-info-err");
+  el.style.color="var(--muted)"; el.textContent=t("auth.working");
+  try{ await post("/api/auth/resend",{email:PENDING_EMAIL});
+    el.style.color="var(--green)"; el.textContent=t("auth.resent");
+  }catch(_){ el.style.color="var(--red)"; el.textContent=t("auth.resendFail"); }
+}
+// on load: if the URL carries a ?verify=<token> (from the emailed link), confirm
+// the account, sign in, and clean the token out of the address bar.
+async function handleVerifyParam(){
+  let tok=null;
+  try{ tok=new URL(location.href).searchParams.get("verify"); }catch(_){}
+  if(!tok) return;
+  try{ const u=new URL(location.href); u.searchParams.delete("verify");
+    history.replaceState({}, "", u.pathname+u.search+u.hash); }catch(_){}
+  try{
+    const r=await post("/api/auth/verify",{token:tok});
+    setSession(r); updateAuthUI(); toast(t("auth.verified"),"ok");
+  }catch(_){ toast(t("auth.verifyFail"),"err"); }
+}
 function signOut(){
-  try{ localStorage.removeItem("authUser"); localStorage.removeItem("authName");
-       localStorage.removeItem("authPic"); }catch(_){}
+  clearAuth();
   try{ if(window.google&&google.accounts&&google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(_){}
   updateAuthUI();
   // if currently viewing a gated page, fall back to the chart
@@ -769,16 +930,37 @@ function healthTrend(pct){
   return {key, cls: pct>=0?"pos":"neg"};
 }
 const arrow=x=>x>=0?"▲":"▼";
+// attach the session token so gated endpoints accept the request
+function authHeaders(){ const tok=authToken(); return tok?{Authorization:"Bearer "+tok}:{}; }
+// a rejected/expired session: drop the local token so the UI re-gates cleanly
+function on401(){ clearAuth(); try{ updateAuthUI(); }catch(_){} }
+// pull FastAPI's {"detail": "..."} out of an error body for a clean message
+async function errText(r){
+  let s=""; try{ s=await r.text(); }catch(_){}
+  try{ const j=JSON.parse(s); if(j&&j.detail!=null) return String(j.detail).slice(0,160); }catch(_){}
+  return (s||("HTTP "+r.status)).slice(0,160);
+}
+// a 401 on a normal call means our session token was rejected -> clear it so the
+// UI re-gates. The /api/auth/* endpoints use 401/400 for bad credentials, so we
+// must NOT wipe state there — the caller surfaces the message instead.
+function httpError(status, msg){ const e=new Error(msg); e.status=status; return e; }
 async function get(p,ms){
-  const ctrl=ms?new AbortController():null, t=ms?setTimeout(()=>ctrl.abort(),ms):null;
+  const ctrl=ms?new AbortController():null, tmr=ms?setTimeout(()=>ctrl.abort(),ms):null;
   try{
-    const r=await fetch(API+p, ctrl?{signal:ctrl.signal}:undefined);
-    if(!r.ok)throw new Error((await r.text()).slice(0,120));
+    const r=await fetch(API+p, {headers:authHeaders(), ...(ctrl?{signal:ctrl.signal}:{})});
+    if(r.status===401 && !p.startsWith("/api/auth/")){ on401(); throw new Error("session expired — please sign in again"); }
+    if(!r.ok) throw httpError(r.status, await errText(r));
     return await r.json();
   }catch(e){ if(e.name==='AbortError') throw new Error('timeout'); throw e; }
-  finally{ if(t)clearTimeout(t); }
+  finally{ if(tmr)clearTimeout(tmr); }
 }
-async function post(p,b){const r=await fetch(API+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});if(!r.ok)throw new Error((await r.text()).slice(0,120));return r.json();}
+async function post(p,b){
+  const r=await fetch(API+p,{method:"POST",
+    headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify(b)});
+  if(r.status===401 && !p.startsWith("/api/auth/")){ on401(); throw new Error("session expired — please sign in again"); }
+  if(!r.ok) throw httpError(r.status, await errText(r));
+  return r.json();
+}
 // browser-side cache for the heavy analytics pages: serve a recent response
 // instantly (per URL, so each term/page is cached separately). `force`
 // bypasses it (used by the Refresh buttons). Kept in localStorage so it
@@ -871,7 +1053,7 @@ async function loadChart(sym){
   try{
     const d = sym.isIndex
       ? await get(`/api/index/${encodeURIComponent(sym.indexKey||sym.code)}/ohlc?lookback=${CHART_LB}`, 120000)
-      : await get(`/api/stock/${encodeURIComponent(sym.ticker)}?lookback=${CHART_LB}`);
+      : await get(`/api/stock/${encodeURIComponent(sym.ticker)}?lookback=${CHART_LB}`, 20000);
     if(d.name){ $("#ch-name").textContent=d.name; $("#lbl-price").textContent=sym.code+" · "+d.name; }
     const bars=d.dates.map((t,i)=>({time:t,open:d.open[i],high:d.high[i],low:d.low[i],close:d.close[i]}))
       .filter(b=>b.open!=null&&b.close!=null);
@@ -1663,6 +1845,7 @@ async function loadRiskAppetite(retried,force){
 
 /* ---------------- nav + boot ---------------- */
 function boot(){
+  loadPublicConfig();   // resolve the Google client ID from the backend (per-deploy)
   initChart();
   loadQuotes();loadHealth();loadRotation();loadNews();
   // bottom panel selector drives only the stock→indexes panel; the index's
@@ -1701,9 +1884,14 @@ function boot(){
   updateAuthUI();
   $("#signin").onclick=()=>{ isAuthed() ? signOut() : openAuth(null); };
   $("#auth-cancel").onclick=closeAuth;
-  $("#auth-submit").onclick=submitAuth;
-  $("#auth-email").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault();submitAuth();} });
+  $("#auth-submit").onclick=submitEmailAuth;
+  $("#auth-toggle").onclick=()=>setAuthMode(AUTH_MODE==="login"?"signup":"login");
+  $("#auth-info-ok").onclick=closeAuth;
+  $("#auth-resend").onclick=resendVerification;
+  ["auth-email","auth-pass","auth-name"].forEach(id=>$("#"+id).addEventListener("keydown",
+    e=>{ if(e.key==="Enter"){ e.preventDefault(); submitEmailAuth(); } }));
   $("#auth-modal").addEventListener("mousedown",e=>{ if(e.target===$("#auth-modal")) closeAuth(); });
+  handleVerifyParam();   // finish signup if the page was opened from an email link
   $("#g-reset").onclick=()=>selectIndex('KLCI');
   // dark / light theme toggle (logo letters + chart follow the theme; persists)
   function setTheme(light){

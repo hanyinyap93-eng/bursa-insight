@@ -14,6 +14,10 @@ backend/_cache/
 *.parquet
 *.log
 
+# Local user database (email/password accounts)
+backend/bursa.db
+*.db
+
 # OS / editor
 .DS_Store
 Thumbs.db
