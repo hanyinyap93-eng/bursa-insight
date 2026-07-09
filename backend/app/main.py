@@ -451,7 +451,7 @@ def analyst_sentiment(index: str = "KLCI", force: bool = False):
         raise HTTPException(502, f"analyst sentiment failed: {exc}")
 
 
-@app.get("/api/fundflow")
+@app.get("/api/fundflow", dependencies=[Depends(auth_mod.require_auth)])
 def fund_flow(force: bool = False):
     """KLCI 30 tick-rule fund flow (1-month net buy/sell per constituent, per
     sector, and the latest day ranked). Never blocks: serves the cached payload

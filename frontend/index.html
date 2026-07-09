@@ -436,7 +436,7 @@
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-fundflow" data-i18n="nav.fundflow" title="KLCI 30 tick-rule fund flow (net buy/sell)">Fund Flow</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a><a id="nav-portfolio" data-gated="1" data-i18n="nav.portfolio" title="Your portfolio's past performance">Portfolio</a>
+    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-fundflow" data-gated="1" data-i18n="nav.fundflow" title="KLCI 30 tick-rule fund flow (net buy/sell)">Fund Flow</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a><a id="nav-portfolio" data-gated="1" data-i18n="nav.portfolio" title="Your portfolio's past performance">Portfolio</a>
   </nav>
   <div class="spacer"></div>
   <div id="greeting" class="greet" style="display:none"></div>
@@ -661,7 +661,7 @@
     <!-- FORM state: Google (always) + optional email/password section -->
     <div id="auth-form">
       <h3 id="auth-title" data-i18n="auth.title">Sign in</h3>
-      <p data-i18n="auth.blurb">Sign in to unlock GEX, Market Index and R-Appetite.</p>
+      <p data-i18n="auth.blurb">Sign in to unlock Fund Flow, GEX, Market Index, R-Appetite and Portfolio.</p>
       <div id="gbtn-wrap" style="display:none">
         <div id="gbtn" style="display:flex;justify-content:center"></div>
       </div>
@@ -772,7 +772,7 @@ const I18N = {
     "pf.needStock":"Please pick a stock from the list.","pf.needShares":"Enter the number of shares.","pf.needDate":"Pick a buy date.",
     "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
     "auth.signin":"Sign in","auth.signout":"Sign out","auth.title":"Sign in",
-    "auth.blurb":"Sign in to unlock GEX, Market Index and R-Appetite.",
+    "auth.blurb":"Sign in to unlock Fund Flow, GEX, Market Index, R-Appetite and Portfolio.",
     "auth.email":"Email","auth.emailPh":"you@example.com",
     "auth.cancel":"Cancel","auth.submit":"Sign in","auth.needEmail":"Please enter a valid email.",
     "auth.locked":"Sign in required — click to sign in","auth.hi":"Hi","auth.or":"or",
@@ -844,7 +844,7 @@ const I18N = {
     "pf.needStock":"请从列表中选择股票。","pf.needShares":"请输入股数。","pf.needDate":"请选择买入日期。",
     "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
     "auth.signin":"登录","auth.signout":"退出","auth.title":"登录",
-    "auth.blurb":"登录后可解锁「伽马敞口」「市场指数」和「风险偏好」。",
+    "auth.blurb":"登录后可解锁「资金流向」「伽马敞口」「市场指数」「风险偏好」和「投资组合」。",
     "auth.email":"邮箱","auth.emailPh":"you@example.com",
     "auth.cancel":"取消","auth.submit":"登录","auth.needEmail":"请输入有效的邮箱地址。",
     "auth.locked":"需要登录 — 点击登录","auth.hi":"你好","auth.or":"或",
@@ -894,7 +894,7 @@ function applyStaticI18n(){
 // Gate: GEX + Market Index require sign-in. Primary is Google Sign-In
 // (Google Identity Services); an email sign-in is kept as a fallback for when
 // no Google Client ID is configured. State persists in localStorage.
-const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra", portfolio:"nav-portfolio"};
+const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra", portfolio:"nav-portfolio", fundflow:"nav-fundflow"};
 // Start from the built-in <meta> value; the backend (/api/config) may override
 // it per deployment so the ID isn't hard-frozen into the shipped HTML.
 let GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
