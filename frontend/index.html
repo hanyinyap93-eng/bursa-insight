@@ -302,7 +302,7 @@
   .ff-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .ff-val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
   /* per-constituent 30-day histogram grid */
-  .ff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px 14px;}
+  .ff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 16px;}
   .ffp{min-width:0;}
   .ffp-t{font-size:10.5px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .ffp-t .sig{font-weight:600;opacity:.9;}
@@ -755,8 +755,9 @@ const I18N = {
     "ff.monthNet":"1-month net flow","ff.klci30":"KLCI 30 total","ff.latestNet":"Latest day net",
     "ff.latestTitle":"Latest day — net buy → net sell",
     "ff.dailyTitle":"KLCI 30 — total daily net fund flow",
-    "ff.perStockTitle":"KLCI 30 — daily net fund flow per constituent, last 30 trading days (MYR m)",
+    "ff.perStockTitle":"KLCI 30 — daily net fund flow by sector, last 30 trading days (MYR m)",
     "ff.perStockSub":"panel order & Σ = cumulative 30-day net flow (green = net accumulation, red = net distribution)",
+    "ff.stocks":"stocks",
     "ff.note":"Green = net buying, red = net selling. Tick-rule estimate from klsescreener {interval} bars; not exact trade-side data.",
     "nav.portfolio":"Portfolio",
     "pf.title":"My portfolio","pf.titleSub":"— add Bursa stocks with shares & buy date to see past performance",
@@ -826,8 +827,9 @@ const I18N = {
     "ff.monthNet":"一个月净流向","ff.klci30":"KLCI 30 合计","ff.latestNet":"最新单日净额",
     "ff.latestTitle":"最新单日 — 净买入 → 净卖出",
     "ff.dailyTitle":"KLCI 30 — 每日净资金流合计",
-    "ff.perStockTitle":"KLCI 30 — 各成分股每日净资金流，最近 30 个交易日（百万令吉）",
+    "ff.perStockTitle":"KLCI 30 — 各板块每日净资金流，最近 30 个交易日（百万令吉）",
     "ff.perStockSub":"面板顺序与 Σ = 30 日累计净流向（绿=净吸筹，红=净派发）",
+    "ff.stocks":"只成分股",
     "ff.note":"绿色=净买入，红色=净卖出。基于 klsescreener {interval} K线的逐笔规则估算；非精确买卖方向数据。",
     "nav.portfolio":"投资组合",
     "pf.title":"我的投资组合","pf.titleSub":"— 添加马股（股数与买入日期）查看历史表现",
@@ -2290,21 +2292,23 @@ async function loadFundFlow(force){
   const body=$("#ff-body"), cards=$("#ff-cards"), sub=$("#ff-sub");
   body.innerHTML=skeleton(4);
   try{
-    const d=await getCached("/api/fundflow?v=2",30*60000,300000,force);
+    const d=await getCached("/api/fundflow?v=3",30*60000,300000,force);
     if(d&&d.warming){ warmingRetry(body, ()=>loadFundFlow(), t("ff.preparing"), d.error); return; }
-    if(!d.daily){ loadFundFlow(true); return; }   // stale pre-v2 cache — force refetch
+    if(!(d.daily&&d.daily.sectors)){ loadFundFlow(true); return; }   // stale pre-v3 cache — force refetch
     FF_LOADED=true;
     sub.textContent=`${t("sub.asOf")} ${d.as_of} · ${d.days} ${t("ff.days")} (${d.start} → ${d.end}) · ${d.interval} ${t("ff.tickRule")}`;
     cards.innerHTML=`
       <div class="card"><div class="k">${t("ff.monthNet")}</div><div class="v ${cls(d.totals.month_net)}">${ffm(d.totals.month_net)}</div><div class="d">${t("ff.klci30")}</div></div>
       <div class="card"><div class="k">${t("ff.latestNet")} (${d.latest_day})</div><div class="v ${cls(d.totals.latest_net)}">${ffm(d.totals.latest_net)}</div></div>`;
     const stock=r=>`<b>${r.name}</b> <span class="muted">${r.code}</span>`;
-    // per-constituent 30-day accumulation histograms, ordered by cumulative net
-    const grid=(d.daily&&d.daily.stocks||[]).map(s=>`
+    // per-sector 30-day accumulation histograms (constituents summed by sector),
+    // panel-ordered by cumulative net flow — notebook section 7
+    const grid=(d.daily.sectors||[]).map(s=>`
       <div class="ffp">
         <div class="ffp-t" style="color:${s.total>=0?'var(--green)':'var(--red)'}"
-             title="${s.name} — Σ ${ffm(s.total)} over ${d.days} days">${s.name}
-          <span class="sig">(Σ ${ffm(s.total)})</span></div>
+             title="${s.sector} — ${s.members} ${t("ff.stocks")} · Σ ${ffm(s.total)} over ${d.days} days">${s.sector}
+          <span class="muted" style="font-weight:400">(${s.members})</span>
+          <span class="sig">Σ ${ffm(s.total)}</span></div>
         ${ffMiniHist(s.net)}
       </div>`).join("");
     body.innerHTML=`

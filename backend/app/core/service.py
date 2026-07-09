@@ -387,7 +387,7 @@ def get_fund_flow(force: bool = False, nowait: bool = False):
     stale-while-revalidate. nowait=True never blocks on a cold build."""
     from . import fund_flow as ff
 
-    key = "fundflow:KLCI:v2"   # v2: payload gained per-constituent daily series
+    key = "fundflow:KLCI:v3"   # v3: daily payload gained per-sector series
 
     def _build():
         return ff.compute(get_constituents())

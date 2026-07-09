@@ -120,8 +120,22 @@ def compute(constituents: pd.DataFrame) -> dict:
     } for c in cols]
     stocks_daily.sort(key=lambda r: r["total"], reverse=True)
 
+    # per-sector daily net series (notebook section 7): constituents summed by
+    # sector, panels ordered by cumulative net flow
+    sec_series: dict[str, pd.Series] = {}
+    for c in cols:
+        s = sect.get(c, "Unknown")
+        ser = daily_net[c].fillna(0.0)
+        sec_series[s] = ser if s not in sec_series else sec_series[s] + ser
+    sectors_daily = [{
+        "sector": s, "members": sec_n.get(s, 0),
+        "total": round(float(v.sum()), 0),
+        "net": [_r(x) for x in v.values],
+    } for s, v in sec_series.items()]
+    sectors_daily.sort(key=lambda r: r["total"], reverse=True)
+
     return {
-        "daily": {"dates": dates_list, "stocks": stocks_daily},
+        "daily": {"dates": dates_list, "stocks": stocks_daily, "sectors": sectors_daily},
         "as_of": str(last), "interval": RESOLUTION + "m", "days": int(daily_net.shape[0]),
         "start": str(daily_net.index.min()), "end": str(daily_net.index.max()),
         "latest_day": str(last),
