@@ -42,13 +42,14 @@ from .core import breadth as breadth_mod
 from .core import index_health as ih
 from .core import mailer as mailer_mod
 from .core import news as news_mod
+from .core import portfolio as portfolio_mod
 from .core import screener as screener_mod
 from .core import service
 from .core import users as users_mod
 from .schemas import (
     AlertRequest, BacktestHealthRequest, BacktestScreenRequest,
-    EmailLoginRequest, EmailSignupRequest, GoogleAuthRequest, ResendRequest,
-    ScreenRequest, VerifyRequest,
+    EmailLoginRequest, EmailSignupRequest, GoogleAuthRequest, PortfolioAddRequest,
+    ResendRequest, ScreenRequest, VerifyRequest,
 )
 
 log = logging.getLogger("bursa.api")
@@ -248,6 +249,38 @@ def auth_login(req: EmailLoginRequest):
     if not u["verified"]:
         raise HTTPException(403, "Please confirm your email first — check your inbox for the link.")
     return auth_mod.make_session_jwt(u["email"], u["name"])
+
+
+# --------------------------------------------------------------------------- #
+# Portfolio (per signed-in user): holdings + buy-and-hold past performance
+# --------------------------------------------------------------------------- #
+@app.get("/api/portfolio")
+def portfolio_list(user=Depends(auth_mod.require_auth)):
+    return {"holdings": portfolio_mod.list_holdings(user["sub"])}
+
+
+@app.post("/api/portfolio")
+def portfolio_add(req: PortfolioAddRequest, user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.add_holding(user["sub"], req.code, req.ticker,
+                                         req.name or "", req.shares, req.buy_date)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.delete("/api/portfolio/{hid}")
+def portfolio_remove(hid: int, user=Depends(auth_mod.require_auth)):
+    if not portfolio_mod.remove_holding(user["sub"], hid):
+        raise HTTPException(404, "holding not found")
+    return {"deleted": hid}
+
+
+@app.get("/api/portfolio/performance")
+def portfolio_performance(user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.performance(user["sub"])
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"portfolio performance failed: {exc}")
 
 
 # --------------------------------------------------------------------------- #

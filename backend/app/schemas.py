@@ -72,3 +72,11 @@ class VerifyRequest(BaseModel):
 
 class ResendRequest(BaseModel):
     email: str
+
+
+class PortfolioAddRequest(BaseModel):
+    code: str = ""
+    ticker: str
+    name: Optional[str] = None
+    shares: float
+    buy_date: str   # ISO "YYYY-MM-DD"

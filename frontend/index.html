@@ -283,6 +283,20 @@
   .card .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px;}
   .card .v{font-size:19px;font-weight:700;letter-spacing:-.3px;}
   .card .d{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  /* portfolio add-holding form */
+  .pf-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .pf-search{position:relative;flex:1 1 260px;min-width:200px;}
+  .pf-search input{width:100%;}
+  .pf-add input{background:var(--panel2);border:1px solid var(--line2);border-radius:var(--radius-sm);
+    color:var(--text);padding:9px 12px;font-size:13px;outline:none;}
+  .pf-add input:focus{border-color:var(--accent);}
+  .pf-add #pf-shares{width:110px;flex:0 0 auto;}
+  .pf-add #pf-date{flex:0 0 auto;color-scheme:dark;}
+  body.light .pf-add #pf-date{color-scheme:light;}
+  .pf-add .btn{flex:0 0 auto;}
+  #pf-chart svg{display:block;width:100%;}
+  .pf-del{color:var(--red);cursor:pointer;font-weight:700;opacity:.7;}
+  .pf-del:hover{opacity:1;}
   .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media (max-width:980px){ .gx-grid{grid-template-columns:1fr;} }
   .gx-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
@@ -412,7 +426,7 @@
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
+    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a><a id="nav-portfolio" data-gated="1" data-i18n="nav.portfolio" title="Your portfolio's past performance">Portfolio</a>
   </nav>
   <div class="spacer"></div>
   <div id="greeting" class="greet" style="display:none"></div>
@@ -571,6 +585,46 @@
   <div id="ra-body"></div>
 </section>
 
+<!-- PORTFOLIO PAGE: add Bursa stocks (shares + buy date) and see past P&L -->
+<section class="page" id="page-portfolio">
+  <div class="page-tools">
+    <button class="chip" id="pf-refresh" data-i18n="common.refresh" title="Recompute performance">↻ Refresh</button>
+    <span class="muted" style="font-size:11px" data-i18n="common.escHint">Esc returns to the chart</span>
+  </div>
+  <h2><span data-i18n="pf.title">My portfolio</span> <span class="muted" style="font-weight:400" data-i18n="pf.titleSub">— add Bursa stocks with shares &amp; buy date to see past performance</span></h2>
+  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="pf.explain">
+    Add each holding with the <b>number of shares</b> you own and the <b>date you bought</b>. The chart
+    shows what the whole portfolio would have been worth over time (buy-and-hold), against the
+    <b>KLCI</b> rebased to your starting value so you can see if you beat the market. The table shows
+    each stock's buy price, latest price and profit/loss. Prices are end-of-day from klsescreener.
+  </div></details>
+
+  <!-- add-holding form -->
+  <div class="gx-panel" style="max-width:880px">
+    <h3 data-i18n="pf.add">Add a holding</h3>
+    <div class="pf-add">
+      <div class="pf-search">
+        <input id="pf-stock" autocomplete="off" data-i18n-ph="pf.stockPh" placeholder="Search stock (code or name)"/>
+        <div class="search-dd" id="pf-stock-dd"></div>
+      </div>
+      <input id="pf-shares" type="number" min="0" step="1" data-i18n-ph="pf.sharesPh" placeholder="Shares"/>
+      <input id="pf-date" type="date"/>
+      <button class="btn" id="pf-add-btn" data-i18n="pf.addBtn">Add</button>
+    </div>
+    <div class="err" id="pf-add-err"></div>
+  </div>
+
+  <div class="sub" id="pf-sub" style="margin-top:14px"></div>
+  <div class="cards" id="pf-cards"></div>
+  <div class="gx-panel" id="pf-chart-panel" style="display:none">
+    <h3><span data-i18n="pf.perf">Portfolio value vs KLCI</span> <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-i18n="pf.rebased">(KLCI rebased to your start)</span></h3>
+    <div id="pf-chart"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i><span data-i18n="pf.legendPf">Portfolio</span></span>
+      <span><i style="background:var(--muted)"></i>KLCI</span></div>
+  </div>
+  <div id="pf-body"></div>
+</section>
+
 <!-- SIGN-IN MODAL (gates GEX + Market Index) -->
 <div class="modal-backdrop" id="auth-modal">
   <div class="modal" role="dialog" aria-modal="true">
@@ -663,6 +717,17 @@ const I18N = {
     "loading.computing":"computing…","loading.default":"loading…",
     "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
     "chart.indicators":"Indicators","chart.settings":"Settings","chart.reset":"Reset","chart.done":"Done",
+    "nav.portfolio":"Portfolio",
+    "pf.title":"My portfolio","pf.titleSub":"— add Bursa stocks with shares & buy date to see past performance",
+    "pf.explain":"Add each holding with the <b>number of shares</b> you own and the <b>date you bought</b>. The chart shows what the whole portfolio would have been worth over time (buy-and-hold), against the <b>KLCI</b> rebased to your starting value so you can see if you beat the market. The table shows each stock's buy price, latest price and profit/loss. Prices are end-of-day from klsescreener.",
+    "pf.add":"Add a holding","pf.stockPh":"Search stock (code or name)","pf.sharesPh":"Shares","pf.addBtn":"Add",
+    "pf.perf":"Portfolio value vs KLCI","pf.rebased":"(KLCI rebased to your start)","pf.legendPf":"Portfolio",
+    "pf.empty":"No holdings yet — add a stock above to see its past performance.",
+    "pf.holding":"holding","pf.holdings":"holdings",
+    "pf.invested":"Invested (cost)","pf.valueNow":"Value now","pf.gain":"Profit / Loss",
+    "pf.holdingsTitle":"Holdings","pf.stock":"Stock","pf.shares":"Shares","pf.buyDate":"Buy date",
+    "pf.buyPx":"Buy price","pf.lastPx":"Last price","pf.cost":"Cost","pf.value":"Value","pf.pl":"P/L","pf.remove":"Remove",
+    "pf.needStock":"Please pick a stock from the list.","pf.needShares":"Enter the number of shares.","pf.needDate":"Pick a buy date.",
     "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
     "auth.signin":"Sign in","auth.signout":"Sign out","auth.title":"Sign in",
     "auth.blurb":"Sign in to unlock GEX, Market Index and R-Appetite.",
@@ -712,6 +777,17 @@ const I18N = {
     "loading.computing":"计算中…","loading.default":"加载中…",
     "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
     "chart.indicators":"指标","chart.settings":"设置","chart.reset":"重置","chart.done":"完成",
+    "nav.portfolio":"投资组合",
+    "pf.title":"我的投资组合","pf.titleSub":"— 添加马股（股数与买入日期）查看历史表现",
+    "pf.explain":"为每只持仓填写<b>持有股数</b>和<b>买入日期</b>。图表显示整个组合按买入持有的历史价值，并以你起始价值为基准的 <b>KLCI</b> 作对比，看是否跑赢大盘。下方表格列出每只股票的买入价、最新价及盈亏。价格为 klsescreener 收盘数据。",
+    "pf.add":"添加持仓","pf.stockPh":"搜索股票（代码或名称）","pf.sharesPh":"股数","pf.addBtn":"添加",
+    "pf.perf":"组合价值 vs KLCI","pf.rebased":"（KLCI 以你的起点为基准）","pf.legendPf":"组合",
+    "pf.empty":"暂无持仓——在上方添加股票查看其历史表现。",
+    "pf.holding":"只持仓","pf.holdings":"只持仓",
+    "pf.invested":"投入（成本）","pf.valueNow":"当前价值","pf.gain":"盈亏",
+    "pf.holdingsTitle":"持仓","pf.stock":"股票","pf.shares":"股数","pf.buyDate":"买入日期",
+    "pf.buyPx":"买入价","pf.lastPx":"最新价","pf.cost":"成本","pf.value":"价值","pf.pl":"盈亏","pf.remove":"删除",
+    "pf.needStock":"请从列表中选择股票。","pf.needShares":"请输入股数。","pf.needDate":"请选择买入日期。",
     "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
     "auth.signin":"登录","auth.signout":"退出","auth.title":"登录",
     "auth.blurb":"登录后可解锁「伽马敞口」「市场指数」和「风险偏好」。",
@@ -764,7 +840,7 @@ function applyStaticI18n(){
 // Gate: GEX + Market Index require sign-in. Primary is Google Sign-In
 // (Google Identity Services); an email sign-in is kept as a fallback for when
 // no Google Client ID is configured. State persists in localStorage.
-const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra"};
+const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra", portfolio:"nav-portfolio"};
 // Start from the built-in <meta> value; the backend (/api/config) may override
 // it per deployment so the ID isn't hard-frozen into the shipped HTML.
 let GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
@@ -1517,11 +1593,13 @@ function showPage(name){
   $("#page-gex").classList.toggle("open", name==="gex");
   $("#page-fbm").classList.toggle("open", name==="fbm");
   $("#page-ra").classList.toggle("open", name==="ra");
+  $("#page-portfolio").classList.toggle("open", name==="portfolio");
   document.querySelectorAll("nav a").forEach(a=>
     a.classList.toggle("active", a.id==="nav-"+name || (name==="chart"&&a.id==="nav-chart")));
   if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); }
   if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
   if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
+  if(name==="portfolio") loadPortfolio();
   try{localStorage.setItem("view",name);}catch(_){}
 }
 const showGexPage=on=>showPage(on?"gex":"chart");
@@ -2112,6 +2190,95 @@ async function loadRiskAppetite(retried,force){
   }
 }
 
+/* ---------------- Portfolio page ---------------- */
+let PF_SEL=null;   // stock chosen in the add form: {code,ticker,name}
+function pfMoney(x){ return x==null?"—":"RM "+(+x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+async function loadPortfolio(force){
+  const body=$("#pf-body"), cards=$("#pf-cards"), sub=$("#pf-sub");
+  sub.textContent=t("loading.default"); cards.innerHTML=""; $("#pf-chart-panel").style.display="none";
+  try{
+    const d=await get("/api/portfolio/performance"+(force?"?_="+Date.now():""), 120000);
+    const hs=d.holdings||[];
+    if(!hs.length){ sub.textContent=t("pf.empty"); body.innerHTML=""; return; }
+    const T=d.totals||{};
+    sub.textContent = `${t("sub.asOf")} ${T.as_of||""} · ${hs.length} ${hs.length===1?t("pf.holding"):t("pf.holdings")}`;
+    // summary cards
+    cards.innerHTML=`
+      <div class="card"><div class="k">${t("pf.invested")}</div><div class="v">${pfMoney(T.cost)}</div></div>
+      <div class="card"><div class="k">${t("pf.valueNow")}</div><div class="v">${pfMoney(T.value)}</div></div>
+      <div class="card"><div class="k">${t("pf.gain")}</div>
+        <div class="v ${cls(T.gain)}">${T.gain>=0?"+":""}${pfMoney(T.gain).replace("RM ","RM ")}</div>
+        <div class="d ${cls(T.gain)}">${fmt(T.gain_pct)}%</div></div>`;
+    // value vs KLCI chart (static SVG, reuses multiLineSVG)
+    if(d.dates && d.dates.length>1){
+      const series=[{label:"Portfolio",color:"var(--accent)",values:d.value,width:2.4}];
+      if(d.benchmark && d.benchmark.length===d.dates.length)
+        series.push({label:"KLCI",color:"var(--muted)",values:d.benchmark,width:1.6});
+      $("#pf-chart").innerHTML=multiLineSVG(d.dates,series,{H:260,fmtTick:v=>Math.round(v).toLocaleString()});
+      $("#pf-chart-panel").style.display="";
+    }
+    // holdings table
+    body.innerHTML=`<div class="gx-panel" style="margin-top:14px"><h3>${t("pf.holdingsTitle")}</h3>
+      <div style="overflow-x:auto"><table><thead><tr>
+        <th>${t("pf.stock")}</th><th class="num">${t("pf.shares")}</th><th>${t("pf.buyDate")}</th>
+        <th class="num">${t("pf.buyPx")}</th><th class="num">${t("pf.lastPx")}</th>
+        <th class="num">${t("pf.cost")}</th><th class="num">${t("pf.value")}</th>
+        <th class="num">${t("pf.pl")}</th><th></th></tr></thead><tbody>${
+        hs.map(h=>{
+          const err=h.error?`<span class="muted" style="font-size:10px">(${h.error})</span>`:"";
+          return `<tr>
+            <td><b>${h.name||h.code}</b> <span class="muted">${h.code}</span> ${err}</td>
+            <td class="num">${(+h.shares).toLocaleString()}</td>
+            <td class="muted">${h.buy_date}</td>
+            <td class="num">${h.buy_price!=null?(+h.buy_price).toFixed(3):"—"}</td>
+            <td class="num">${h.last_price!=null?(+h.last_price).toFixed(3):"—"}</td>
+            <td class="num">${h.cost!=null?pfMoney(h.cost):"—"}</td>
+            <td class="num">${h.value!=null?pfMoney(h.value):"—"}</td>
+            <td class="num ${h.gain!=null?cls(h.gain):""}">${h.gain!=null?`${h.gain>=0?"+":""}${(+h.gain).toFixed(2)} (${fmt(h.gain_pct)}%)`:"—"}</td>
+            <td><span class="pf-del" data-id="${h.id}" title="${t("pf.remove")}">✕</span></td></tr>`;
+        }).join("")}</tbody></table></div></div>`;
+    body.querySelectorAll(".pf-del").forEach(x=>x.onclick=()=>removeHolding(+x.dataset.id));
+  }catch(e){ sub.textContent=e.message||t("auth.failed"); }
+}
+async function addHolding(){
+  const err=$("#pf-add-err"); err.textContent="";
+  const shares=parseFloat($("#pf-shares").value), buy_date=$("#pf-date").value;
+  if(!PF_SEL||!PF_SEL.ticker){ err.textContent=t("pf.needStock"); return; }
+  if(!(shares>0)){ err.textContent=t("pf.needShares"); return; }
+  if(!buy_date){ err.textContent=t("pf.needDate"); return; }
+  const btn=$("#pf-add-btn"); btn.disabled=true;
+  try{
+    await post("/api/portfolio",{code:PF_SEL.code,ticker:PF_SEL.ticker,name:PF_SEL.name,shares,buy_date});
+    PF_SEL=null; $("#pf-stock").value=""; $("#pf-shares").value="";
+    loadPortfolio(true);
+  }catch(e){ err.textContent=e.message||t("auth.failed"); }
+  btn.disabled=false;
+}
+async function removeHolding(id){
+  try{ await fetch(API+"/api/portfolio/"+id,{method:"DELETE",headers:authHeaders()}); }catch(_){}
+  loadPortfolio(true);
+}
+// search-as-you-type inside the add form
+function setupPfSearch(){
+  const inp=$("#pf-stock"), dd=$("#pf-stock-dd"); let timer=null;
+  const close=()=>{dd.classList.remove("open");dd.innerHTML="";};
+  const run=async()=>{
+    const q=inp.value.trim(); if(!q){close();PF_SEL=null;return;}
+    try{
+      const items=(await get(`/api/search?q=${encodeURIComponent(q)}&limit=10`)).filter(it=>!it.is_index);
+      dd.innerHTML=items.map((it,i)=>`<div class="sd-row" data-i="${i}">
+        <span class="sn"><b>${it.code}</b><small>${it.name||""}</small></span>
+        <span class="sp ${cls(it.chg_pct)}">${it.last!=null?fmtP(it.last,3):""}</span></div>`).join("");
+      dd.classList.toggle("open",items.length>0);
+      dd.querySelectorAll(".sd-row").forEach(r=>r.onmousedown=e=>{e.preventDefault();
+        const it=items[+r.dataset.i]; PF_SEL={code:it.code,ticker:it.ticker,name:it.name};
+        inp.value=`${it.code} · ${it.name||""}`; close(); });
+    }catch(_){ close(); }
+  };
+  inp.addEventListener("input",()=>{ PF_SEL=null; clearTimeout(timer); timer=setTimeout(run,180); });
+  inp.addEventListener("blur",()=>setTimeout(close,150));
+}
+
 /* ---------------- nav + boot ---------------- */
 function boot(){
   loadPublicConfig();   // resolve the Google client ID from the backend (per-deploy)
@@ -2127,6 +2294,14 @@ function boot(){
   $("#nav-gex").onclick=()=>showPage("gex");
   $("#nav-fbm").onclick=()=>showPage("fbm");
   $("#nav-ra").onclick=()=>showPage("ra");
+  $("#nav-portfolio").onclick=()=>showPage("portfolio");
+  // portfolio: default buy-date to today, wire add/refresh + in-form search
+  (function(){ const dt=$("#pf-date"); if(dt){ const now=new Date();
+    dt.max=now.toISOString().slice(0,10); dt.value=dt.max; } })();
+  $("#pf-add-btn").onclick=addHolding;
+  $("#pf-shares").addEventListener("keydown",e=>{ if(e.key==="Enter")addHolding(); });
+  $("#pf-refresh").onclick=()=>loadPortfolio(true);
+  setupPfSearch();
   // KLCI Index Health term toggle (beside the index title) — drives the KLCI
   // gauge + sector rotation + sector detail. FBM indexes have their own toggles.
   const gterm=$("#g-term"); gterm.innerHTML=termToggleHTML(TERM);
