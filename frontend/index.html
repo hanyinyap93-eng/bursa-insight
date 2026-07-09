@@ -297,6 +297,10 @@
   #pf-chart svg{display:block;width:100%;}
   .pf-del{color:var(--red);cursor:pointer;font-weight:700;opacity:.7;}
   .pf-del:hover{opacity:1;}
+  /* fund-flow diverging bar rows (reuse .cr-bar for the centre-line bar) */
+  .ff-row{display:grid;grid-template-columns:1fr 1fr 74px;gap:10px;align-items:center;font-size:11.5px;padding:2.5px 0;}
+  .ff-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ff-val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
   .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media (max-width:980px){ .gx-grid{grid-template-columns:1fr;} }
   .gx-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
@@ -426,7 +430,7 @@
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a><a id="nav-portfolio" data-gated="1" data-i18n="nav.portfolio" title="Your portfolio's past performance">Portfolio</a>
+    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-fundflow" data-i18n="nav.fundflow" title="KLCI 30 tick-rule fund flow (net buy/sell)">Fund Flow</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a><a id="nav-portfolio" data-gated="1" data-i18n="nav.portfolio" title="Your portfolio's past performance">Portfolio</a>
   </nav>
   <div class="spacer"></div>
   <div id="greeting" class="greet" style="display:none"></div>
@@ -585,6 +589,26 @@
   <div id="ra-body"></div>
 </section>
 
+<!-- FUND FLOW PAGE: KLCI 30 tick-rule net buy/sell -->
+<section class="page" id="page-fundflow">
+  <div class="page-tools">
+    <button class="chip" id="ff-refresh" data-i18n="common.refresh" title="Recompute fund flow">↻ Refresh</button>
+    <span class="muted" style="font-size:11px" data-i18n="common.escHint">Esc returns to the chart · data is cached server-side</span>
+  </div>
+  <h2><span data-i18n="ff.title">KLCI fund flow</span> <span class="muted" style="font-weight:400" data-i18n="ff.titleSub">— tick-rule net buy/sell over ~1 month</span></h2>
+  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="ff.explain">
+    Every intraday price move is tagged as <b>buying</b> (price ticked up) or <b>selling</b> (ticked down),
+    and the traded value (price × volume) is summed — a standard <b>tick-rule</b> estimate of where money
+    flowed. <b>Green</b> = net buying (accumulation), <b>red</b> = net selling (distribution), in MYR
+    millions. Shown three ways: each of the 30 KLCI stocks over the last ~month, by sector, and the latest
+    single day ranked from biggest net buy to biggest net sell. It's an estimate — exact trade-side data
+    needs a paid Bursa feed.
+  </div></details>
+  <div class="sub" id="ff-sub">loading…</div>
+  <div class="cards" id="ff-cards"></div>
+  <div id="ff-body"></div>
+</section>
+
 <!-- PORTFOLIO PAGE: add Bursa stocks (shares + buy date) and see past P&L -->
 <section class="page" id="page-portfolio">
   <div class="page-tools">
@@ -717,6 +741,15 @@ const I18N = {
     "loading.computing":"computing…","loading.default":"loading…",
     "news.none":"no news (feeds may be blocked here)","corr.of":"Correlation of","corr.to":"to indexes",
     "chart.indicators":"Indicators","chart.settings":"Settings","chart.reset":"Reset","chart.done":"Done",
+    "nav.fundflow":"Fund Flow",
+    "ff.title":"KLCI fund flow","ff.titleSub":"— tick-rule net buy/sell over ~1 month",
+    "ff.explain":"Every intraday price move is tagged as <b>buying</b> (price ticked up) or <b>selling</b> (ticked down), and the traded value (price × volume) is summed — a standard <b>tick-rule</b> estimate of where money flowed. <b>Green</b> = net buying (accumulation), <b>red</b> = net selling (distribution), in MYR millions. Shown three ways: each of the 30 KLCI stocks over the last ~month, by sector, and the latest single day ranked from biggest net buy to biggest net sell. It's an estimate — exact trade-side data needs a paid Bursa feed.",
+    "ff.preparing":"Preparing fund flow (intraday tick-rule over ~1 month)…",
+    "ff.days":"trading days","ff.tickRule":"tick-rule",
+    "ff.monthNet":"1-month net flow","ff.klci30":"KLCI 30 total","ff.latestNet":"Latest day net",
+    "ff.latestTitle":"Latest day — net buy → net sell","ff.monthTitle":"1-month net buy → net sell (per stock)",
+    "ff.sectorTitle":"1-month net flow by sector",
+    "ff.note":"Green = net buying, red = net selling. Tick-rule estimate from klsescreener {interval} bars; not exact trade-side data.",
     "nav.portfolio":"Portfolio",
     "pf.title":"My portfolio","pf.titleSub":"— add Bursa stocks with shares & buy date to see past performance",
     "pf.explain":"Add each holding with the <b>number of shares</b> you own and the <b>date you bought</b>. The chart shows what the whole portfolio would have been worth over time (buy-and-hold), against the <b>KLCI</b> rebased to your starting value so you can see if you beat the market. The table shows each stock's buy price, latest price and profit/loss. Prices are end-of-day from klsescreener.",
@@ -777,6 +810,15 @@ const I18N = {
     "loading.computing":"计算中…","loading.default":"加载中…",
     "news.none":"暂无新闻（此处的源可能被屏蔽）","corr.of":"相关性：","corr.to":"对各指数",
     "chart.indicators":"指标","chart.settings":"设置","chart.reset":"重置","chart.done":"完成",
+    "nav.fundflow":"资金流向",
+    "ff.title":"KLCI 资金流向","ff.titleSub":"— 基于逐笔规则的净买卖，约 1 个月",
+    "ff.explain":"每次盘中价格变动被标记为<b>买入</b>（价格上涨）或<b>卖出</b>（价格下跌），并汇总成交金额（价格 × 成交量）——这是估算资金流向的标准<b>逐笔规则</b>。<b>绿色</b>=净买入（吸筹），<b>红色</b>=净卖出（派发），单位为百万令吉。以三种方式呈现：30 只 KLCI 成分股近一个月、按板块、以及最新单日按净买入到净卖出排序。此为估算——精确的买卖方向数据需付费的马交所行情源。",
+    "ff.preparing":"正在准备资金流向（约 1 个月盘中逐笔规则）…",
+    "ff.days":"个交易日","ff.tickRule":"逐笔规则",
+    "ff.monthNet":"一个月净流向","ff.klci30":"KLCI 30 合计","ff.latestNet":"最新单日净额",
+    "ff.latestTitle":"最新单日 — 净买入 → 净卖出","ff.monthTitle":"一个月净买入 → 净卖出（按股票）",
+    "ff.sectorTitle":"一个月各板块净流向",
+    "ff.note":"绿色=净买入，红色=净卖出。基于 klsescreener {interval} K线的逐笔规则估算；非精确买卖方向数据。",
     "nav.portfolio":"投资组合",
     "pf.title":"我的投资组合","pf.titleSub":"— 添加马股（股数与买入日期）查看历史表现",
     "pf.explain":"为每只持仓填写<b>持有股数</b>和<b>买入日期</b>。图表显示整个组合按买入持有的历史价值，并以你起始价值为基准的 <b>KLCI</b> 作对比，看是否跑赢大盘。下方表格列出每只股票的买入价、最新价及盈亏。价格为 klsescreener 收盘数据。",
@@ -1583,7 +1625,7 @@ async function loadNews(){
 /* ---------------- GEX page (analyst sentiment + warrant GEX) ---------------- */
 const RATING_META=[["strongBuy","Strong Buy","#1a9641"],["buy","Buy","#a6d96a"],
   ["hold","Hold","#bdbdbd"],["sell","Sell","#fdae61"],["strongSell","Strong Sell","#d7191c"]];
-let SENT_LOADED=false, GEX_LOADED=false, FBM_LOADED=false, RA_LOADED=false;
+let SENT_LOADED=false, GEX_LOADED=false, FBM_LOADED=false, RA_LOADED=false, FF_LOADED=false;
 
 // views: the chart dashboard ('chart') and the full pages ('gex','fbm','ra')
 function showPage(name){
@@ -1593,12 +1635,14 @@ function showPage(name){
   $("#page-gex").classList.toggle("open", name==="gex");
   $("#page-fbm").classList.toggle("open", name==="fbm");
   $("#page-ra").classList.toggle("open", name==="ra");
+  $("#page-fundflow").classList.toggle("open", name==="fundflow");
   $("#page-portfolio").classList.toggle("open", name==="portfolio");
   document.querySelectorAll("nav a").forEach(a=>
     a.classList.toggle("active", a.id==="nav-"+name || (name==="chart"&&a.id==="nav-chart")));
   if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); }
   if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
   if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
+  if(name==="fundflow" && !FF_LOADED){ FF_LOADED=true; loadFundFlow(); }
   if(name==="portfolio") loadPortfolio();
   try{localStorage.setItem("view",name);}catch(_){}
 }
@@ -2190,6 +2234,43 @@ async function loadRiskAppetite(retried,force){
   }
 }
 
+/* ---------------- Fund Flow page ---------------- */
+const ffm=v=>(v>=0?"+":"")+(v/1e6).toFixed(1)+"m";      // MYR -> "+12.3m"
+function ffBars(rows, labelHtml){
+  const mx=Math.max(1,...rows.map(r=>Math.abs(r.net)));
+  return rows.map(r=>{ const v=r.net, w=Math.min(50,Math.abs(v)/mx*50);
+    const st=v>=0?`left:50%;width:${w}%;background:var(--green)`:`right:50%;width:${w}%;background:var(--red)`;
+    return `<div class="ff-row"><span class="ff-nm">${labelHtml(r)}</span>
+      <span class="cr-bar"><span style="${st}"></span></span>
+      <span class="ff-val ${cls(v)}">${ffm(v)}</span></div>`; }).join("");
+}
+async function loadFundFlow(force){
+  const body=$("#ff-body"), cards=$("#ff-cards"), sub=$("#ff-sub");
+  body.innerHTML=skeleton(4);
+  try{
+    const d=await getCached("/api/fundflow",30*60000,300000,force);
+    if(d&&d.warming){ warmingRetry(body, ()=>loadFundFlow(), t("ff.preparing"), d.error); return; }
+    FF_LOADED=true;
+    sub.textContent=`${t("sub.asOf")} ${d.as_of} · ${d.days} ${t("ff.days")} (${d.start} → ${d.end}) · ${d.interval} ${t("ff.tickRule")}`;
+    cards.innerHTML=`
+      <div class="card"><div class="k">${t("ff.monthNet")}</div><div class="v ${cls(d.totals.month_net)}">${ffm(d.totals.month_net)}</div><div class="d">${t("ff.klci30")}</div></div>
+      <div class="card"><div class="k">${t("ff.latestNet")} (${d.latest_day})</div><div class="v ${cls(d.totals.latest_net)}">${ffm(d.totals.latest_net)}</div></div>`;
+    const stock=r=>`<b>${r.name}</b> <span class="muted">${r.code}</span>`;
+    const sector=r=>`${r.sector} <span class="muted">(${r.members})</span>`;
+    body.innerHTML=`
+      <div class="gx-grid">
+        <div class="gx-panel"><h3>${t("ff.latestTitle")} (${d.latest_day})</h3>${ffBars(d.latest,stock)}</div>
+        <div class="gx-panel"><h3>${t("ff.monthTitle")}</h3>${ffBars(d.month,stock)}</div>
+      </div>
+      <div class="gx-panel" style="margin-top:14px"><h3>${t("ff.sectorTitle")}</h3>${ffBars(d.sectors,sector)}</div>
+      <div class="muted" style="font-size:10.5px;margin-top:8px">${t("ff.note").replace("{interval}",d.interval)}</div>`;
+  }catch(e){
+    sub.textContent=e.message||t("auth.failed");
+    body.innerHTML=`<div class="muted">${e.message} <a class="reset-link" id="ff-retry">retry</a></div>`;
+    const r=$("#ff-retry"); if(r)r.onclick=()=>loadFundFlow();
+  }
+}
+
 /* ---------------- Portfolio page ---------------- */
 let PF_SEL=null;   // stock chosen in the add form: {code,ticker,name}
 function pfMoney(x){ return x==null?"—":"RM "+(+x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -2294,6 +2375,8 @@ function boot(){
   $("#nav-gex").onclick=()=>showPage("gex");
   $("#nav-fbm").onclick=()=>showPage("fbm");
   $("#nav-ra").onclick=()=>showPage("ra");
+  $("#nav-fundflow").onclick=()=>showPage("fundflow");
+  $("#ff-refresh").onclick=()=>loadFundFlow(true);
   $("#nav-portfolio").onclick=()=>showPage("portfolio");
   // portfolio: default buy-date to today, wire add/refresh + in-form search
   (function(){ const dt=$("#pf-date"); if(dt){ const now=new Date();

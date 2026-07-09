@@ -381,6 +381,22 @@ def get_klci_gex(force: bool = False, nowait: bool = False):
     return _swr(key, TTL_SECONDS * 24, _build, force=force)  # 12h TTL
 
 
+def get_fund_flow(force: bool = False, nowait: bool = False):
+    """KLCI 30 tick-rule fund flow (SWR-cached). The intraday download + tick
+    classification is slow, so it is cached with a 12h TTL and served
+    stale-while-revalidate. nowait=True never blocks on a cold build."""
+    from . import fund_flow as ff
+
+    key = "fundflow:KLCI"
+
+    def _build():
+        return ff.compute(get_constituents())
+
+    if nowait:
+        return _cached_or_warm(key, TTL_SECONDS * 24, _build)
+    return _swr(key, TTL_SECONDS * 24, _build, force=force)
+
+
 def get_fbm_health(key: str, lookback: str = "1y", term: str = "short",
                    force: bool = False, nowait: bool = False):
     """FBM market-index health (Mid 70 / ACE / EMAS / Fledgling), SWR-cached.

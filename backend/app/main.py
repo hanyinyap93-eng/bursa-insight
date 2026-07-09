@@ -451,6 +451,20 @@ def analyst_sentiment(index: str = "KLCI", force: bool = False):
         raise HTTPException(502, f"analyst sentiment failed: {exc}")
 
 
+@app.get("/api/fundflow")
+def fund_flow(force: bool = False):
+    """KLCI 30 tick-rule fund flow (1-month net buy/sell per constituent, per
+    sector, and the latest day ranked). Never blocks: serves the cached payload
+    or {warming:true} while it builds in the background."""
+    try:
+        r = service.get_fund_flow(nowait=True)
+        if r is not None:
+            return r
+        return {"warming": True, "error": service.build_error("fundflow:KLCI")}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"fund flow failed: {exc}")
+
+
 @app.get("/api/gex/klci", dependencies=[Depends(auth_mod.require_auth)])
 def klci_gex(force: bool = False):
     """KLCI index-warrant Gamma Exposure: per-warrant issuer GEX, by-strike
