@@ -110,7 +110,18 @@ def compute(constituents: pd.DataFrame) -> dict:
 
     index_daily = [{"date": str(d), "net": _r(daily_net.loc[d].sum())} for d in daily_net.index]
 
+    # per-constituent daily net series (for the 30-day accumulation histograms),
+    # ordered by cumulative net flow (most accumulated first) like the notebook
+    dates_list = [str(d) for d in daily_net.index]
+    stocks_daily = [{
+        "code": code.get(c, c.replace(".KL", "")), "name": name.get(c, c),
+        "total": _r(month_net.get(c)),
+        "net": [_r(x) for x in daily_net[c].values],
+    } for c in cols]
+    stocks_daily.sort(key=lambda r: r["total"], reverse=True)
+
     return {
+        "daily": {"dates": dates_list, "stocks": stocks_daily},
         "as_of": str(last), "interval": RESOLUTION + "m", "days": int(daily_net.shape[0]),
         "start": str(daily_net.index.min()), "end": str(daily_net.index.max()),
         "latest_day": str(last),

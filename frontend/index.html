@@ -301,6 +301,12 @@
   .ff-row{display:grid;grid-template-columns:1fr 1fr 74px;gap:10px;align-items:center;font-size:11.5px;padding:2.5px 0;}
   .ff-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .ff-val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+  /* per-constituent 30-day histogram grid */
+  .ff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px 14px;}
+  .ffp{min-width:0;}
+  .ffp-t{font-size:10.5px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ffp-t .sig{font-weight:600;opacity:.9;}
+  #ff-daily svg{display:block;width:100%;}
   .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media (max-width:980px){ .gx-grid{grid-template-columns:1fr;} }
   .gx-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
@@ -747,8 +753,10 @@ const I18N = {
     "ff.preparing":"Preparing fund flow (intraday tick-rule over ~1 month)…",
     "ff.days":"trading days","ff.tickRule":"tick-rule",
     "ff.monthNet":"1-month net flow","ff.klci30":"KLCI 30 total","ff.latestNet":"Latest day net",
-    "ff.latestTitle":"Latest day — net buy → net sell","ff.monthTitle":"1-month net buy → net sell (per stock)",
-    "ff.sectorTitle":"1-month net flow by sector",
+    "ff.latestTitle":"Latest day — net buy → net sell",
+    "ff.dailyTitle":"KLCI 30 — total daily net fund flow",
+    "ff.perStockTitle":"KLCI 30 — daily net fund flow per constituent, last 30 trading days (MYR m)",
+    "ff.perStockSub":"panel order & Σ = cumulative 30-day net flow (green = net accumulation, red = net distribution)",
     "ff.note":"Green = net buying, red = net selling. Tick-rule estimate from klsescreener {interval} bars; not exact trade-side data.",
     "nav.portfolio":"Portfolio",
     "pf.title":"My portfolio","pf.titleSub":"— add Bursa stocks with shares & buy date to see past performance",
@@ -816,8 +824,10 @@ const I18N = {
     "ff.preparing":"正在准备资金流向（约 1 个月盘中逐笔规则）…",
     "ff.days":"个交易日","ff.tickRule":"逐笔规则",
     "ff.monthNet":"一个月净流向","ff.klci30":"KLCI 30 合计","ff.latestNet":"最新单日净额",
-    "ff.latestTitle":"最新单日 — 净买入 → 净卖出","ff.monthTitle":"一个月净买入 → 净卖出（按股票）",
-    "ff.sectorTitle":"一个月各板块净流向",
+    "ff.latestTitle":"最新单日 — 净买入 → 净卖出",
+    "ff.dailyTitle":"KLCI 30 — 每日净资金流合计",
+    "ff.perStockTitle":"KLCI 30 — 各成分股每日净资金流，最近 30 个交易日（百万令吉）",
+    "ff.perStockSub":"面板顺序与 Σ = 30 日累计净流向（绿=净吸筹，红=净派发）",
     "ff.note":"绿色=净买入，红色=净卖出。基于 klsescreener {interval} K线的逐笔规则估算；非精确买卖方向数据。",
     "nav.portfolio":"投资组合",
     "pf.title":"我的投资组合","pf.titleSub":"— 添加马股（股数与买入日期）查看历史表现",
@@ -2244,25 +2254,67 @@ function ffBars(rows, labelHtml){
       <span class="cr-bar"><span style="${st}"></span></span>
       <span class="ff-val ${cls(v)}">${ffm(v)}</span></div>`; }).join("");
 }
+// total daily net fund flow bar chart (notebook section 5, second chart)
+function ffDailyChart(rows,H=230){
+  const W=920,padL=46,padR=8,padT=14,padB=34;
+  const vals=rows.map(r=>r.net/1e6);
+  const lo=Math.min(0,...vals), hi=Math.max(0,...vals);
+  const Y=v=>padT+(H-padT-padB)*(hi-v)/((hi-lo)||1);
+  const slot=(W-padL-padR)/rows.length, bw=Math.max(3,slot*0.72);
+  let out="";
+  // y gridlines + labels
+  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4;
+    out+=`<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="var(--line2)" opacity=".35"/>`+
+      `<text x="${padL-5}" y="${Y(v)+3}" font-size="9" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}</text>`; }
+  out+=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--muted)" opacity=".6"/>`;
+  rows.forEach((r,i)=>{ const v=r.net/1e6, x=padL+i*slot+(slot-bw)/2;
+    const y=Y(Math.max(0,v)), h=Math.max(0.5,Math.abs(Y(v)-Y(0)));
+    out+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
+      fill="${v>=0?'var(--green)':'var(--red)'}" opacity=".9"><title>${r.date}: ${v>=0?"+":""}${v.toFixed(1)}m</title></rect>`;
+    // slanted date label on every other bar (all if few bars)
+    if(rows.length<=16 || i%2===0)
+      out+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-6}" font-size="8" fill="var(--muted)"
+        text-anchor="end" transform="rotate(-45 ${(x+bw/2).toFixed(1)} ${H-6})">${r.date.slice(5)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
+}
+// one mini per-constituent daily histogram (diverging bars around a zero axis)
+function ffMiniHist(nets){
+  const mx=Math.max(1,...nets.map(Math.abs));
+  return `<div class="spark" style="height:42px">`+nets.map(v=>{
+    const h=Math.max(2,50*Math.abs(v)/mx);
+    return `<div class="col ${v>=0?'up':'down'}"><i style="height:${h}%;background:${v>=0?'var(--green)':'var(--red)'}"></i></div>`;
+  }).join("")+`</div>`;
+}
 async function loadFundFlow(force){
   const body=$("#ff-body"), cards=$("#ff-cards"), sub=$("#ff-sub");
   body.innerHTML=skeleton(4);
   try{
-    const d=await getCached("/api/fundflow",30*60000,300000,force);
+    const d=await getCached("/api/fundflow?v=2",30*60000,300000,force);
     if(d&&d.warming){ warmingRetry(body, ()=>loadFundFlow(), t("ff.preparing"), d.error); return; }
+    if(!d.daily){ loadFundFlow(true); return; }   // stale pre-v2 cache — force refetch
     FF_LOADED=true;
     sub.textContent=`${t("sub.asOf")} ${d.as_of} · ${d.days} ${t("ff.days")} (${d.start} → ${d.end}) · ${d.interval} ${t("ff.tickRule")}`;
     cards.innerHTML=`
       <div class="card"><div class="k">${t("ff.monthNet")}</div><div class="v ${cls(d.totals.month_net)}">${ffm(d.totals.month_net)}</div><div class="d">${t("ff.klci30")}</div></div>
       <div class="card"><div class="k">${t("ff.latestNet")} (${d.latest_day})</div><div class="v ${cls(d.totals.latest_net)}">${ffm(d.totals.latest_net)}</div></div>`;
     const stock=r=>`<b>${r.name}</b> <span class="muted">${r.code}</span>`;
-    const sector=r=>`${r.sector} <span class="muted">(${r.members})</span>`;
+    // per-constituent 30-day accumulation histograms, ordered by cumulative net
+    const grid=(d.daily&&d.daily.stocks||[]).map(s=>`
+      <div class="ffp">
+        <div class="ffp-t" style="color:${s.total>=0?'var(--green)':'var(--red)'}"
+             title="${s.name} — Σ ${ffm(s.total)} over ${d.days} days">${s.name}
+          <span class="sig">(Σ ${ffm(s.total)})</span></div>
+        ${ffMiniHist(s.net)}
+      </div>`).join("");
     body.innerHTML=`
-      <div class="gx-grid">
+      <div class="gx-panel"><h3>${t("ff.dailyTitle")} (MYR m)</h3><div id="ff-daily">${ffDailyChart(d.index_daily)}</div></div>
+      <div class="gx-panel" style="margin-top:14px"><h3>${t("ff.perStockTitle")}</h3>
+        <div class="muted" style="font-size:10.5px;margin:-4px 0 10px">${t("ff.perStockSub")}</div>
+        <div class="ff-grid">${grid}</div></div>
+      <div class="gx-grid" style="margin-top:14px">
         <div class="gx-panel"><h3>${t("ff.latestTitle")} (${d.latest_day})</h3>${ffBars(d.latest,stock)}</div>
-        <div class="gx-panel"><h3>${t("ff.monthTitle")}</h3>${ffBars(d.month,stock)}</div>
       </div>
-      <div class="gx-panel" style="margin-top:14px"><h3>${t("ff.sectorTitle")}</h3>${ffBars(d.sectors,sector)}</div>
       <div class="muted" style="font-size:10.5px;margin-top:8px">${t("ff.note").replace("{interval}",d.interval)}</div>`;
   }catch(e){
     sub.textContent=e.message||t("auth.failed");
