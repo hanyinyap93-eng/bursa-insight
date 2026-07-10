@@ -2395,11 +2395,12 @@ function ffDailyChart(rows,H=240){
     const y=Y(Math.max(0,v)), h=Math.max(0.5,Math.abs(Y(v)-Y(0)));
     out+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
       fill="${v>=0?'var(--green)':'var(--red)'}" opacity=".9"><title>${r.date}: ${v>=0?"+":""}${v.toFixed(1)}m</title></rect>`;
-    // slanted full date label (thin out only when there are a lot of bars)
+    // slanted full date label (thin out only when there are a lot of bars).
+    // rotate +45 (up-left) with anchor=end so the label stays inside the frame.
     const step=Math.max(1,Math.ceil(rows.length/26));
-    if(i%step===0)
-      out+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-8}" font-size="8.5" fill="var(--muted)"
-        text-anchor="end" transform="rotate(-45 ${(x+bw/2).toFixed(1)} ${H-8})">${fmtD(r.date)}</text>`;
+    if(i%step===0){ const lx=(x+bw/2).toFixed(1);
+      out+=`<text x="${lx}" y="${H-6}" font-size="8.5" fill="var(--muted)"
+        text-anchor="end" transform="rotate(45 ${lx} ${H-6})">${fmtD(r.date)}</text>`; }
   });
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
 }
