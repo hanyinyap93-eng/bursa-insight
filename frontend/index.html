@@ -2206,7 +2206,9 @@ function wireXhair(scope){
       vline.setAttribute("x1",x); vline.setAttribute("x2",x); vline.style.display="";
       let rows="";
       m.series.forEach((s,si)=>{ const v=s.values[i], dot=dots[si];
-        if(v==null){ if(dot)dot.style.display="none"; return; }
+        // skip series hidden via the clickable legend (its polyline is display:none)
+        const line=svg.querySelector(`polyline[data-s="${si}"]`);
+        if((line&&line.style.display==="none")||v==null){ if(dot)dot.style.display="none"; return; }
         if(dot){ dot.setAttribute("cx",x); dot.setAttribute("cy",Y(v).toFixed(1)); dot.style.display=""; }
         rows+=`<div class="r"><i style="background:${s.color}"></i><span>${s.label}</span><b>${(+v).toFixed(1)}</b></div>`;
       });
