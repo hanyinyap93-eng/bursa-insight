@@ -2361,8 +2361,10 @@ function ffBars(rows, labelHtml){
       <span class="ff-val ${cls(v)}">${ffm(v)}</span></div>`; }).join("");
 }
 // total daily net fund flow bar chart (notebook section 5, second chart)
-function ffDailyChart(rows,H=230){
-  const W=920,padL=46,padR=8,padT=14,padB=34;
+function ffDailyChart(rows,H=240){
+  const W=920,padL=46,padR=8,padT=14,padB=46;
+  const _MMM=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtD=iso=>{ const p=(iso||"").split("-"); return p.length===3?(+p[2])+" "+_MMM[(+p[1])-1]:iso; };
   const vals=rows.map(r=>r.net/1e6);
   const lo=Math.min(0,...vals), hi=Math.max(0,...vals);
   const Y=v=>padT+(H-padT-padB)*(hi-v)/((hi-lo)||1);
@@ -2377,10 +2379,11 @@ function ffDailyChart(rows,H=230){
     const y=Y(Math.max(0,v)), h=Math.max(0.5,Math.abs(Y(v)-Y(0)));
     out+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
       fill="${v>=0?'var(--green)':'var(--red)'}" opacity=".9"><title>${r.date}: ${v>=0?"+":""}${v.toFixed(1)}m</title></rect>`;
-    // slanted date label on every other bar (all if few bars)
-    if(rows.length<=16 || i%2===0)
-      out+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-6}" font-size="8" fill="var(--muted)"
-        text-anchor="end" transform="rotate(-45 ${(x+bw/2).toFixed(1)} ${H-6})">${r.date.slice(5)}</text>`;
+    // slanted full date label (thin out only when there are a lot of bars)
+    const step=Math.max(1,Math.ceil(rows.length/26));
+    if(i%step===0)
+      out+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-8}" font-size="8.5" fill="var(--muted)"
+        text-anchor="end" transform="rotate(-45 ${(x+bw/2).toFixed(1)} ${H-8})">${fmtD(r.date)}</text>`;
   });
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
 }
