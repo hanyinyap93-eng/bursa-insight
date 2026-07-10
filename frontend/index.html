@@ -350,8 +350,14 @@
   .legend-toggle .lg.off i,.legend-cat .lg.off i{filter:grayscale(1);}
 
   /* ---------- usability polish ---------- */
-  nav{overflow-x:auto;scrollbar-width:none;}
-  nav::-webkit-scrollbar{display:none;}
+  /* nav scrolls horizontally when the section tabs overflow — show a thin
+     scrollbar below the buttons so it's discoverable and mouse-draggable */
+  nav{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;
+    scrollbar-color:var(--line2) transparent;padding-bottom:3px;flex-shrink:1;min-width:0;}
+  nav::-webkit-scrollbar{height:6px;}
+  nav::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px;}
+  nav::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+  nav::-webkit-scrollbar-track{background:transparent;}
   nav a{white-space:nowrap;}
   @media (max-width:980px){
     header{gap:10px;padding:0 12px;}
