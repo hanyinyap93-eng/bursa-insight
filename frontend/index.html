@@ -118,11 +118,9 @@
   /* ---------- ticker tape ---------- */
   .tape{height:var(--h-tape);background:var(--panel2);border-bottom:1px solid var(--line);
     display:flex;align-items:center;overflow:hidden;position:relative;}
-  .tape .track{display:flex;gap:0;white-space:nowrap;}
-  @media (prefers-reduced-motion: no-preference){
-    .tape .track{animation:scroll 80s linear infinite;}
-    .tape:hover .track{animation-play-state:paused;}
-  }
+  .tape .track{display:flex;gap:0;white-space:nowrap;width:max-content;
+    animation:scroll 80s linear infinite;}
+  .tape:hover .track{animation-play-state:paused;}   /* pause on hover to read */
   @keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
   .tick{display:inline-flex;align-items:center;gap:7px;padding:0 20px;border-right:1px solid var(--line);height:16px;cursor:pointer;font-size:12.5px;}
   .tick .sym{font-weight:600;color:var(--text);} .tick .px{color:var(--muted);} .tick .arrow{font-size:9px;}
@@ -221,6 +219,7 @@
     background:var(--line2);pointer-events:none;}
   .spark .col{flex:1;position:relative;}
   .spark .col i{position:absolute;left:0;right:0;border-radius:1px;}
+  .spark .col.hi{background:rgba(148,163,184,.20);border-radius:2px;}
   .spark .col.up i{bottom:50%;}      /* positive: grows up from the axis */
   .spark .col.down i{top:50%;}       /* negative: grows down below the axis */
   .comp{padding:2px 16px;}
@@ -773,6 +772,7 @@ const I18N = {
     "ff.perStockSub":"panel order & Σ = cumulative 30-day net flow (green = net accumulation, red = net distribution)",
     "ff.stocks":"stocks",
     "ff.note":"Green = net buying, red = net selling. Tick-rule estimate from klsescreener {interval} bars; not exact trade-side data.",
+    "ff.netFlow":"Net flow",
     "nav.portfolio":"Portfolio",
     "pf.title":"My portfolio","pf.titleSub":"— add Bursa stocks with shares & buy date to see past performance",
     "pf.explain":"Add each holding with the <b>number of shares</b> you own and the <b>date you bought</b>. The chart shows what the whole portfolio would have been worth over time (buy-and-hold), against the <b>KLCI</b> rebased to your starting value so you can see if you beat the market. The table shows each stock's buy price, latest price and profit/loss. Prices are end-of-day from klsescreener.",
@@ -845,6 +845,7 @@ const I18N = {
     "ff.perStockSub":"面板顺序与 Σ = 30 日累计净流向（绿=净吸筹，红=净派发）",
     "ff.stocks":"只成分股",
     "ff.note":"绿色=净买入，红色=净卖出。基于 klsescreener {interval} K线的逐笔规则估算；非精确买卖方向数据。",
+    "ff.netFlow":"净流向",
     "nav.portfolio":"投资组合",
     "pf.title":"我的投资组合","pf.titleSub":"— 添加马股（股数与买入日期）查看历史表现",
     "pf.explain":"为每只持仓填写<b>持有股数</b>和<b>买入日期</b>。图表显示整个组合按买入持有的历史价值，并以你起始价值为基准的 <b>KLCI</b> 作对比，看是否跑赢大盘。下方表格列出每只股票的买入价、最新价及盈亏。价格为 klsescreener 收盘数据。",
@@ -1544,22 +1545,37 @@ async function loadCorrelations(){
 }
 
 /* ---------------- ticker tape + quotes ---------------- */
+let TAPE_BUILT=false;
 async function loadQuotes(){
   try{
     QUOTES=await get(`/api/quotes?lookback=${LB}`);
     const consts=QUOTES.filter(q=>!q.is_index);
-    // tape: index + biggest movers, duplicated for seamless scroll
-    const idx=QUOTES.filter(q=>q.is_index).map(q=>({...q,ticker:q.code==="KLCI"?"^KLSE":q.code}));
-    const movers=consts.slice(0,22);
-    const tline=[...idx,...movers];
-    const tHTML=tline.map(q=>`<span class="tick" data-t="${q.ticker||q.code}">
-      <span class="sym">${q.is_index?q.code:q.name}</span><span class="px mono">${fmtP(q.last,2)}</span>
-      <span class="${cls(q.chg_pct)} mono"><span class="arrow">${arrow(q.chg_pct)}</span> ${fmt(q.chg_pct)}%</span></span>`).join("");
-    $("#tape").innerHTML=tHTML+tHTML;
-    document.querySelectorAll('.tick').forEach(t=>t.onclick=()=>{
-      const q=QUOTES.find(x=>(x.ticker||x.code)===t.dataset.t)||consts.find(c=>c.code===t.dataset.t);
-      if(q&&q.ticker)loadChart({ticker:q.ticker,code:q.code,name:q.name});
-    });
+    const byT={}; QUOTES.forEach(q=>{ byT[q.ticker||(q.code==="KLCI"?"^KLSE":q.code)]=q; });
+    if(!TAPE_BUILT){
+      // build the scrolling tape ONCE (index + biggest movers), duplicated for a
+      // seamless loop. Later refreshes only update the numbers in place, so the
+      // horizontal scroll never resets/jumps.
+      const idx=QUOTES.filter(q=>q.is_index).map(q=>({...q,ticker:q.code==="KLCI"?"^KLSE":q.code}));
+      const tline=[...idx,...consts.slice(0,22)];
+      const tHTML=tline.map(q=>`<span class="tick" data-t="${q.ticker||q.code}">
+        <span class="sym">${q.is_index?q.code:q.name}</span><span class="px mono">${fmtP(q.last,2)}</span>
+        <span class="chg mono ${cls(q.chg_pct)}"><span class="arrow">${arrow(q.chg_pct)}</span> ${fmt(q.chg_pct)}%</span></span>`).join("");
+      $("#tape").innerHTML=tHTML+tHTML;
+      document.querySelectorAll('.tick').forEach(t=>t.onclick=()=>{
+        const q=byT[t.dataset.t]||consts.find(c=>c.code===t.dataset.t);
+        if(q&&q.ticker)loadChart({ticker:q.ticker,code:q.code,name:q.name});
+      });
+      TAPE_BUILT=true;
+    } else {
+      // update prices/changes in place (both duplicated copies) — no rebuild
+      document.querySelectorAll('#tape .tick').forEach(t=>{
+        const q=byT[t.dataset.t]; if(!q) return;
+        const px=t.querySelector('.px'); if(px) px.textContent=fmtP(q.last,2);
+        const chg=t.querySelector('.chg');
+        if(chg){ chg.className="chg mono "+cls(q.chg_pct);
+          chg.innerHTML=`<span class="arrow">${arrow(q.chg_pct)}</span> ${fmt(q.chg_pct)}%`; }
+      });
+    }
     // default chart on first load only (don't override the user's symbol on lookback change)
     if(!CHART_INIT){
       CHART_INIT=true;
@@ -2388,12 +2404,35 @@ function ffDailyChart(rows,H=240){
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
 }
 // one mini per-constituent daily histogram (diverging bars around a zero axis)
-function ffMiniHist(nets){
+let FF_DATES=[];   // shared date axis for the sector mini-histograms
+function ffMiniHist(nets,label){
   const mx=Math.max(1,...nets.map(Math.abs));
-  return `<div class="spark" style="height:42px">`+nets.map(v=>{
+  return `<div class="spark ff-mini" data-nets='${JSON.stringify(nets).replace(/'/g,"&#39;")}'`+
+    ` data-label="${(label||"").replace(/"/g,"&quot;")}" style="height:42px;cursor:crosshair">`+nets.map(v=>{
     const h=Math.max(2,50*Math.abs(v)/mx);
     return `<div class="col ${v>=0?'up':'down'}"><i style="height:${h}%;background:${v>=0?'var(--green)':'var(--red)'}"></i></div>`;
   }).join("")+`</div>`;
+}
+// hover a sector mini-histogram column -> highlight it + tooltip (label · date · net)
+function wireSparkHover(scope){
+  scope.querySelectorAll(".ff-mini").forEach(el=>{
+    let nets; try{ nets=JSON.parse(el.dataset.nets); }catch(_){ return; }
+    const label=el.dataset.label||"", n=nets.length, cols=[...el.querySelectorAll(".col")], tip=mlxTip();
+    el.addEventListener("mousemove",e=>{
+      const r=el.getBoundingClientRect();
+      let i=Math.floor((e.clientX-r.left)/(r.width||1)*n); i=Math.max(0,Math.min(n-1,i));
+      cols.forEach((c,ci)=>c.classList.toggle("hi",ci===i));
+      const v=nets[i], date=FF_DATES[i]||"";
+      tip.innerHTML=`<div class="d">${label}${label?" · ":""}${date}</div>`+
+        `<div class="r"><span>${t("ff.netFlow")}</span><b style="color:${v>=0?'var(--green)':'var(--red)'}">${ffm(v)}</b></div>`;
+      tip.style.display="block";
+      let tx=e.clientX+14, ty=e.clientY+14;
+      if(tx+tip.offsetWidth>window.innerWidth-8) tx=e.clientX-tip.offsetWidth-14;
+      if(ty+tip.offsetHeight>window.innerHeight-8) ty=e.clientY-tip.offsetHeight-14;
+      tip.style.left=tx+"px"; tip.style.top=ty+"px";
+    });
+    el.addEventListener("mouseleave",()=>{ cols.forEach(c=>c.classList.remove("hi")); tip.style.display="none"; });
+  });
 }
 async function loadFundFlow(force){
   const body=$("#ff-body"), cards=$("#ff-cards"), sub=$("#ff-sub");
@@ -2408,6 +2447,7 @@ async function loadFundFlow(force){
       <div class="card"><div class="k">${t("ff.monthNet")}</div><div class="v ${cls(d.totals.month_net)}">${ffm(d.totals.month_net)}</div><div class="d">${t("ff.klci30")}</div></div>
       <div class="card"><div class="k">${t("ff.latestNet")} (${d.latest_day})</div><div class="v ${cls(d.totals.latest_net)}">${ffm(d.totals.latest_net)}</div></div>`;
     const stock=r=>`<b>${r.name}</b> <span class="muted">${r.code}</span>`;
+    FF_DATES=d.daily.dates||[];   // shared date axis for the mini-histogram hover
     // per-sector 30-day accumulation histograms (constituents summed by sector),
     // panel-ordered by cumulative net flow — notebook section 7
     const grid=(d.daily.sectors||[]).map(s=>`
@@ -2416,7 +2456,7 @@ async function loadFundFlow(force){
              title="${s.sector} — ${s.members} ${t("ff.stocks")} · Σ ${ffm(s.total)} over ${d.days} days">${s.sector}
           <span class="muted" style="font-weight:400">(${s.members})</span>
           <span class="sig">Σ ${ffm(s.total)}</span></div>
-        ${ffMiniHist(s.net)}
+        ${ffMiniHist(s.net, s.sector)}
       </div>`).join("");
     body.innerHTML=`
       <div class="gx-panel"><h3>${t("ff.dailyTitle")} (MYR m)</h3><div id="ff-daily">${ffDailyChart(d.index_daily)}</div></div>
@@ -2427,6 +2467,7 @@ async function loadFundFlow(force){
         <div class="gx-panel"><h3>${t("ff.latestTitle")} (${d.latest_day})</h3>${ffBars(d.latest,stock)}</div>
       </div>
       <div class="muted" style="font-size:10.5px;margin-top:8px">${t("ff.note").replace("{interval}",d.interval)}</div>`;
+    wireSparkHover(body);   // hover the sector histograms -> date + net value
   }catch(e){
     sub.textContent=e.message||t("auth.failed");
     body.innerHTML=`<div class="muted">${e.message} <a class="reset-link" id="ff-retry">retry</a></div>`;
