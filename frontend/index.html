@@ -1370,7 +1370,9 @@ function openIndSettings(ind, anchor){
   };
   setTimeout(()=>document.addEventListener("mousedown",_indPopOutside,true),0);
 }
-function _mkSeries(arr){ return CHART_SRC.dates.map((tm,i)=>({time:tm,value:arr[i]})).filter(x=>x.value!=null); }
+// keep one point per canonical bar (whitespace for warm-up nulls, not dropped) so
+// every series shares the same bar count/indexing as the candles.
+function _mkSeries(arr){ return CHART_SRC.dates.map((tm,i)=> arr[i]==null?{time:tm}:{time:tm,value:arr[i]}); }
 function setOverlay(name,on,color,opt,data){
   if(on){
     if(!overlaySeries[name]) overlaySeries[name]=chart.addLineSeries(
@@ -1388,11 +1390,12 @@ function ensureOscChart(key,sub){
   const c=LightweightCharts.createChart(wrap,{autoSize:true,...chartTheme(),
     timeScale:{...chartTheme().timeScale,timeVisible:false,visible:false},
     handleScroll:false,handleScale:false,crosshair:{mode:0}});
-  // sync by TIME (not bar index): oscillator series have fewer bars (leading
-  // warm-up values are dropped), so index-based sync would misalign the dates.
-  const handler=r=>{ if(r){ try{ c.timeScale().setVisibleRange(r); }catch(_){} } };
-  chart.timeScale().subscribeVisibleTimeRangeChange(handler);
-  const o={chart:c,wrap,series:{},unsub:()=>chart.timeScale().unsubscribeVisibleTimeRangeChange(handler)};
+  // sync by LOGICAL bar index — every series now shares the same canonical bar
+  // set (whitespace fills warm-up), so index i is the same date in every pane →
+  // pixel-perfect alignment with the candles.
+  const handler=r=>{ if(r){ try{ c.timeScale().setVisibleLogicalRange(r); }catch(_){} } };
+  chart.timeScale().subscribeVisibleLogicalRangeChange(handler);
+  const o={chart:c,wrap,series:{},unsub:()=>chart.timeScale().unsubscribeVisibleLogicalRangeChange(handler)};
   oscCharts[key]=o; return o;
 }
 function removeOsc(key){ const o=oscCharts[key]; if(!o)return; try{o.unsub();}catch(_){}
@@ -1411,14 +1414,14 @@ function setOsc(key,on){
     if(lbl) lbl.textContent=`MACD ${P.macd.fast},${P.macd.slow},${P.macd.signal}`;
     const m=_macd(close,P.macd.fast,P.macd.slow,P.macd.signal);
     if(!o.series.hist) o.series.hist=o.chart.addHistogramSeries({priceLineVisible:false,lastValueVisible:false});
-    o.series.hist.setData(CHART_SRC.dates.map((tm,i)=>({time:tm,value:m.hist[i],
-      color:(m.hist[i]>=0?"rgba(0,194,129,.5)":"rgba(242,54,69,.5)")})).filter(x=>x.value!=null));
+    o.series.hist.setData(CHART_SRC.dates.map((tm,i)=> m.hist[i]==null?{time:tm}:{time:tm,value:m.hist[i],
+      color:(m.hist[i]>=0?"rgba(0,194,129,.5)":"rgba(242,54,69,.5)")}));
     if(!o.series.macd) o.series.macd=o.chart.addLineSeries({color:"#3d7bff",lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
     o.series.macd.setData(_mkSeries(m.macd));
     if(!o.series.signal) o.series.signal=o.chart.addLineSeries({color:"#f5a623",lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
     o.series.signal.setData(_mkSeries(m.signal));
   }
-  const r=chart.timeScale().getVisibleRange(); if(r){ try{ o.chart.timeScale().setVisibleRange(r); }catch(_){} }
+  const r=chart.timeScale().getVisibleLogicalRange(); if(r){ try{ o.chart.timeScale().setVisibleLogicalRange(r); }catch(_){} }
 }
 function applyIndicators(){
   if(!chart||!CHART_SRC) return;
@@ -1455,14 +1458,17 @@ async function loadChart(sym){
       ? await get(`/api/index/${encodeURIComponent(sym.indexKey||sym.code)}/ohlc?lookback=${CHART_LB}`, 120000)
       : await get(`/api/stock/${encodeURIComponent(sym.ticker)}?lookback=${CHART_LB}`, 20000);
     if(d.name){ $("#ch-name").textContent=d.name; $("#lbl-price").textContent=sym.code+" · "+d.name; }
-    const bars=d.dates.map((t,i)=>({time:t,open:d.open[i],high:d.high[i],low:d.low[i],close:d.close[i]}))
+    const bars=d.dates.map((t,i)=>({time:t,open:d.open[i],high:d.high[i],low:d.low[i],close:d.close[i],volume:d.volume[i]||0}))
       .filter(b=>b.open!=null&&b.close!=null);
     LASTBARS=bars;
-    candle.setData(bars);
-    vol.setData(d.dates.map((t,i)=>({time:t,value:d.volume[i]||0,
-      color:(d.close[i]>=d.open[i])?'rgba(38,166,154,.5)':'rgba(239,83,80,.5)'})));
-    // keep the source series so indicators can (re)compute on toggle without a refetch
-    CHART_SRC={dates:d.dates, close:d.close, high:d.high, low:d.low};
+    candle.setData(bars.map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
+    vol.setData(bars.map(b=>({time:b.time,value:b.volume,
+      color:(b.close>=b.open)?'rgba(38,166,154,.5)':'rgba(239,83,80,.5)'})));
+    // ONE canonical bar set: candles, volume, overlays and the RSI/MACD sub-panes
+    // all use these exact times → identical bar indexing → stacked panes stay
+    // pixel-aligned with the candles.
+    CHART_SRC={dates:bars.map(b=>b.time), close:bars.map(b=>b.close),
+               high:bars.map(b=>b.high), low:bars.map(b=>b.low)};
     // default view = last ~6 months (~126 trading days); scroll-wheel zooms out to 5y
     const N=bars.length, SHOW=126;
     chart.timeScale().setVisibleLogicalRange({from:Math.max(0,N-SHOW), to:N+1});
