@@ -295,6 +295,14 @@
   body.light .pf-add #pf-date{color-scheme:light;}
   .pf-add .btn{flex:0 0 auto;}
   #pf-chart svg{display:block;width:100%;}
+  /* multiLineSVG hover crosshair tooltip (R-Appetite line charts) */
+  .mlx-tip{position:fixed;z-index:350;pointer-events:none;background:var(--panel);
+    border:1px solid var(--line2);border-radius:8px;box-shadow:var(--shadow);
+    padding:7px 10px;font-size:11px;white-space:nowrap;display:none;min-width:120px;}
+  .mlx-tip .d{color:var(--muted);margin-bottom:4px;font-size:10px;}
+  .mlx-tip .r{display:flex;align-items:center;gap:6px;margin:2px 0;}
+  .mlx-tip .r i{width:8px;height:8px;border-radius:2px;display:inline-block;flex:0 0 auto;}
+  .mlx-tip .r b{margin-left:auto;font-variant-numeric:tabular-nums;}
   .pf-del{color:var(--red);cursor:pointer;font-weight:700;opacity:.7;}
   .pf-del:hover{opacity:1;}
   /* fund-flow diverging bar rows (reuse .cr-bar for the centre-line bar) */
@@ -2168,7 +2176,50 @@ function multiLineSVG(dates,seriesList,{H=230,ymin=null,ymax=null,guides=[],fmtT
   const tick=i=>`<text x="${X(i)}" y="${H-7}" font-size="8.5" fill="var(--muted)"
     text-anchor="${i===0?'start':i===dates.length-1?'end':'middle'}">${dates[i]}</text>`;
   out+=tick(0)+tick(Math.floor(dates.length/2))+tick(dates.length-1);
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
+  // interactive crosshair layer (positioned by wireXhair on hover)
+  out+=`<line class="mlx-v" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="var(--muted)"
+    stroke-width="1" stroke-dasharray="3 3" opacity=".85" style="display:none"/>`;
+  seriesList.forEach((s,si)=>{ out+=`<circle class="mlx-dot" data-s="${si}" r="3" fill="${s.color}"
+    stroke="var(--panel)" stroke-width="1" style="display:none"/>`; });
+  const meta={W,H,padL,padR,padT,padB,lo,hi,dates,
+              series:seriesList.map(s=>({label:s.label,color:s.color,values:s.values}))};
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="cursor:crosshair"`+
+    ` data-mlx='${JSON.stringify(meta).replace(/'/g,"&#39;")}'>${out}</svg>`;
+}
+// wire a hover crosshair + tooltip onto every multiLineSVG chart under `scope`
+let _mlxTip=null;
+function mlxTip(){ if(!_mlxTip){ _mlxTip=document.createElement("div"); _mlxTip.className="mlx-tip";
+  document.body.appendChild(_mlxTip); } return _mlxTip; }
+function wireXhair(scope){
+  scope.querySelectorAll("svg[data-mlx]").forEach(svg=>{
+    let m; try{ m=JSON.parse(svg.dataset.mlx); }catch(_){ return; }
+    const n=m.dates.length, plotW=m.W-m.padL-m.padR;
+    const X=i=>m.padL+plotW*i/Math.max(1,n-1);
+    const Y=v=>m.padT+(m.H-m.padT-m.padB)*(m.hi-v)/((m.hi-m.lo)||1);
+    const vline=svg.querySelector(".mlx-v"), dots=[...svg.querySelectorAll(".mlx-dot")], tip=mlxTip();
+    const move=e=>{
+      const ctm=svg.getScreenCTM(); if(!ctm) return;
+      const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const p=pt.matrixTransform(ctm.inverse());
+      let i=Math.round((p.x-m.padL)/(plotW||1)*(n-1)); i=Math.max(0,Math.min(n-1,i));
+      const x=X(i);
+      vline.setAttribute("x1",x); vline.setAttribute("x2",x); vline.style.display="";
+      let rows="";
+      m.series.forEach((s,si)=>{ const v=s.values[i], dot=dots[si];
+        if(v==null){ if(dot)dot.style.display="none"; return; }
+        if(dot){ dot.setAttribute("cx",x); dot.setAttribute("cy",Y(v).toFixed(1)); dot.style.display=""; }
+        rows+=`<div class="r"><i style="background:${s.color}"></i><span>${s.label}</span><b>${(+v).toFixed(1)}</b></div>`;
+      });
+      tip.innerHTML=`<div class="d">${m.dates[i]}</div>${rows}`; tip.style.display="block";
+      let tx=e.clientX+14, ty=e.clientY+14;
+      if(tx+tip.offsetWidth>window.innerWidth-8) tx=e.clientX-tip.offsetWidth-14;
+      if(ty+tip.offsetHeight>window.innerHeight-8) ty=e.clientY-tip.offsetHeight-14;
+      tip.style.left=tx+"px"; tip.style.top=ty+"px";
+    };
+    svg.addEventListener("mousemove",move);
+    svg.addEventListener("mouseleave",()=>{ vline.style.display="none";
+      dots.forEach(d=>d.style.display="none"); tip.style.display="none"; });
+  });
 }
 
 async function loadRiskAppetite(retried,force){
@@ -2247,6 +2298,7 @@ async function loadRiskAppetite(retried,force){
       <div class="gx-grid" style="margin-top:14px">${mTables}</div>
       <div class="muted" style="font-size:11px;margin-top:10px">β: ${d.notes.beta}.</div>`;
     wireLegends(body);   // make the two line-chart legends clickable toggles
+    wireXhair(body);     // hover crosshair + value/date tooltip on the line charts
   }catch(e){
     if(e.message==="timeout"&&!retried){autoRetry(body,loadRiskAppetite,"The spread analysis");return;}
     const msg=e.message==="timeout"?"still computing…":e.message;
