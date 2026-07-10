@@ -1022,8 +1022,26 @@ function playLogoGlitch(force){
   try{ if(!force && sessionStorage.getItem("logoGlz")) return; }catch(_){}
   try{ sessionStorage.setItem("logoGlz","1"); }catch(_){}
   el.classList.remove("glz"); void el.offsetWidth;   // restart if replayed
-  el.classList.add("glz");
-  setTimeout(()=>el.classList.remove("glz"), 1600);
+  el.classList.add("glz");                            // RGB-split glitch overlay
+  scrambleLogo(el);                                   // digital decode/scramble
+  setTimeout(()=>el.classList.remove("glz"), 1500);
+}
+// digital "decode" — each letter cycles random glyphs then locks into ETHER
+// (left-to-right), layered under the RGB-split glitch for the digital-glitch look
+function scrambleLogo(el){
+  const spans=[...el.querySelectorAll("span")];
+  const targets=(el.dataset.text||spans.map(s=>s.textContent).join("")).split("");
+  const restore=()=>spans.forEach((s,i)=>{ if(s.textContent!==targets[i]) s.textContent=targets[i]; });
+  const CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@%&$/\\|<>=+*Ξ§Ø◊";
+  const total=1150, lockStep=total/(spans.length+1), t0=Date.now();
+  const iv=setInterval(()=>{
+    const t=Date.now()-t0;
+    spans.forEach((s,i)=>{ s.textContent = t>=(i+1)*lockStep ? targets[i]
+      : CHARS[(Math.random()*CHARS.length)|0]; });
+    if(t>=total){ clearInterval(iv); restore(); }
+  }, 45);
+  // failsafe: always land on ETHER even if the interval is throttled/stopped
+  setTimeout(()=>{ clearInterval(iv); restore(); }, total+300);
 }
 function initGoogle(){
   if(_gsiReady || !GOOGLE_CLIENT_ID) return _gsiReady;
