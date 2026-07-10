@@ -2294,7 +2294,7 @@ async function loadRiskAppetite(retried,force){
           const y=Y(Math.max(0,mm.mean_bps)),h=Math.abs(Y(mm.mean_bps)-Y(0));
           out+=`<rect x="${(x0+bw*(i+0.5)).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h,0.5).toFixed(1)}"
             fill="${RA_COLORS[s.tag]}" opacity=".85"/>`;});
-        out+=`<text x="${x0+slot/2}" y="${H-8}" font-size="8.5" fill="${toy?'var(--accent)':'var(--muted)'}" text-anchor="middle">${["J","F","M","A","M","J","J","A","S","O","N","D"][m-1]}</text>`;}
+        out+=`<text x="${x0+slot/2}" y="${H-8}" font-size="8.5" fill="${toy?'var(--accent)':'var(--muted)'}" text-anchor="middle">${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m-1]}</text>`;}
       const _MF=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       const barMeta={W,H,padL,padR,padT,padB,slot,months:_MF,
         cells:_MF.map(mn=>d.spreads.map(s=>{const mm=s.monthly.find(r=>r.month===mn);
