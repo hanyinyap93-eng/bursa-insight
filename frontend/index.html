@@ -2223,6 +2223,34 @@ function wireXhair(scope){
       dots.forEach(d=>d.style.display="none"); tip.style.display="none"; });
   });
 }
+// hover crosshair for the monthly grouped-bar chart: highlight the hovered month
+// column and show each spread's mean bps + t-stat
+function wireBarXhair(scope){
+  scope.querySelectorAll("svg[data-mlxbar]").forEach(svg=>{
+    let m; try{ m=JSON.parse(svg.dataset.mlxbar); }catch(_){ return; }
+    const band=svg.querySelector(".mlxb-band"), tip=mlxTip();
+    const move=e=>{
+      const ctm=svg.getScreenCTM(); if(!ctm) return;
+      const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const p=pt.matrixTransform(ctm.inverse());
+      let mi=Math.floor((p.x-m.padL)/(m.slot||1)); mi=Math.max(0,Math.min(11,mi));
+      band.setAttribute("x",(m.padL+mi*m.slot).toFixed(1)); band.style.display="";
+      const rows=m.cells[mi].filter(c=>c.mean!=null).map(c=>{
+        const sig=Math.abs(c.t)>=2?" ✱":"";
+        return `<div class="r"><i style="background:${c.color}"></i><span>${c.tag}</span>`+
+          `<b>${(+c.mean).toFixed(1)} <span class="muted" style="font-weight:400">bps · t ${(+c.t).toFixed(1)}${sig}</span></b></div>`;
+      }).join("");
+      tip.innerHTML=`<div class="d">${m.months[mi]}</div>${rows||'<div class="muted">no data</div>'}`;
+      tip.style.display="block";
+      let tx=e.clientX+14, ty=e.clientY+14;
+      if(tx+tip.offsetWidth>window.innerWidth-8) tx=e.clientX-tip.offsetWidth-14;
+      if(ty+tip.offsetHeight>window.innerHeight-8) ty=e.clientY-tip.offsetHeight-14;
+      tip.style.left=tx+"px"; tip.style.top=ty+"px";
+    };
+    svg.addEventListener("mousemove",move);
+    svg.addEventListener("mouseleave",()=>{ band.style.display="none"; tip.style.display="none"; });
+  });
+}
 
 async function loadRiskAppetite(retried,force){
   const body=$("#ra-body");
@@ -2254,7 +2282,8 @@ async function loadRiskAppetite(retried,force){
       const lo=Math.min(...vals,0),hi=Math.max(...vals,0);
       const Y=v=>padT+(H-padT-padB)*(hi-v)/((hi-lo)||1);
       const slot=(W-padL-padR)/12, bw=slot/(d.spreads.length+1);
-      let out=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--line2)"/>`;
+      let out=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--line2)"/>`+
+        `<rect class="mlxb-band" x="0" y="${padT}" width="${slot.toFixed(1)}" height="${(H-padT-padB).toFixed(1)}" fill="var(--text)" opacity=".08" style="display:none"/>`;
       [lo,hi].forEach(v=>{out+=`<text x="${padL-4}" y="${Y(v)+3}" font-size="8.5" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}</text>`;});
       for(let m=1;m<=12;m++){
         const x0=padL+(m-1)*slot, toy=(m===12||m===1);
@@ -2264,9 +2293,14 @@ async function loadRiskAppetite(retried,force){
           if(!mm)return;
           const y=Y(Math.max(0,mm.mean_bps)),h=Math.abs(Y(mm.mean_bps)-Y(0));
           out+=`<rect x="${(x0+bw*(i+0.5)).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h,0.5).toFixed(1)}"
-            fill="${RA_COLORS[s.tag]}" opacity=".85"><title>${s.tag} ${mm.month}: ${mm.mean_bps} bps (t=${mm.t_stat})</title></rect>`;});
+            fill="${RA_COLORS[s.tag]}" opacity=".85"/>`;});
         out+=`<text x="${x0+slot/2}" y="${H-8}" font-size="8.5" fill="${toy?'var(--accent)':'var(--muted)'}" text-anchor="middle">${["J","F","M","A","M","J","J","A","S","O","N","D"][m-1]}</text>`;}
-      return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;})();
+      const _MF=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const barMeta={W,H,padL,padR,padT,padB,slot,months:_MF,
+        cells:_MF.map(mn=>d.spreads.map(s=>{const mm=s.monthly.find(r=>r.month===mn);
+          return {tag:s.tag,color:RA_COLORS[s.tag],mean:mm?mm.mean_bps:null,t:mm?mm.t_stat:null};}))};
+      return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="cursor:crosshair"`+
+        ` data-mlxbar='${JSON.stringify(barMeta).replace(/'/g,"&#39;")}'>${out}</svg>`;})();
     const legend=d.spreads.map(s=>`<span><i style="background:${RA_COLORS[s.tag]}"></i>${s.tag}</span>`).join("");
     const mTables=d.spreads.map(s=>`
       <div class="gx-panel"><h3>${s.tag} — mean daily spread by month <span style="text-transform:none;letter-spacing:0">(bps, full history)</span></h3>
@@ -2301,6 +2335,7 @@ async function loadRiskAppetite(retried,force){
       <div class="muted" style="font-size:11px;margin-top:10px">β: ${d.notes.beta}.</div>`;
     wireLegends(body);   // make the two line-chart legends clickable toggles
     wireXhair(body);     // hover crosshair + value/date tooltip on the line charts
+    wireBarXhair(body);  // hover month-highlight + tooltip on the monthly bar chart
   }catch(e){
     if(e.message==="timeout"&&!retried){autoRetry(body,loadRiskAppetite,"The spread analysis");return;}
     const msg=e.message==="timeout"?"still computing…":e.message;
