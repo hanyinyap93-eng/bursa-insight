@@ -51,6 +51,43 @@
   .logo .e1{color:#16a34a;}                                   /* green E */
   .logo .e2{color:#e3242b;transform:scaleX(-1);}             /* red mirrored E */
   .logo .lt{color:var(--text);}                               /* themed: white in dark, black in light */
+  /* ---- dynamic glitch text effect on the ETHER logo ---- */
+  .logo{position:relative;line-height:1;}
+  .logo>span{position:relative;z-index:1;}
+  .logo::before,.logo::after{
+    content:attr(data-text);position:absolute;left:0;top:0;
+    white-space:nowrap;letter-spacing:inherit;font:inherit;z-index:2;pointer-events:none;
+    clip-path:inset(0 0 100% 0);                              /* hidden between bursts */
+  }
+  .logo{animation:glShake 3.2s steps(1) infinite;}
+  .logo::before{color:#25e5ff;text-shadow:1px 0 rgba(37,229,255,.6);animation:glA 3.2s steps(1) infinite;}
+  .logo::after{color:#ff2e63;text-shadow:-1px 0 rgba(255,46,99,.6);animation:glB 3.2s steps(1) infinite;}
+  .logo:hover{animation-duration:.9s;}                        /* glitch harder on hover */
+  .logo:hover::before,.logo:hover::after{animation-duration:.9s;}
+  @keyframes glShake{
+    0%,11%,100%{transform:translate(0)}
+    2%{transform:translate(1px,-1px) skewX(-9deg)}
+    4%{transform:translate(-1px,1px) skewX(7deg)}
+    6%{transform:translate(1px,0) skewX(-4deg)}
+    8%{transform:translate(-1px,0) skewX(4deg)}
+    10%{transform:translate(1px,-1px)}
+  }
+  @keyframes glA{
+    0%,12%,100%{clip-path:inset(0 0 100% 0);transform:translate(0)}
+    2%{clip-path:inset(10% 0 55% 0);transform:translate(-3px,-1px)}
+    4%{clip-path:inset(52% 0 24% 0);transform:translate(3px,1px)}
+    6%{clip-path:inset(30% 0 42% 0);transform:translate(-2px,0)}
+    8%{clip-path:inset(0 0 66% 0);transform:translate(2px,0)}
+    10%{clip-path:inset(68% 0 6% 0);transform:translate(-2px,1px)}
+  }
+  @keyframes glB{
+    0%,12%,100%{clip-path:inset(0 0 100% 0);transform:translate(0)}
+    2%{clip-path:inset(46% 0 20% 0);transform:translate(3px,1px)}
+    4%{clip-path:inset(8% 0 60% 0);transform:translate(-3px,-1px)}
+    6%{clip-path:inset(60% 0 12% 0);transform:translate(2px,0)}
+    8%{clip-path:inset(26% 0 34% 0);transform:translate(-2px,1px)}
+    10%{clip-path:inset(4% 0 74% 0);transform:translate(2px,-1px)}
+  }
   .search{position:relative;}
   .search input{width:280px;background:var(--panel2);border:1px solid transparent;border-radius:var(--radius-pill);
     color:var(--text);padding:9px 14px 9px 34px;font-size:13px;outline:none;transition:border-color .15s,background .15s;}
@@ -442,7 +479,7 @@
 </head>
 <body>
 <header>
-  <div class="logo" title="Ether"><span class="e1">E</span><span class="lt">T</span><span class="lt">H</span><span class="e2">E</span><span class="lt">R</span></div>
+  <div class="logo" title="Ether" data-text="ETHER"><span class="e1">E</span><span class="lt">T</span><span class="lt">H</span><span class="e2">E</span><span class="lt">R</span></div>
   <div class="search">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
     <input id="search" data-i18n-ph="search.ph" placeholder="Search code or symbol e.g. 5337 or ECOSHOP" autocomplete="off"/>
