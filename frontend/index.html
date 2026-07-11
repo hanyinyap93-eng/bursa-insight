@@ -2190,7 +2190,7 @@ function wireCatLegends(scope){
 }
 
 // generic multi-line SVG: series = [{label,color,values,width?}], shared x axis
-function multiLineSVG(dates,seriesList,{H=230,ymin=null,ymax=null,guides=[],fmtTick=v=>v.toFixed(0)}={}){
+function multiLineSVG(dates,seriesList,{H=230,ymin=null,ymax=null,guides=[],fmtTick=v=>v.toFixed(0),xTickFont=8.5,tipMode="dec1"}={}){
   const W=560,padL=34,padR=8,padT=10,padB=22;
   const all=seriesList.flatMap(s=>s.values.filter(v=>v!=null));
   const lo=ymin??Math.min(...all), hi=ymax??Math.max(...all);
@@ -2207,7 +2207,7 @@ function multiLineSVG(dates,seriesList,{H=230,ymin=null,ymax=null,guides=[],fmtT
     out+=`<polyline data-s="${si}" points="${pts}" fill="none" stroke="${s.color}"`+
       ` stroke-width="${s.width||1.6}" vector-effect="non-scaling-stroke"/>`;
   });
-  const tick=i=>`<text x="${X(i)}" y="${H-7}" font-size="8.5" fill="var(--muted)"
+  const tick=i=>`<text x="${X(i)}" y="${H-7}" font-size="${xTickFont}" fill="var(--muted)"
     text-anchor="${i===0?'start':i===dates.length-1?'end':'middle'}">${dates[i]}</text>`;
   out+=tick(0)+tick(Math.floor(dates.length/2))+tick(dates.length-1);
   // interactive crosshair layer (positioned by wireXhair on hover)
@@ -2215,7 +2215,7 @@ function multiLineSVG(dates,seriesList,{H=230,ymin=null,ymax=null,guides=[],fmtT
     stroke-width="1" stroke-dasharray="3 3" opacity=".85" style="display:none"/>`;
   seriesList.forEach((s,si)=>{ out+=`<circle class="mlx-dot" data-s="${si}" r="3" fill="${s.color}"
     stroke="var(--panel)" stroke-width="1" style="display:none"/>`; });
-  const meta={W,H,padL,padR,padT,padB,lo,hi,dates,
+  const meta={W,H,padL,padR,padT,padB,lo,hi,dates,tipMode,
               series:seriesList.map(s=>({label:s.label,color:s.color,values:s.values}))};
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="cursor:crosshair"`+
     ` data-mlx='${JSON.stringify(meta).replace(/'/g,"&#39;")}'>${out}</svg>`;
@@ -2231,6 +2231,7 @@ function wireXhair(scope){
     const X=i=>m.padL+plotW*i/Math.max(1,n-1);
     const Y=v=>m.padT+(m.H-m.padT-m.padB)*(m.hi-v)/((m.hi-m.lo)||1);
     const vline=svg.querySelector(".mlx-v"), dots=[...svg.querySelectorAll(".mlx-dot")], tip=mlxTip();
+    const fmtV=m.tipMode==="int" ? (v=>Math.round(v).toLocaleString()) : (v=>(+v).toFixed(1));
     const move=e=>{
       const ctm=svg.getScreenCTM(); if(!ctm) return;
       const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
@@ -2244,7 +2245,7 @@ function wireXhair(scope){
         const line=svg.querySelector(`polyline[data-s="${si}"]`);
         if((line&&line.style.display==="none")||v==null){ if(dot)dot.style.display="none"; return; }
         if(dot){ dot.setAttribute("cx",x); dot.setAttribute("cy",Y(v).toFixed(1)); dot.style.display=""; }
-        rows+=`<div class="r"><i style="background:${s.color}"></i><span>${s.label}</span><b>${(+v).toFixed(1)}</b></div>`;
+        rows+=`<div class="r"><i style="background:${s.color}"></i><span>${s.label}</span><b>${fmtV(v)}</b></div>`;
       });
       tip.innerHTML=`<div class="d">${m.dates[i]}</div>${rows}`; tip.style.display="block";
       let tx=e.clientX+14, ty=e.clientY+14;
@@ -2545,7 +2546,9 @@ async function loadPortfolio(force){
       const series=[{label:"Portfolio",color:"var(--accent)",values:d.value,width:2.4}];
       if(d.benchmark && d.benchmark.length===d.dates.length)
         series.push({label:"KLCI",color:"var(--muted)",values:d.benchmark,width:1.6});
-      $("#pf-chart").innerHTML=multiLineSVG(d.dates,series,{H:260,fmtTick:v=>Math.round(v).toLocaleString()});
+      $("#pf-chart").innerHTML=multiLineSVG(d.dates,series,
+        {H:260,fmtTick:v=>Math.round(v).toLocaleString(),xTickFont:6.5,tipMode:"int"});
+      wireXhair($("#pf-chart"));   // hover crosshair + value/date tooltip
       $("#pf-chart-panel").style.display="";
     }
     // holdings table
