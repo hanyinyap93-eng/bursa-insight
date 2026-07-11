@@ -1993,13 +1993,13 @@ async function loadGex(retried,force){
       ${r.read?`<div class="readout"><b>${r.position}</b>${r.read}</div>`:""}
       <div class="gx-grid">
         <div class="gx-panel"><h3>Issuer GEX by strike (RM mn per 1% move)</h3>
-          ${gexStrikeSVG(g.by_strike,g.spot)}
+          ${gexStrikeSVG(g.by_strike,spotLine)}
           <div class="legend legend-cat" title="Click to show/hide">
             <span class="lg" data-w="call"><i style="background:var(--green)"></i>Call warrants</span>
             <span class="lg" data-w="put"><i style="background:var(--red)"></i>Put warrants</span>
             <span>bars grow downward — issuers are short gamma</span></div></div>
         <div class="gx-panel"><h3>Net GEX vs index level — trough marks the max hedging-pressure zone</h3>
-          ${gexProfileSVG(g.profile,g.spot)}</div>
+          ${gexProfileSVG(g.profile,spotLine)}</div>
       </div>
       ${bandsPanel}
       <div class="gx-grid" style="margin-top:14px">
