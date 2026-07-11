@@ -660,10 +660,9 @@
   <div class="sub" id="pf-sub" style="margin-top:14px"></div>
   <div class="cards" id="pf-cards"></div>
   <div class="gx-panel" id="pf-chart-panel" style="display:none">
-    <h3><span data-i18n="pf.perf">Portfolio value vs KLCI</span> <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-i18n="pf.rebased">(KLCI rebased to your start)</span></h3>
+    <h3><span data-i18n="pf.perf">Portfolio vs benchmark indices</span> <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-i18n="pf.rebased">(rebased to 100 at your earliest buy date)</span></h3>
     <div id="pf-chart"></div>
-    <div class="legend"><span><i style="background:var(--accent)"></i><span data-i18n="pf.legendPf">Portfolio</span></span>
-      <span><i style="background:var(--muted)"></i>KLCI</span></div>
+    <div class="legend" id="pf-legend"></div>
   </div>
   <div id="pf-body"></div>
 </section>
@@ -777,7 +776,7 @@ const I18N = {
     "pf.title":"My portfolio","pf.titleSub":"— add Bursa stocks with shares & buy date to see past performance",
     "pf.explain":"Add each holding with the <b>number of shares</b> you own and the <b>date you bought</b>. The chart shows what the whole portfolio would have been worth over time (buy-and-hold), against the <b>KLCI</b> rebased to your starting value so you can see if you beat the market. The table shows each stock's buy price, latest price and profit/loss. Prices are end-of-day from klsescreener.",
     "pf.add":"Add a holding","pf.stockPh":"Search stock (code or name)","pf.sharesPh":"Shares","pf.addBtn":"Add",
-    "pf.perf":"Portfolio value vs KLCI","pf.rebased":"(KLCI rebased to your start)","pf.legendPf":"Portfolio",
+    "pf.perf":"Portfolio vs benchmark indices","pf.rebased":"(rebased to 100 at your earliest buy date)","pf.legendPf":"Portfolio",
     "pf.empty":"No holdings yet — add a stock above to see its past performance.",
     "pf.holding":"holding","pf.holdings":"holdings",
     "pf.invested":"Invested (cost)","pf.valueNow":"Value now","pf.gain":"Profit / Loss",
@@ -850,7 +849,7 @@ const I18N = {
     "pf.title":"我的投资组合","pf.titleSub":"— 添加马股（股数与买入日期）查看历史表现",
     "pf.explain":"为每只持仓填写<b>持有股数</b>和<b>买入日期</b>。图表显示整个组合按买入持有的历史价值，并以你起始价值为基准的 <b>KLCI</b> 作对比，看是否跑赢大盘。下方表格列出每只股票的买入价、最新价及盈亏。价格为 klsescreener 收盘数据。",
     "pf.add":"添加持仓","pf.stockPh":"搜索股票（代码或名称）","pf.sharesPh":"股数","pf.addBtn":"添加",
-    "pf.perf":"组合价值 vs KLCI","pf.rebased":"（KLCI 以你的起点为基准）","pf.legendPf":"组合",
+    "pf.perf":"组合 vs 基准指数","pf.rebased":"（以最早买入日为100基准）","pf.legendPf":"组合",
     "pf.empty":"暂无持仓——在上方添加股票查看其历史表现。",
     "pf.holding":"只持仓","pf.holdings":"只持仓",
     "pf.invested":"投入（成本）","pf.valueNow":"当前价值","pf.gain":"盈亏",
@@ -2541,14 +2540,19 @@ async function loadPortfolio(force){
       <div class="card"><div class="k">${t("pf.gain")}</div>
         <div class="v ${cls(T.gain)}">${T.gain>=0?"+":""}${pfMoney(T.gain).replace("RM ","RM ")}</div>
         <div class="d ${cls(T.gain)}">${fmt(T.gain_pct)}%</div></div>`;
-    // value vs KLCI chart (static SVG, reuses multiLineSVG)
-    if(d.dates && d.dates.length>1){
-      const series=[{label:"Portfolio",color:"var(--accent)",values:d.value,width:2.4}];
-      if(d.benchmark && d.benchmark.length===d.dates.length)
-        series.push({label:"KLCI",color:"var(--muted)",values:d.benchmark,width:1.6});
-      $("#pf-chart").innerHTML=multiLineSVG(d.dates,series,
-        {H:260,fmtTick:v=>Math.round(v).toLocaleString(),xTickFont:6.5,tipMode:"int"});
+    // relative performance vs benchmark indices, all rebased to 100 at the
+    // portfolio's earliest buy date (Portfolio + FBM KLCI / MID 70 / ACE)
+    const rb=d.rebased;
+    if(rb && rb.portfolio && rb.portfolio.length>1){
+      const idxColors={"FBM KLCI":"var(--muted)","FBM MID 70":"#f59e0b","FBM ACE":"#e879f9"};
+      const series=[{label:"Portfolio",color:"var(--accent)",values:rb.portfolio,width:2.4}];
+      Object.entries(rb.indices||{}).forEach(([label,vals])=>
+        series.push({label,color:idxColors[label]||"var(--muted)",values:vals,width:1.4}));
+      $("#pf-chart").innerHTML=multiLineSVG(rb.dates||d.dates,series,
+        {H:260,fmtTick:v=>v.toFixed(0),xTickFont:6.5,tipMode:"dec1",
+         guides:[{v:100,color:"var(--line2)",dash:"2 4"}]});   // 100 baseline
       wireXhair($("#pf-chart"));   // hover crosshair + value/date tooltip
+      $("#pf-legend").innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join("");
       $("#pf-chart-panel").style.display="";
     }
     // holdings table

@@ -101,6 +101,18 @@ def _empty(as_of=None):
             "totals": {"cost": 0, "value": 0, "gain": 0, "gain_pct": 0, "as_of": as_of}}
 
 
+def _rebase100(closes, index) -> list:
+    """Align a daily-close series to `index` and rebase it to 100 at the first
+    date, so different indices/portfolios are directly comparable. [] if empty."""
+    s = closes.reindex(index).ffill().bfill()
+    if s.isna().all():
+        return []
+    base = float(s.iloc[0])
+    if not base:
+        return []
+    return [round(100.0 * float(x) / base, 2) for x in s.values]
+
+
 def performance(user: str) -> dict:
     holds = list_holdings(user)
     if not holds:
@@ -157,6 +169,31 @@ def performance(user: str) -> dict:
     except Exception:  # noqa: BLE001 - benchmark is best-effort
         benchmark = []
 
+    # Rebased-to-100 relative performance: the portfolio and the benchmark
+    # indices (FBM KLCI / MID 70 / ACE) all indexed to 100 at the portfolio's
+    # earliest buy-in date, so their growth is directly comparable.
+    rebased = {"dates": dates, "portfolio": [], "indices": {}}
+    if value and value[0]:
+        rebased["portfolio"] = [round(100.0 * v / value[0], 2) for v in value]
+        idx_series = {}
+        try:  # KLCI via the reliable ^KLSE OHLC feed
+            kl = breadth_mod.index_ohlc("KLCI", lb)
+            idx_series["FBM KLCI"] = pd.Series(
+                kl["close"], index=pd.to_datetime(kl["dates"]).normalize())
+        except Exception:  # noqa: BLE001 - benchmark is best-effort
+            pass
+        for label, code in (("FBM MID 70", "0863I"), ("FBM ACE", "0871I")):
+            try:
+                s = klse_prices.history(code, lookback=lb)["Close"].dropna()
+                s.index = pd.to_datetime(s.index).normalize()
+                idx_series[label] = s
+            except Exception:  # noqa: BLE001
+                pass
+        for label, s in idx_series.items():
+            r = _rebase100(s, total.index)
+            if r:
+                rebased["indices"][label] = r
+
     priced = [p for p in per if "cost" in p]
     cost_tot = round(sum(p["cost"] for p in priced), 2)
     value_tot = round(sum(p["value"] for p in priced), 2)
@@ -165,6 +202,7 @@ def performance(user: str) -> dict:
         "dates": dates,
         "value": value,
         "benchmark": benchmark,
+        "rebased": rebased,
         "totals": {
             "cost": cost_tot, "value": value_tot,
             "gain": round(value_tot - cost_tot, 2),
