@@ -469,6 +469,20 @@ def gex_profile(res, spot, span=0.06, n=101):
     return grid, prof
 
 
+def _latest_klci_close():
+    """Latest ^KLSE close from the SAME feed the price chart uses
+    (klse_prices.history), so the GEX 'spot' line aligns exactly with the end of
+    the KLCI close line. Returns None if the feed is unavailable."""
+    try:
+        from . import klse_prices
+        from . import index_health as ih
+        c = klse_prices.history(ih.INDEX_SYMBOL_KLCI, lookback="1mo")["Close"].dropna()
+        v = float(c.iloc[-1])
+        return v if v > 500 else None
+    except Exception:  # noqa: BLE001 - fall back to the warrant-underlying spot
+        return None
+
+
 def run_klci_gex(spot=None, haircut=GEX_HAIRCUT, use_live_cache=True):
     """Discover + scrape the FBMKLCI warrant chain and compute the GEX table.
 
@@ -500,13 +514,18 @@ def run_klci_gex(spot=None, haircut=GEX_HAIRCUT, use_live_cache=True):
     if dfw.empty:
         raise RuntimeError("no warrant details scraped")
     if spot is None:
-        med = dfw.underlying.dropna().median() if dfw.underlying.notna().any() else None
-        if med and med > 500:
-            spot = float(med)
-        else:
-            import yfinance as yf
-            spot = float(yf.Ticker("^KLSE").history(period="5d")["Close"]
-                         .dropna().iloc[-1])
+        # Prefer the authoritative KLCI index close (same feed as the price chart)
+        # so spot lines up with the close line; fall back to the warrant-reported
+        # underlying median, then yfinance, only if that feed is unavailable.
+        spot = _latest_klci_close()
+        if spot is None:
+            med = dfw.underlying.dropna().median() if dfw.underlying.notna().any() else None
+            if med and med > 500:
+                spot = float(med)
+            else:
+                import yfinance as yf
+                spot = float(yf.Ticker("^KLSE").history(period="5d")["Close"]
+                             .dropna().iloc[-1])
     res = gex_compute(dfw, spot, None, haircut)
     if res.empty:
         raise RuntimeError(
