@@ -1938,7 +1938,13 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
     `<line x1="${rpL}" y1="${Y(trough)}" x2="${rpR}" y2="${Y(trough)}" stroke="#a855f7" stroke-dasharray="2 3"/>`+
     `<text x="${rpL}" y="${H-8}" font-size="8" fill="var(--muted)">−${gmaxMn.toFixed(0)}</text>`+
     `<text x="${rpR-2}" y="${H-8}" font-size="8" fill="var(--muted)" text-anchor="end">0</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
+  // hover crosshair layer over the price panel (positioned by wireGexXhair)
+  out+=`<line class="gxx-v" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="var(--muted)"`+
+    ` stroke-width="1" stroke-dasharray="3 3" opacity=".85" style="display:none"/>`+
+    `<circle class="gxx-dot" r="3" fill="var(--text)" stroke="var(--panel)" stroke-width="1" style="display:none"/>`;
+  const gxxMeta={W,H,padT,padB,pxL,splitX,lo,hi,dates,close};
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;cursor:crosshair"`+
+    ` class="gxx" data-gxx='${JSON.stringify(gxxMeta).replace(/'/g,"&#39;")}'>${out}</svg>`;
 }
 
 async function loadGex(retried,force){
@@ -1950,7 +1956,12 @@ async function loadGex(retried,force){
     GEX_LOADED=true;
     // KLCI close for the price+gamma-bands chart (fast; best-effort)
     let kl=null; try{ kl=await getCached("/api/index/KLCI/ohlc?lookback=6mo",15*60000,60000,force); }catch(_){ kl=null; }
-    $("#gex-sub").textContent=`as of ${g.as_of.replace("T"," ")} · spot ${g.spot.toLocaleString()} · `+
+    // Draw "spot" at the latest KLCI close from the (fresher) price feed so the
+    // spot line always sits exactly on the end of the close line. The GEX payload's
+    // own spot can lag (it is cached far longer than the price series). Fall back
+    // to g.spot only when the close series is unavailable.
+    const spotLine=(kl&&kl.close&&kl.close.length)?+kl.close[kl.close.length-1]:g.spot;
+    $("#gex-sub").textContent=`as of ${g.as_of.replace("T"," ")} · spot ${spotLine.toLocaleString()} · `+
       `${g.warrants_live} live warrants (${g.calls} calls, ${g.puts} puts) · issuers short gamma; negative = destabilising hedge flow`;
     const r=g.readout||{};
     const topRows=(g.top_concentrations||[]).map(t=>`<tr>
@@ -1961,17 +1972,17 @@ async function loadGex(retried,force){
     // price + gamma-bands panel (only when the KLCI close series is available)
     const bandsPanel=(kl&&kl.close&&kl.close.length)?`
       <div class="gx-panel" style="margin-top:14px"><h3>KLCI close + issuer gamma bands (darker = more short gamma) · GEX by strike</h3>
-        <div style="overflow-x:auto">${gexPriceBandsSVG(kl.dates,kl.close,g.by_strike,g.spot,troughLevel)}</div>
+        <div style="overflow-x:auto">${gexPriceBandsSVG(kl.dates,kl.close,g.by_strike,spotLine,troughLevel)}</div>
         <div class="legend"><span><i style="background:#c62828"></i>issuer gamma band / GEX at strike</span>
-          <span><i style="background:var(--accent)"></i>spot ${g.spot.toFixed(0)}</span>
+          <span><i style="background:var(--accent)"></i>spot ${spotLine.toFixed(0)}</span>
           <span><i style="background:#a855f7"></i>gamma trough ${troughLevel.toFixed(0)}</span></div></div>`:"";
     body.innerHTML=`
       <div class="cards">
         <div class="card"><div class="k">Net issuer GEX</div>
           <div class="v ${cls(g.net_gex_rm_mn)}">RM ${g.net_gex_rm_mn.toFixed(1)} mn</div>
           <div class="d">per 1% KLCI move</div></div>
-        <div class="card"><div class="k">KLCI spot</div><div class="v">${g.spot.toLocaleString()}</div>
-          <div class="d">from warrant pages / ^KLSE</div></div>
+        <div class="card"><div class="k">KLCI spot</div><div class="v">${spotLine.toLocaleString()}</div>
+          <div class="d">latest ^KLSE close</div></div>
         <div class="card"><div class="k">Gamma trough</div><div class="v">${(r.trough??g.profile.trough).toLocaleString()}</div>
           <div class="d">${r.distance_pct!=null?`${Math.abs(r.distance_pct).toFixed(1)}% ${r.distance_pct>0?"below":"above"} spot`:"max hedging-pressure zone"}</div></div>
         <div class="card"><div class="k">Live warrants</div><div class="v">${g.warrants_live}</div>
@@ -2019,6 +2030,7 @@ async function loadGex(retried,force){
       {key:"gex_rm_per_1pct", label:"GEX RM mn/1%", num:true, render:w=>`<td class="num ${cls(w.gex_rm_per_1pct)}">${(w.gex_rm_per_1pct/1e6).toFixed(2)}</td>`},
     ], {sortKey:"gex_rm_per_1pct", dir:1});   // most-negative (strongest short gamma) first
     wireCatLegends(body);   // Call/Put legend toggles on the GEX-by-strike chart
+    wireGexXhair(body);     // hover crosshair: date + KLCI close on the price panel
   }catch(e){
     if(e.message==="timeout"&&!retried){autoRetry(body,loadGex,"The warrant GEX map",20);return;}
     const msg=e.message==="timeout"?"still building the GEX map (first build scrapes ~20 warrant pages — retry in a minute)…":e.message;
@@ -2243,6 +2255,39 @@ function wireXhair(scope){
     svg.addEventListener("mousemove",move);
     svg.addEventListener("mouseleave",()=>{ vline.style.display="none";
       dots.forEach(d=>d.style.display="none"); tip.style.display="none"; });
+  });
+}
+// hover crosshair + tooltip for the GEX "KLCI close + gamma bands" chart: shows
+// the date and KLCI close at the cursor. Only active over the price panel (the
+// left region between pxL and splitX); ignores the right GEX-by-strike panel.
+function wireGexXhair(scope){
+  scope.querySelectorAll("svg.gxx").forEach(svg=>{
+    let m; try{ m=JSON.parse(svg.dataset.gxx); }catch(_){ return; }
+    const n=m.close.length, plotW=m.splitX-m.pxL;
+    const X=i=>m.pxL+plotW*i/Math.max(1,n-1);
+    const Y=v=>m.padT+(m.H-m.padT-m.padB)*(m.hi-v)/((m.hi-m.lo)||1);
+    const vline=svg.querySelector(".gxx-v"), dot=svg.querySelector(".gxx-dot"), tip=mlxTip();
+    const hide=()=>{ vline.style.display="none"; dot.style.display="none"; tip.style.display="none"; };
+    const move=e=>{
+      const ctm=svg.getScreenCTM(); if(!ctm) return;
+      const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const p=pt.matrixTransform(ctm.inverse());
+      if(p.x<m.pxL-4 || p.x>m.splitX+4){ hide(); return; }   // only over the price panel
+      let i=Math.round((p.x-m.pxL)/(plotW||1)*(n-1)); i=Math.max(0,Math.min(n-1,i));
+      const x=X(i), v=m.close[i];
+      if(v==null){ hide(); return; }
+      vline.setAttribute("x1",x); vline.setAttribute("x2",x); vline.style.display="";
+      dot.setAttribute("cx",x); dot.setAttribute("cy",Y(v).toFixed(1)); dot.style.display="";
+      tip.innerHTML=`<div class="d">${m.dates[i]}</div>`+
+        `<div class="r"><i style="background:var(--text)"></i><span>KLCI close</span><b>${(+v).toFixed(2)}</b></div>`;
+      tip.style.display="block";
+      let tx=e.clientX+14, ty=e.clientY+14;
+      if(tx+tip.offsetWidth>window.innerWidth-8) tx=e.clientX-tip.offsetWidth-14;
+      if(ty+tip.offsetHeight>window.innerHeight-8) ty=e.clientY-tip.offsetHeight-14;
+      tip.style.left=tx+"px"; tip.style.top=ty+"px";
+    };
+    svg.addEventListener("mousemove",move);
+    svg.addEventListener("mouseleave",hide);
   });
 }
 // hover crosshair for the monthly grouped-bar chart: highlight the hovered month
