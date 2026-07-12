@@ -20,27 +20,37 @@
   /* Trade Republic–inspired: soft near-black / clean white, muted grays,
      green-red only for performance, generous rounding + whitespace. */
   :root{
-    --bg:#0a0b0d; --panel:#141619; --panel2:#0f1113; --line:#20232a; --line2:#2b2f37;
-    --text:#edeef1; --muted:#8b9099; --accent:#3d7bff; --accent2:#2f63d6;
-    --green:#00c281; --red:#f5555a; --up:#00c281; --down:#f5555a; --hover:#1a1d23;
-    --shadow:0 1px 3px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.28);
-    --radius:14px; --radius-sm:10px; --radius-pill:999px;
-    --h-header:56px; --h-tape:38px; --h-bottom:230px; --w-right:320px;
+    /* Trade Republic-inspired dark minimal: near-black canvas, borderless
+       airy panels (borders kept ultra-subtle), colour reserved for up/down. */
+    --bg:#0a0a0b; --panel:#151517; --panel2:#1d1d20; --line:#1a1a1c; --line2:#2a2a2e;
+    --text:#fafafa; --muted:#8a8c93; --accent:#4b83ff; --accent2:#3b68d6;
+    --green:#00d179; --red:#ff5b5b; --up:#00d179; --down:#ff5b5b; --hover:#212125;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 34px rgba(0,0,0,.42);
+    --radius:20px; --radius-sm:13px; --radius-pill:999px;
+    --h-header:60px; --h-tape:38px; --h-bottom:230px; --w-right:320px;
   }
   body.light{
-    --bg:#ffffff; --panel:#ffffff; --panel2:#f6f7f9; --line:#ededf1; --line2:#dfe2e8;
-    --text:#16181d; --muted:#6b7280; --hover:#f3f4f6; --navy:#eef1f6;
-    --green:#00a56a; --red:#ec4b57; --up:#00a56a; --down:#ec4b57;
-    --shadow:0 1px 2px rgba(16,24,40,.06), 0 6px 20px rgba(16,24,40,.06);
+    --bg:#ffffff; --panel:#ffffff; --panel2:#f5f6f8; --line:#f0f1f4; --line2:#e4e6ec;
+    --text:#0b0b0d; --muted:#6b7280; --hover:#f2f3f5; --navy:#eef1f6;
+    --accent:#2f6bf6; --accent2:#2757cf;
+    --green:#00a862; --red:#e8484f; --up:#00a862; --down:#e8484f;
+    --shadow:0 1px 2px rgba(16,24,40,.05), 0 10px 30px rgba(16,24,40,.07);
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{margin:0;background:var(--bg);color:var(--text);
-    font:13.5px/1.5 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow:hidden;}
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow:hidden;letter-spacing:-.1px;}
   button{font-family:inherit;cursor:pointer;}
   .pos{color:var(--green);} .neg{color:var(--red);}
   .mono{font-variant-numeric:tabular-nums;}
+  /* thin, minimal scrollbars (Trade Republic restraint) */
+  *{scrollbar-width:thin;scrollbar-color:var(--line2) transparent;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+  ::-webkit-scrollbar-track{background:transparent;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 
   /* ---------- header ---------- */
   header{height:var(--h-header);display:flex;align-items:center;gap:18px;padding:0 20px;
@@ -54,7 +64,7 @@
   .search{position:relative;}
   .search input{width:280px;background:var(--panel2);border:1px solid transparent;border-radius:var(--radius-pill);
     color:var(--text);padding:9px 14px 9px 34px;font-size:13px;outline:none;transition:border-color .15s,background .15s;}
-  .search input:focus{border-color:var(--accent);background:var(--bg);}
+  .search input:focus{border-color:var(--line2);background:var(--panel);}
   .search svg{position:absolute;left:12px;top:10px;opacity:.5;}
   .search-dd{position:absolute;top:100%;left:0;right:0;margin-top:8px;background:var(--panel);
     border:1px solid var(--line);border-radius:var(--radius);z-index:200;display:none;max-height:380px;
@@ -78,8 +88,9 @@
   .modal-backdrop.open{display:flex;}
   .modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
     padding:22px 24px;width:340px;max-width:calc(100vw - 32px);box-shadow:var(--shadow);}
-  .modal h3{margin:0 0 6px;font-size:17px;font-weight:700;}
-  .modal p{margin:0 0 16px;font-size:12.5px;color:var(--muted);line-height:1.5;}
+  .modal{padding:26px 26px;}
+  .modal h3{margin:0 0 8px;font-size:20px;font-weight:600;letter-spacing:-.4px;}
+  .modal p{margin:0 0 18px;font-size:13px;color:var(--muted);line-height:1.55;}
   .modal label{font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;}
   .modal input{width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:var(--radius-sm);
     color:var(--text);padding:10px 12px;font-size:13px;outline:none;transition:border-color .15s;}
@@ -94,14 +105,15 @@
   @media(max-width:980px){ .greet{display:none !important;} }
   .lookback{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
   .lookback button{background:none;border:none;color:var(--muted);padding:6px 12px;font-size:12px;border-radius:var(--radius-pill);}
-  .lookback button.active{background:var(--accent);color:#fff;}
+  .lookback button.active{background:var(--text);color:var(--bg);font-weight:600;}
   /* compact Index Health term toggle (short / mid / long), sits beside an index */
   .termmini{padding:2px;}
   .termmini button{padding:3px 8px;font-size:10.5px;font-weight:600;}
-  .termmini button.active{background:var(--accent);color:#fff;}
+  .termmini button.active{background:var(--text);color:var(--bg);}
   .btn{background:var(--text);color:var(--bg);border:none;border-radius:var(--radius-pill);
-    padding:9px 18px;font-weight:600;font-size:13px;transition:opacity .12s;}
-  .btn:hover{opacity:.85;}
+    padding:11px 22px;font-weight:600;font-size:13.5px;letter-spacing:-.1px;transition:opacity .12s,transform .06s;}
+  .btn:hover{opacity:.88;}
+  .btn:active{transform:scale(.98);}
   .btn.ghost{background:var(--panel2);color:var(--text);}
   .btn.ghost:hover{background:var(--hover);opacity:1;}
   /* language toggle */
@@ -139,14 +151,14 @@
     color:var(--muted);font-size:14px;line-height:1;width:13px;text-align:center;}
   body.resizing{cursor:col-resize;user-select:none;}
 
-  .sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;
-    padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center;}
+  .sec-title{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;
+    padding:18px 18px 10px;display:flex;justify-content:space-between;align-items:center;}
 
   /* chart */
-  .chart-top{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .chart-top{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;padding:16px 20px;border-bottom:1px solid var(--line);}
   .sym-head{display:flex;align-items:baseline;gap:10px;}
-  .sym-head .s{font-size:19px;font-weight:700;letter-spacing:.2px;} .sym-head .n{color:var(--muted);font-size:12.5px;}
-  .sym-head .p{font-size:19px;font-weight:700;margin-left:6px;} .sym-head .c{font-size:12.5px;font-weight:600;}
+  .sym-head .s{font-size:18px;font-weight:600;letter-spacing:-.2px;} .sym-head .n{color:var(--muted);font-size:12.5px;}
+  .sym-head .p{font-size:28px;font-weight:600;margin-left:8px;letter-spacing:-.8px;font-variant-numeric:tabular-nums;} .sym-head .c{font-size:13px;font-weight:600;}
   .ohlc{display:flex;gap:14px;color:var(--muted);font-size:11.5px;white-space:nowrap;}
   .ohlc b{color:var(--text);font-weight:600;}
   .tf{display:flex;gap:1px;margin-left:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
@@ -160,7 +172,7 @@
   .ind-chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
     border-radius:var(--radius-pill);padding:4px 11px;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .12s;}
   .ind-chip:hover{color:var(--text);border-color:var(--line2);}
-  .ind-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .ind-chip.on{background:var(--text);border-color:var(--text);color:var(--bg);}
   /* chip + settings-gear grouped as one pill */
   .ind-group{display:inline-flex;align-items:stretch;}
   .ind-group .ind-chip.has-gear{border-top-right-radius:0;border-bottom-right-radius:0;}
@@ -190,7 +202,7 @@
   .corr-title b{color:var(--text);}
   .corr-lb{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
   .corr-lb button{background:none;border:none;color:var(--muted);padding:4px 10px;font-size:11px;cursor:pointer;border-radius:var(--radius-pill);}
-  .corr-lb button.active{background:var(--accent);color:#fff;}
+  .corr-lb button.active{background:var(--text);color:var(--bg);}
   .corr-list{flex:1;overflow-y:auto;padding:0 12px 8px;display:grid;
     grid-template-columns:1fr 1fr;gap:1px 22px;align-content:start;}
   .cr-row{display:grid;grid-template-columns:92px 1fr 36px;gap:8px;align-items:center;font-size:11.5px;padding:2px 0;}
@@ -204,9 +216,9 @@
 
   /* right panels */
   .panel{border-bottom:1px solid var(--line);padding-bottom:14px;}
-  .gauge{padding:4px 16px 0;}
-  .gauge .big{font-size:34px;font-weight:700;letter-spacing:-.5px;}
-  .gauge .verdict{font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--radius-pill);}
+  .gauge{padding:6px 18px 0;}
+  .gauge .big{font-size:40px;font-weight:600;letter-spacing:-1.2px;font-variant-numeric:tabular-nums;}
+  .gauge .verdict{font-size:11px;font-weight:500;padding:3px 11px;border-radius:var(--radius-pill);}
   .verdict.pos{background:color-mix(in srgb,var(--green) 15%,transparent);color:var(--green);}
   .verdict.neg{background:color-mix(in srgb,var(--red) 15%,transparent);color:var(--red);}
   /* KLCI index price mini-chart above the health indicator */
@@ -253,9 +265,9 @@
   .news a:hover{background:var(--hover);} .news .meta{color:var(--muted);font-size:10.5px;margin-top:3px;}
 
   /* tables (GEX / Market Index / R-Appetite pages) */
-  table{width:100%;border-collapse:collapse;font-size:12px;}
-  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--panel);white-space:nowrap;}
-  th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;background:var(--panel2);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  th{color:var(--muted);font-weight:500;font-size:10.5px;letter-spacing:.2px;position:sticky;top:0;background:var(--panel);}
   td.num{text-align:right;font-variant-numeric:tabular-nums;}
   tr.click{cursor:pointer;} tr.click:hover td{background:var(--hover);}
   /* sortable table headers */
@@ -276,12 +288,12 @@
   .page h2{font-size:15px;font-weight:700;margin:22px 0 4px;}
   .page h2:first-child{margin-top:0;}
   .page .sub{color:var(--muted);font-size:11.5px;margin-bottom:12px;}
-  .cards{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:12px 16px;min-width:130px;box-shadow:var(--shadow);}
-  .card .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px;}
-  .card .v{font-size:19px;font-weight:700;letter-spacing:-.3px;}
-  .card .d{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  .card{background:var(--panel);border:none;border-radius:var(--radius);
+    padding:16px 20px;min-width:140px;}
+  .card .k{font-size:10.5px;letter-spacing:.2px;color:var(--muted);margin-bottom:6px;font-weight:500;}
+  .card .v{font-size:24px;font-weight:600;letter-spacing:-.6px;font-variant-numeric:tabular-nums;}
+  .card .d{font-size:11px;color:var(--muted);margin-top:3px;}
   /* portfolio add-holding form */
   .pf-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
   .pf-search{position:relative;flex:1 1 260px;min-width:200px;}
@@ -304,6 +316,26 @@
   .mlx-tip .r b{margin-left:auto;font-variant-numeric:tabular-nums;}
   .pf-del{color:var(--red);cursor:pointer;font-weight:700;opacity:.7;}
   .pf-del:hover{opacity:1;}
+  /* portfolio tabs (up to 3, renameable) */
+  .pf-tabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 12px;}
+  .pf-tab{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius-pill);
+    background:var(--panel2);border:1px solid transparent;cursor:pointer;font-size:13px;color:var(--muted);}
+  .pf-tab.active{background:var(--panel);border-color:var(--accent);color:var(--text);font-weight:600;}
+  .pf-tab .x{opacity:.5;font-size:11px;}
+  .pf-tab .x:hover{opacity:1;color:var(--red);}
+  .pf-tab-new{padding:6px 12px;border-radius:var(--radius-pill);background:transparent;border:1px dashed var(--line2);
+    cursor:pointer;font-size:13px;color:var(--muted);}
+  .pf-tab-new:hover{border-color:var(--accent);color:var(--text);}
+  .pf-tab-name{background:none;border:none;color:inherit;font:inherit;width:auto;max-width:150px;padding:0;outline:none;}
+  /* rebalance advice banner */
+  .pf-reb{border-radius:10px;padding:10px 14px;margin:4px 0 14px;font-size:13px;display:flex;
+    gap:10px;align-items:flex-start;border:1px solid var(--line2);}
+  .pf-reb.act{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.4);}
+  .pf-reb.ok{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.35);}
+  .pf-reb .ic{font-size:16px;line-height:1.2;}
+  .pf-reb b{color:var(--text);}
+  .pf-w-bar{height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;min-width:60px;}
+  .pf-w-bar i{display:block;height:100%;background:var(--accent);}
   /* fund-flow diverging bar rows (reuse .cr-bar for the centre-line bar) */
   .ff-row{display:grid;grid-template-columns:1fr 1fr 74px;gap:10px;align-items:center;font-size:11.5px;padding:2.5px 0;}
   .ff-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -314,12 +346,12 @@
   .ffp-t{font-size:10.5px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .ffp-t .sig{font-weight:600;opacity:.9;}
   #ff-daily svg{display:block;width:100%;}
-  .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   @media (max-width:980px){ .gx-grid{grid-template-columns:1fr;} }
-  .gx-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-    padding:12px 14px;box-shadow:var(--shadow);min-width:0;}
-  .gx-panel h3{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
-    font-weight:600;margin:0 0 10px;}
+  .gx-panel{background:var(--panel);border:none;border-radius:var(--radius);
+    padding:18px 20px;min-width:0;}
+  .gx-panel h3{font-size:12.5px;letter-spacing:-.1px;color:var(--text);
+    font-weight:600;margin:0 0 12px;}
   .gx-panel svg{display:block;width:100%;}
   .readout{border-left:3px solid var(--accent);padding:10px 14px;background:var(--panel);
     border-radius:var(--radius-sm);font-size:12.5px;margin:12px 0;}
@@ -364,10 +396,11 @@
     .search input:focus{width:220px;}
   }
   .page-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px;}
-  .explain{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);
-    margin:0 0 14px;font-size:12.5px;max-width:880px;}
-  .explain summary{cursor:pointer;padding:9px 14px;color:var(--accent);font-weight:600;
-    list-style:none;user-select:none;}
+  .explain{background:var(--panel);border:none;border-radius:var(--radius-sm);
+    margin:0 0 16px;font-size:12.5px;max-width:880px;}
+  .explain summary{cursor:pointer;padding:12px 16px;color:var(--muted);font-weight:500;
+    list-style:none;user-select:none;transition:color .12s;}
+  .explain summary:hover{color:var(--text);}
   .explain summary::-webkit-details-marker{display:none;}
   .explain summary::before{content:"ⓘ  ";}
   .explain[open] summary{border-bottom:1px solid var(--line);}
@@ -634,12 +667,15 @@
     <button class="chip" id="pf-refresh" data-i18n="common.refresh" title="Recompute performance">↻ Refresh</button>
     <span class="muted" style="font-size:11px" data-i18n="common.escHint">Esc returns to the chart</span>
   </div>
-  <h2><span data-i18n="pf.title">My portfolio</span> <span class="muted" style="font-weight:400" data-i18n="pf.titleSub">— add Bursa stocks with shares &amp; buy date to see past performance</span></h2>
+  <h2><span data-i18n="pf.title">Portfolios</span> <span class="muted" style="font-weight:400" data-i18n="pf.titleSub">— CAPM / mean-variance analysis, rebalancing &amp; index benchmarks</span></h2>
+  <div class="pf-tabs" id="pf-tabs"></div>
   <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="pf.explain">
-    Add each holding with the <b>number of shares</b> you own and the <b>date you bought</b>. The chart
-    shows what the whole portfolio would have been worth over time (buy-and-hold), against the
-    <b>KLCI</b> rebased to your starting value so you can see if you beat the market. The table shows
-    each stock's buy price, latest price and profit/loss. Prices are end-of-day from klsescreener.
+    Keep up to <b>3 named portfolios</b>. Add each holding with its <b>shares</b> and <b>buy date</b>.
+    The tool estimates each portfolio's <b>risk</b> (annualised volatility), <b>Sharpe ratio</b> and CAPM
+    <b>beta/alpha</b> vs the KLCI from ~2 years of daily returns, then recommends the <b>rebalance weights</b>
+    (max-Sharpe headline, min-variance alternative) and advises <b>when to rebalance</b>. The CAPM chart plots
+    your portfolio's risk vs return against the efficient frontier; the benchmark chart rebases your return to
+    100 against the <b>KLCI / Mid 70 / ACE</b> indices. Not investment advice.
   </div></details>
 
   <!-- add-holding form -->
@@ -658,7 +694,19 @@
   </div>
 
   <div class="sub" id="pf-sub" style="margin-top:14px"></div>
+  <div id="pf-reb-wrap"></div>
   <div class="cards" id="pf-cards"></div>
+  <div class="gx-grid">
+    <div class="gx-panel" id="pf-capm-panel" style="display:none">
+      <h3 data-i18n="pf.capmTitle">CAPM risk–return &amp; efficient frontier</h3>
+      <div id="pf-capm"></div>
+      <div class="legend" id="pf-capm-legend"></div>
+    </div>
+    <div class="gx-panel" id="pf-reco-panel" style="display:none">
+      <h3 data-i18n="pf.recoTitle">Recommended rebalance weights</h3>
+      <div id="pf-reco"></div>
+    </div>
+  </div>
   <div class="gx-panel" id="pf-chart-panel" style="display:none">
     <h3><span data-i18n="pf.perf">Portfolio vs benchmark indices</span> <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-i18n="pf.rebased">(rebased to 100 at your earliest buy date)</span></h3>
     <div id="pf-chart"></div>
@@ -773,9 +821,18 @@ const I18N = {
     "ff.note":"Green = net buying, red = net selling. Tick-rule estimate from klsescreener {interval} bars; not exact trade-side data.",
     "ff.netFlow":"Net flow",
     "nav.portfolio":"Portfolio",
-    "pf.title":"My portfolio","pf.titleSub":"— add Bursa stocks with shares & buy date to see past performance",
-    "pf.explain":"Add each holding with the <b>number of shares</b> you own and the <b>date you bought</b>. The chart shows what the whole portfolio would have been worth over time (buy-and-hold), against the <b>KLCI</b> rebased to your starting value so you can see if you beat the market. The table shows each stock's buy price, latest price and profit/loss. Prices are end-of-day from klsescreener.",
+    "pf.title":"Portfolios","pf.titleSub":"— CAPM / mean-variance analysis, rebalancing & index benchmarks",
+    "pf.explain":"Keep up to <b>3 named portfolios</b>. Add each holding with its <b>shares</b> and <b>buy date</b>. The tool estimates each portfolio's <b>risk</b> (annualised volatility), <b>Sharpe ratio</b> and CAPM <b>beta/alpha</b> vs the KLCI from ~2 years of daily returns, then recommends the <b>rebalance weights</b> (max-Sharpe headline, min-variance alternative) and advises <b>when to rebalance</b>. The CAPM chart plots your portfolio's risk vs return against the efficient frontier; the benchmark chart rebases your return to 100 against the <b>KLCI / Mid 70 / ACE</b> indices. Not investment advice.",
     "pf.add":"Add a holding","pf.stockPh":"Search stock (code or name)","pf.sharesPh":"Shares","pf.addBtn":"Add",
+    "pf.new":"New portfolio","pf.delConfirm":"Delete this portfolio and all its holdings?","pf.needPf":"Create a portfolio first.",
+    "pf.capmTitle":"CAPM risk–return & efficient frontier","pf.recoTitle":"Recommended rebalance weights",
+    "pf.risk":"Risk (ann. vol)","pf.riskSub":"annualised volatility","pf.sharpe":"Sharpe ratio","pf.expRet":"exp. return",
+    "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) p.a.","pf.alphaSub":"excess vs CAPM, annualised",
+    "pf.rebNow":"Time to rebalance","pf.rebOk":"On track — no rebalance needed","pf.rebOkSub":"weights are close to target and it's been under a quarter",
+    "pf.maxDrift":"max weight drift","pf.daysSince":"days since earliest buy",
+    "pf.wNow":"Current","pf.wMaxSharpe":"Max-Sharpe ★","pf.wMinVar":"Min-Var",
+    "pf.recoNote":"Max-Sharpe = best risk-adjusted return (can concentrate into one name); Min-Variance = lowest risk, more diversified. Estimated in-sample from ~2y of returns — treat as a guide, not a guarantee.",
+    "pf.legCur":"Your portfolio","pf.legMaxS":"Max Sharpe","pf.legMinV":"Min Variance","pf.legStock":"Individual stock","pf.legFront":"Efficient frontier",
     "pf.perf":"Portfolio vs benchmark indices","pf.rebased":"(rebased to 100 at your earliest buy date)","pf.legendPf":"Portfolio",
     "pf.empty":"No holdings yet — add a stock above to see its past performance.",
     "pf.holding":"holding","pf.holdings":"holdings",
@@ -846,9 +903,18 @@ const I18N = {
     "ff.note":"绿色=净买入，红色=净卖出。基于 klsescreener {interval} K线的逐笔规则估算；非精确买卖方向数据。",
     "ff.netFlow":"净流向",
     "nav.portfolio":"投资组合",
-    "pf.title":"我的投资组合","pf.titleSub":"— 添加马股（股数与买入日期）查看历史表现",
-    "pf.explain":"为每只持仓填写<b>持有股数</b>和<b>买入日期</b>。图表显示整个组合按买入持有的历史价值，并以你起始价值为基准的 <b>KLCI</b> 作对比，看是否跑赢大盘。下方表格列出每只股票的买入价、最新价及盈亏。价格为 klsescreener 收盘数据。",
+    "pf.title":"投资组合","pf.titleSub":"— CAPM／均值-方差分析、再平衡建议与指数对比",
+    "pf.explain":"最多可建立 <b>3 个命名组合</b>。为每只持仓填写<b>股数</b>与<b>买入日期</b>。系统以约两年日收益估算组合的<b>风险</b>（年化波动）、<b>夏普比率</b>及相对 KLCI 的 CAPM <b>beta/alpha</b>，并给出<b>再平衡权重建议</b>（首选最大夏普，另附最小方差）与<b>再平衡时机</b>提示。CAPM 图显示组合风险与收益及有效前沿；对比图将组合收益以 100 为基准与 <b>KLCI／Mid 70／ACE</b> 指数对照。非投资建议。",
     "pf.add":"添加持仓","pf.stockPh":"搜索股票（代码或名称）","pf.sharesPh":"股数","pf.addBtn":"添加",
+    "pf.new":"新建组合","pf.delConfirm":"删除此组合及其所有持仓？","pf.needPf":"请先创建一个组合。",
+    "pf.capmTitle":"CAPM 风险—收益与有效前沿","pf.recoTitle":"再平衡权重建议",
+    "pf.risk":"风险（年化波动）","pf.riskSub":"年化波动率","pf.sharpe":"夏普比率","pf.expRet":"预期收益",
+    "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) 年化","pf.alphaSub":"相对 CAPM 的超额（年化）",
+    "pf.rebNow":"建议再平衡","pf.rebOk":"状态良好 — 暂无需再平衡","pf.rebOkSub":"权重接近目标且不足一个季度",
+    "pf.maxDrift":"最大权重偏离","pf.daysSince":"天（自最早买入）",
+    "pf.wNow":"当前","pf.wMaxSharpe":"最大夏普 ★","pf.wMinVar":"最小方差",
+    "pf.recoNote":"最大夏普＝风险调整后收益最优（可能集中于单只）；最小方差＝风险最低、更分散。以约两年样本内数据估算，仅供参考。",
+    "pf.legCur":"你的组合","pf.legMaxS":"最大夏普","pf.legMinV":"最小方差","pf.legStock":"个股","pf.legFront":"有效前沿",
     "pf.perf":"组合 vs 基准指数","pf.rebased":"（以最早买入日为100基准）","pf.legendPf":"组合",
     "pf.empty":"暂无持仓——在上方添加股票查看其历史表现。",
     "pf.holding":"只持仓","pf.holdings":"只持仓",
@@ -1281,13 +1347,15 @@ function _macd(v,f,s,sig){ const ef=_ema(v,f),es=_ema(v,s);
 function chartTheme(){
   const light=document.body.classList.contains('light');
   return {
-    layout:{background:{color:'transparent'},textColor:light?'#4b5563':'#9aa0ac',fontFamily:'inherit'},
-    grid:{vertLines:{color:light?'#eceff3':'#1f2430'},horzLines:{color:light?'#eceff3':'#1f2430'}},
+    layout:{background:{color:'transparent'},textColor:light?'#8a8c93':'#8a8c93',fontFamily:'inherit'},
+    // near-invisible grid (Trade Republic minimalism): faint horizontals only,
+    // vertical lines dropped entirely.
+    grid:{vertLines:{visible:false},horzLines:{color:light?'#f1f2f4':'#161618'}},
     // fixed minimum width so the price axis is identical across the main chart
     // and the RSI/MACD sub-panes — otherwise different label widths shift the
     // sub-pane bars out of horizontal alignment with the candles.
-    rightPriceScale:{borderColor:light?'#e3e7ee':'#2a2e39',minimumWidth:72},
-    timeScale:{borderColor:light?'#e3e7ee':'#2a2e39'},
+    rightPriceScale:{borderVisible:false,minimumWidth:72},
+    timeScale:{borderVisible:false},
   };
 }
 function applyChartTheme(){ if(chart){chart.applyOptions(chartTheme());}
@@ -1297,12 +1365,12 @@ function initChart(){
     autoSize:true,
     ...chartTheme(),
     timeScale:{...chartTheme().timeScale,timeVisible:false},
-    crosshair:{mode:0,vertLine:{color:'#4a5160',labelBackgroundColor:'#2962ff'},
-      horzLine:{color:'#4a5160',labelBackgroundColor:'#2962ff'}},
+    crosshair:{mode:0,vertLine:{color:'#54565e',labelBackgroundColor:'#2a2a2e'},
+      horzLine:{color:'#54565e',labelBackgroundColor:'#2a2a2e'}},
   };
   chart=LightweightCharts.createChart($("#chart"),opts);
-  candle=chart.addCandlestickSeries({upColor:'#00c281',downColor:'#f5555a',borderVisible:false,
-    wickUpColor:'#00c281',wickDownColor:'#f5555a'});
+  candle=chart.addCandlestickSeries({upColor:'#00d179',downColor:'#ff5b5b',borderVisible:false,
+    wickUpColor:'#00d179',wickDownColor:'#ff5b5b'});
   vol=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol'});
   chart.priceScale('vol').applyOptions({scaleMargins:{top:0.82,bottom:0}});
   chart.subscribeCrosshairMove(p=>updateOHLC(p));
@@ -1693,7 +1761,7 @@ function showPage(name){
   if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
   if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
   if(name==="fundflow" && !FF_LOADED){ FF_LOADED=true; loadFundFlow(); }
-  if(name==="portfolio") loadPortfolio();
+  if(name==="portfolio") loadPortfolios();
   try{localStorage.setItem("view",name);}catch(_){}
 }
 const showGexPage=on=>showPage(on?"gex":"chart");
@@ -2521,27 +2589,120 @@ async function loadFundFlow(force){
   }
 }
 
-/* ---------------- Portfolio page ---------------- */
-let PF_SEL=null;   // stock chosen in the add form: {code,ticker,name}
+/* ---------------- Portfolio page (multi-portfolio + CAPM/MPT) ---------------- */
+let PF_SEL=null;          // stock chosen in the add form: {code,ticker,name}
+let PF_LIST=[];           // [{id,name,position}]
+let PF_PID=null;          // currently selected portfolio id
 function pfMoney(x){ return x==null?"—":"RM "+(+x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
-async function loadPortfolio(force){
-  const body=$("#pf-body"), cards=$("#pf-cards"), sub=$("#pf-sub");
-  sub.textContent=t("loading.default"); cards.innerHTML=""; $("#pf-chart-panel").style.display="none";
+function pfPct(x,d=1){ return x==null?"—":(x>=0?"":"")+(x*100).toFixed(d)+"%"; }
+
+// CAPM / MPT risk–return chart: Monte-Carlo cloud (coloured by Sharpe), the
+// efficient frontier, each stock, and the current / max-Sharpe / min-variance
+// portfolios. x = annualised volatility (risk), y = annualised return.
+function efficientFrontierSVG(a,H=344){
+  const W=560,padL=42,padR=14,padT=14,padB=40;
+  const marks=[a.current,a.max_sharpe,a.min_var].filter(Boolean);
+  const pts=[...(a.cloud||[]),...(a.stocks||[]),...marks];
+  if(!pts.length) return "";
+  const xs=pts.map(p=>p.vol), ys=pts.map(p=>p.ret);
+  let xlo=Math.min(...xs),xhi=Math.max(...xs),ylo=Math.min(...ys),yhi=Math.max(...ys);
+  const xp=(xhi-xlo||0.05)*0.08, yp=(yhi-ylo||0.05)*0.12;
+  xlo=Math.max(0,xlo-xp); xhi+=xp; ylo-=yp; yhi+=yp;
+  const X=v=>padL+(W-padL-padR)*(v-xlo)/((xhi-xlo)||1);
+  const Y=v=>padT+(H-padT-padB)*(yhi-v)/((yhi-ylo)||1);
+  const P=v=>(v*100).toFixed(0)+"%";
+  let out="";
+  for(let i=0;i<=4;i++){ const xv=xlo+(xhi-xlo)*i/4, yv=ylo+(yhi-ylo)*i/4;
+    out+=`<line x1="${X(xv)}" y1="${padT}" x2="${X(xv)}" y2="${H-padB}" stroke="var(--line2)" opacity=".22"/>`+
+      `<line x1="${padL}" y1="${Y(yv)}" x2="${W-padR}" y2="${Y(yv)}" stroke="var(--line2)" opacity=".22"/>`+
+      `<text x="${X(xv)}" y="${H-padB+13}" font-size="8" fill="var(--muted)" text-anchor="middle">${P(xv)}</text>`+
+      `<text x="${padL-4}" y="${Y(yv)+3}" font-size="8" fill="var(--muted)" text-anchor="end">${P(yv)}</text>`; }
+  if(ylo<0&&yhi>0) out+=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--line)" stroke-dasharray="2 3"/>`;
+  const srs=(a.cloud||[]).map(p=>p.sr), smin=Math.min(...srs,0), smax=Math.max(...srs,0.01);
+  const col=s=>{ const tt=Math.max(0,Math.min(1,(s-smin)/((smax-smin)||1))); return `hsl(${(45+230*(1-tt)).toFixed(0)},80%,55%)`; };
+  (a.cloud||[]).forEach(p=>{ out+=`<circle cx="${X(p.vol).toFixed(1)}" cy="${Y(p.ret).toFixed(1)}" r="1.6" fill="${col(p.sr)}" opacity=".55"/>`; });
+  if((a.frontier||[]).length>1){ const fp=a.frontier.map(p=>`${X(p.vol).toFixed(1)},${Y(p.ret).toFixed(1)}`).join(" ");
+    out+=`<polyline points="${fp}" fill="none" stroke="#22c55e" stroke-width="2" stroke-dasharray="5 3"/>`; }
+  (a.stocks||[]).forEach(p=>{ out+=`<circle cx="${X(p.vol).toFixed(1)}" cy="${Y(p.ret).toFixed(1)}" r="3.4" fill="#fff" stroke="#000" stroke-width="1"/>`+
+    `<text x="${(X(p.vol)+5).toFixed(1)}" y="${(Y(p.ret)-4).toFixed(1)}" font-size="8.5" fill="var(--text)">${p.name}</text>`; });
+  const dot=(p,fill,r=6)=>p?`<circle cx="${X(p.vol).toFixed(1)}" cy="${Y(p.ret).toFixed(1)}" r="${r}" fill="${fill}" stroke="#000" stroke-width="1.2"/>`:"";
+  const dia=(p,fill)=>{ if(!p)return""; const x=X(p.vol).toFixed(1),y=Y(p.ret).toFixed(1);
+    return `<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="${fill}" stroke="#000" stroke-width="1.2" transform="rotate(45 ${x} ${y})"/>`; };
+  out+=dot(a.max_sharpe,"#ef4444");
+  out+=dia(a.min_var,"#22d3ee");
+  out+=a.current?`<circle cx="${X(a.current.vol).toFixed(1)}" cy="${Y(a.current.ret).toFixed(1)}" r="7.5" fill="none" stroke="var(--accent)" stroke-width="2.6"/>`:"";
+  out+=`<text x="${(padL+(W-padR))/2}" y="${H-4}" font-size="8.5" fill="var(--muted)" text-anchor="middle">Annualised volatility (risk) →</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
+}
+
+async function loadPortfolios(){
+  const tabs=$("#pf-tabs");
   try{
-    const d=await get("/api/portfolio/performance"+(force?"?_="+Date.now():""), 120000);
+    PF_LIST=(await get("/api/portfolios")).portfolios||[];
+  }catch(e){ tabs.innerHTML=`<span class="muted">${e.message||t("auth.failed")}</span>`; return; }
+  if(!PF_LIST.length){ PF_LIST=[]; }
+  if(!PF_PID || !PF_LIST.some(p=>p.id===PF_PID)) PF_PID=PF_LIST.length?PF_LIST[0].id:null;
+  renderPfTabs();
+  if(PF_PID!=null) loadPortfolio(true);
+}
+function renderPfTabs(){
+  const tabs=$("#pf-tabs");
+  let h=PF_LIST.map(p=> p.id===PF_PID
+    ? `<span class="pf-tab active"><input class="pf-tab-name" data-id="${p.id}" value="${(p.name||"").replace(/"/g,"&quot;")}" size="${Math.max(6,(p.name||"").length)}"/>`+
+      (PF_LIST.length>1?`<span class="x" data-del="${p.id}" title="Delete portfolio">✕</span>`:"")+`</span>`
+    : `<span class="pf-tab" data-sel="${p.id}">${p.name||"Portfolio"}</span>`).join("");
+  if(PF_LIST.length<3) h+=`<span class="pf-tab-new" id="pf-new">+ ${t("pf.new")||"New portfolio"}</span>`;
+  tabs.innerHTML=h;
+  tabs.querySelectorAll("[data-sel]").forEach(el=>el.onclick=()=>{ PF_PID=+el.dataset.sel; renderPfTabs(); loadPortfolio(true); });
+  tabs.querySelectorAll("[data-del]").forEach(el=>el.onclick=()=>deletePortfolio(+el.dataset.del));
+  const nb=$("#pf-new"); if(nb) nb.onclick=createPortfolio;
+  const nm=tabs.querySelector(".pf-tab-name");
+  if(nm){ const commit=()=>renamePortfolio(+nm.dataset.id, nm.value);
+    nm.addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault(); nm.blur();} });
+    nm.addEventListener("blur",commit); }
+}
+async function createPortfolio(){
+  try{ const p=await post("/api/portfolios",{name:""}); PF_PID=p.id; await loadPortfolios(); }
+  catch(e){ $("#pf-sub").textContent=e.message||t("auth.failed"); }
+}
+async function renamePortfolio(pid,name){
+  const p=PF_LIST.find(x=>x.id===pid); if(!p||(name||"").trim()===p.name) return;
+  try{ await api("PATCH","/api/portfolios/"+pid,{name}); const q=PF_LIST.find(x=>x.id===pid); if(q)q.name=name.trim(); }
+  catch(e){ $("#pf-sub").textContent=e.message||t("auth.failed"); }
+}
+async function deletePortfolio(pid){
+  if(!confirm(t("pf.delConfirm")||"Delete this portfolio and all its holdings?")) return;
+  try{ await api("DELETE","/api/portfolios/"+pid); if(PF_PID===pid) PF_PID=null; await loadPortfolios(); }
+  catch(e){ $("#pf-sub").textContent=e.message||t("auth.failed"); }
+}
+// small helper for PATCH/DELETE with auth (get/post already exist)
+async function api(method,path,body){
+  const r=await fetch(API+path,{method,headers:{...authHeaders(),"Content-Type":"application/json"},
+    body:body?JSON.stringify(body):undefined});
+  if(!r.ok){ let m="request failed"; try{m=(await r.json()).detail||m;}catch(_){}
+    const e=new Error(m); e.status=r.status; throw e; }
+  return r.status===204?null:r.json().catch(()=>null);
+}
+
+async function loadPortfolio(force){
+  if(PF_PID==null) return;
+  const pid=PF_PID, body=$("#pf-body"), cards=$("#pf-cards"), sub=$("#pf-sub");
+  sub.textContent=t("loading.default"); cards.innerHTML="";
+  ["pf-chart-panel","pf-capm-panel","pf-reco-panel"].forEach(id=>$("#"+id).style.display="none");
+  $("#pf-reb-wrap").innerHTML="";
+  try{
+    const d=await get(`/api/portfolios/${pid}/performance`+(force?"?_="+Date.now():""), 120000);
+    if(PF_PID!==pid) return;   // user switched tabs mid-load
     const hs=d.holdings||[];
     if(!hs.length){ sub.textContent=t("pf.empty"); body.innerHTML=""; return; }
     const T=d.totals||{};
     sub.textContent = `${t("sub.asOf")} ${T.as_of||""} · ${hs.length} ${hs.length===1?t("pf.holding"):t("pf.holdings")}`;
-    // summary cards
     cards.innerHTML=`
       <div class="card"><div class="k">${t("pf.invested")}</div><div class="v">${pfMoney(T.cost)}</div></div>
       <div class="card"><div class="k">${t("pf.valueNow")}</div><div class="v">${pfMoney(T.value)}</div></div>
       <div class="card"><div class="k">${t("pf.gain")}</div>
         <div class="v ${cls(T.gain)}">${T.gain>=0?"+":""}${pfMoney(T.gain).replace("RM ","RM ")}</div>
         <div class="d ${cls(T.gain)}">${fmt(T.gain_pct)}%</div></div>`;
-    // relative performance vs benchmark indices, all rebased to 100 at the
-    // portfolio's earliest buy date (Portfolio + FBM KLCI / MID 70 / ACE)
     const rb=d.rebased;
     if(rb && rb.portfolio && rb.portfolio.length>1){
       const idxColors={"FBM KLCI":"var(--muted)","FBM MID 70":"#f59e0b","FBM ACE":"#e879f9"};
@@ -2549,9 +2710,8 @@ async function loadPortfolio(force){
       Object.entries(rb.indices||{}).forEach(([label,vals])=>
         series.push({label,color:idxColors[label]||"var(--muted)",values:vals,width:1.4}));
       $("#pf-chart").innerHTML=multiLineSVG(rb.dates||d.dates,series,
-        {H:260,fmtTick:v=>v.toFixed(0),xTickFont:6.5,tipMode:"dec1",
-         guides:[{v:100,color:"var(--line2)",dash:"2 4"}]});   // 100 baseline
-      wireXhair($("#pf-chart"));   // hover crosshair + value/date tooltip
+        {H:260,fmtTick:v=>v.toFixed(0),xTickFont:6.5,tipMode:"dec1",guides:[{v:100,color:"var(--line2)",dash:"2 4"}]});
+      wireXhair($("#pf-chart"));
       $("#pf-legend").innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join("");
       $("#pf-chart-panel").style.display="";
     }
@@ -2576,24 +2736,76 @@ async function loadPortfolio(force){
             <td><span class="pf-del" data-id="${h.id}" title="${t("pf.remove")}">✕</span></td></tr>`;
         }).join("")}</tbody></table></div></div>`;
     body.querySelectorAll(".pf-del").forEach(x=>x.onclick=()=>removeHolding(+x.dataset.id));
+    loadAnalysis(pid);   // CAPM/MPT (async; appends cards + fills panels)
   }catch(e){ sub.textContent=e.message||t("auth.failed"); }
 }
+
+async function loadAnalysis(pid){
+  try{
+    const a=await get(`/api/portfolios/${pid}/analysis?_=`+Date.now(), 120000);
+    if(PF_PID!==pid) return;
+    if(!a || !a.ok){ return; }
+    const cards=$("#pf-cards"), c=a.current||{}, cm=a.capm||{};
+    // append risk / sharpe / beta / alpha metric cards
+    cards.insertAdjacentHTML("beforeend",`
+      <div class="card"><div class="k">${t("pf.risk")}</div><div class="v">${pfPct(c.vol,1)}</div><div class="d">${t("pf.riskSub")}</div></div>
+      <div class="card"><div class="k">${t("pf.sharpe")}</div><div class="v ${c.sharpe>=0?"pos":"neg"}">${c.sharpe==null?"—":(+c.sharpe).toFixed(2)}</div><div class="d">${t("pf.expRet")} ${pfPct(c.ret,1)}</div></div>
+      <div class="card"><div class="k">${t("pf.beta")}</div><div class="v">${cm.beta==null?"—":(+cm.beta).toFixed(2)}</div><div class="d">vs KLCI · R² ${cm.r_squared==null?"—":(+cm.r_squared).toFixed(2)}</div></div>
+      <div class="card"><div class="k">${t("pf.alpha")}</div><div class="v ${(cm.alpha_annual||0)>=0?"pos":"neg"}">${cm.alpha_annual==null?"—":pfPct(cm.alpha_annual,1)}</div><div class="d">${t("pf.alphaSub")}</div></div>`);
+    // rebalance advice banner
+    const rbl=a.rebalance||{};
+    if(rbl.action){
+      const act=rbl.action==="rebalance";
+      $("#pf-reb-wrap").innerHTML=`<div class="pf-reb ${act?"act":"ok"}">
+        <span class="ic">${act?"⚠️":"✅"}</span>
+        <div><b>${act?t("pf.rebNow"):t("pf.rebOk")}</b>${rbl.reasons&&rbl.reasons.length?" — "+rbl.reasons.join("; ")+"." :" — "+t("pf.rebOkSub")+"."}
+        <div class="muted" style="font-size:11px;margin-top:2px">${t("pf.maxDrift")}: ${rbl.max_drift_pp}pp · ${rbl.days_since} ${t("pf.daysSince")}</div></div></div>`;
+    }
+    // recommended weights table
+    const ms=a.max_sharpe.weights||{}, mv=a.min_var.weights||{};
+    const rows=(a.stocks||[]).map(s=>{
+      const cur=s.weight||0, m=ms[s.name]||0, v=mv[s.name]||0;
+      return `<tr><td><b>${s.name}</b></td>
+        <td class="num">${(cur*100).toFixed(1)}%</td>
+        <td class="num" style="min-width:120px"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+          <span>${(m*100).toFixed(1)}%</span><div class="pf-w-bar" style="width:56px"><i style="width:${(m*100).toFixed(0)}%"></i></div></div></td>
+        <td class="num">${(v*100).toFixed(1)}%</td></tr>`;}).join("");
+    $("#pf-reco").innerHTML=`<div style="overflow-x:auto"><table><thead><tr>
+      <th>${t("pf.stock")}</th><th class="num">${t("pf.wNow")}</th>
+      <th class="num">${t("pf.wMaxSharpe")}</th><th class="num">${t("pf.wMinVar")}</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+      <div class="muted" style="font-size:11px;margin-top:8px">${t("pf.recoNote")}</div>`;
+    $("#pf-reco-panel").style.display="";
+    // CAPM risk–return chart
+    $("#pf-capm").innerHTML=efficientFrontierSVG(a);
+    $("#pf-capm-legend").innerHTML=`
+      <span><i style="background:var(--accent);border-radius:50%"></i>${t("pf.legCur")}</span>
+      <span><i style="background:#ef4444;border-radius:50%"></i>${t("pf.legMaxS")}</span>
+      <span><i style="background:#22d3ee"></i>${t("pf.legMinV")}</span>
+      <span><i style="background:#fff;border:1px solid #000;border-radius:50%"></i>${t("pf.legStock")}</span>
+      <span><i style="background:#22c55e"></i>${t("pf.legFront")}</span>`;
+    $("#pf-capm-panel").style.display="";
+  }catch(_){ /* analysis is best-effort; leave panels hidden */ }
+}
+
 async function addHolding(){
   const err=$("#pf-add-err"); err.textContent="";
+  if(PF_PID==null){ err.textContent=t("pf.needPf")||"Create a portfolio first"; return; }
   const shares=parseFloat($("#pf-shares").value), buy_date=$("#pf-date").value;
   if(!PF_SEL||!PF_SEL.ticker){ err.textContent=t("pf.needStock"); return; }
   if(!(shares>0)){ err.textContent=t("pf.needShares"); return; }
   if(!buy_date){ err.textContent=t("pf.needDate"); return; }
   const btn=$("#pf-add-btn"); btn.disabled=true;
   try{
-    await post("/api/portfolio",{code:PF_SEL.code,ticker:PF_SEL.ticker,name:PF_SEL.name,shares,buy_date});
+    await post(`/api/portfolios/${PF_PID}/holdings`,{code:PF_SEL.code,ticker:PF_SEL.ticker,name:PF_SEL.name,shares,buy_date});
     PF_SEL=null; $("#pf-stock").value=""; $("#pf-shares").value="";
     loadPortfolio(true);
   }catch(e){ err.textContent=e.message||t("auth.failed"); }
   btn.disabled=false;
 }
 async function removeHolding(id){
-  try{ await fetch(API+"/api/portfolio/"+id,{method:"DELETE",headers:authHeaders()}); }catch(_){}
+  if(PF_PID==null) return;
+  try{ await api("DELETE",`/api/portfolios/${PF_PID}/holdings/${id}`); }catch(_){}
   loadPortfolio(true);
 }
 // search-as-you-type inside the add form

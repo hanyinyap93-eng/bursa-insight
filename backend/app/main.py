@@ -40,6 +40,7 @@ from .core import auth as auth_mod
 from .core import backtest as bt
 from .core import breadth as breadth_mod
 from .core import index_health as ih
+from .core import logins as logins_mod
 from .core import mailer as mailer_mod
 from .core import news as news_mod
 from .core import portfolio as portfolio_mod
@@ -49,7 +50,7 @@ from .core import users as users_mod
 from .schemas import (
     AlertRequest, BacktestHealthRequest, BacktestScreenRequest,
     EmailLoginRequest, EmailSignupRequest, GoogleAuthRequest, PortfolioAddRequest,
-    ResendRequest, ScreenRequest, VerifyRequest,
+    PortfolioNameRequest, ResendRequest, ScreenRequest, VerifyRequest,
 )
 
 log = logging.getLogger("bursa.api")
@@ -163,6 +164,7 @@ def auth_google(req: GoogleAuthRequest):
         raise HTTPException(401, f"Google sign-in rejected: {exc}")
     except Exception as exc:  # noqa: BLE001 - e.g. Google certs unreachable
         raise HTTPException(502, f"could not verify Google token: {exc}")
+    logins_mod.record(claims["email"], claims.get("name", ""), "google")
     return auth_mod.make_session_jwt(claims["email"], claims.get("name", ""))
 
 
@@ -220,7 +222,25 @@ def auth_verify(req: VerifyRequest):
     if u is None:
         raise HTTPException(404, "account not found")
     users_mod.mark_verified(email)
+    logins_mod.record(u["email"], u["name"], "email")
     return auth_mod.make_session_jwt(u["email"], u["name"])
+
+
+# --------------------------------------------------------------------------- #
+# Admin: who has logged in (owner-only)
+# --------------------------------------------------------------------------- #
+def _admin_emails() -> set[str]:
+    return {e.strip().lower() for e in settings.admin_emails.split(",") if e.strip()}
+
+
+@app.get("/api/admin/logins")
+def admin_logins(limit: int = Query(500, ge=1, le=5000),
+                 user=Depends(auth_mod.require_auth)):
+    """List recent successful logins (Google + email), newest first. Restricted
+    to the owner emails in BURSA_ADMIN_EMAILS — any other signed-in user gets 403."""
+    if (user.get("sub") or "").strip().lower() not in _admin_emails():
+        raise HTTPException(403, "admin access required")
+    return {"logins": logins_mod.recent(limit)}
 
 
 @app.post("/api/auth/resend")
@@ -248,6 +268,7 @@ def auth_login(req: EmailLoginRequest):
         raise HTTPException(401, str(exc))
     if not u["verified"]:
         raise HTTPException(403, "Please confirm your email first — check your inbox for the link.")
+    logins_mod.record(u["email"], u["name"], "email")
     return auth_mod.make_session_jwt(u["email"], u["name"])
 
 
@@ -281,6 +302,76 @@ def portfolio_performance(user=Depends(auth_mod.require_auth)):
         return portfolio_mod.performance(user["sub"])
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"portfolio performance failed: {exc}")
+
+
+# --------------------------------------------------------------------------- #
+# Multiple named portfolios (up to 3) with CAPM/MPT analysis + rebalance advice
+# --------------------------------------------------------------------------- #
+@app.get("/api/portfolios")
+def portfolios_list(user=Depends(auth_mod.require_auth)):
+    return {"portfolios": portfolio_mod.list_portfolios(user["sub"])}
+
+
+@app.post("/api/portfolios")
+def portfolios_create(req: PortfolioNameRequest, user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.create_portfolio(user["sub"], req.name)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.patch("/api/portfolios/{pid}")
+def portfolios_rename(pid: int, req: PortfolioNameRequest,
+                      user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.rename_portfolio(user["sub"], pid, req.name)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.delete("/api/portfolios/{pid}")
+def portfolios_delete(pid: int, user=Depends(auth_mod.require_auth)):
+    if not portfolio_mod.delete_portfolio(user["sub"], pid):
+        raise HTTPException(404, "portfolio not found")
+    return {"deleted": pid}
+
+
+@app.get("/api/portfolios/{pid}/holdings")
+def portfolio_holdings(pid: int, user=Depends(auth_mod.require_auth)):
+    return {"holdings": portfolio_mod.list_holdings(user["sub"], pid)}
+
+
+@app.post("/api/portfolios/{pid}/holdings")
+def portfolio_holdings_add(pid: int, req: PortfolioAddRequest,
+                           user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.add_holding(user["sub"], req.code, req.ticker,
+                                         req.name or "", req.shares, req.buy_date, pid=pid)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.delete("/api/portfolios/{pid}/holdings/{hid}")
+def portfolio_holdings_remove(pid: int, hid: int, user=Depends(auth_mod.require_auth)):
+    if not portfolio_mod.remove_holding(user["sub"], hid, pid=pid):
+        raise HTTPException(404, "holding not found")
+    return {"deleted": hid}
+
+
+@app.get("/api/portfolios/{pid}/performance")
+def portfolio_perf_scoped(pid: int, user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.performance(user["sub"], pid)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"portfolio performance failed: {exc}")
+
+
+@app.get("/api/portfolios/{pid}/analysis")
+def portfolio_analysis(pid: int, user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.analyze_portfolio(user["sub"], pid)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"portfolio analysis failed: {exc}")
 
 
 # --------------------------------------------------------------------------- #

@@ -80,3 +80,7 @@ class PortfolioAddRequest(BaseModel):
     name: Optional[str] = None
     shares: float
     buy_date: str   # ISO "YYYY-MM-DD"
+
+
+class PortfolioNameRequest(BaseModel):
+    name: str = ""   # create (optional) / rename portfolio

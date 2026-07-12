@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-insecure-change-me-via-BURSA_JWT_SECRET"
     jwt_ttl_hours: int = 24 * 7   # session lifetime
     verify_ttl_hours: int = 24    # email-confirmation link lifetime
+    # Comma-separated allowlist of emails permitted to view the admin login log
+    # (GET /api/admin/logins). Set BURSA_ADMIN_EMAILS in prod. Defaults to the
+    # owner's Gmail so the endpoint works out of the box for you.
+    admin_emails: str = "hanyinyap93@gmail.com"
     # Master switch for email+password sign-in/sign-up. Off = Google-only (no
     # email sending needed at all). Turn on (BURSA_EMAIL_AUTH_ENABLED=true) once
     # a real sending domain is verified so confirmation emails deliver reliably.
