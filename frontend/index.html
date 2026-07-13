@@ -845,7 +845,7 @@ const I18N = {
     "pf.corrLow":"low — the stocks are fairly independent, which the optimiser rewards",
     "pf.corrNote":"Correlation of daily returns over ~2y. Green = low/negative (diversifying); red = high positive (move together). Lower correlations let the optimiser cut risk without cutting return.",
     "pf.risk":"Risk (ann. vol)","pf.riskSub":"annualised volatility","pf.sharpe":"Sharpe ratio","pf.expRet":"exp. return",
-    "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) p.a.","pf.alphaSub":"excess vs CAPM, annualised",
+    "pf.beta":"Beta (β)","pf.betaSub":"vs KLCI · R²","pf.alpha":"Alpha (α) p.a.","pf.alphaSub":"excess vs CAPM, annualised",
     "pf.rebNow":"Time to rebalance","pf.rebOk":"On track — no rebalance needed","pf.rebOkSub":"weights are close to target and it's been under a quarter",
     "pf.maxDrift":"max weight drift","pf.daysSince":"days since earliest buy",
     "pf.wNow":"Current","pf.wMaxSharpe":"★ Optimum","pf.wMinVar":"Min-Var","pf.wChange":"Change (pp)",
@@ -928,7 +928,7 @@ const I18N = {
     "ff.netFlow":"净流向",
     "nav.portfolio":"投资组合",
     "pf.title":"投资组合","pf.titleSub":"— CAPM／均值-方差分析、再平衡建议与指数对比",
-    "pf.explain":"最多可建立 <b>3 个命名组合</b>。为每只持仓填写<b>股数</b>与<b>买入日期</b>。系统以约两年日收益估算组合的<b>风险</b>（年化波动）、<b>夏普比率</b>及相对 KLCI 的 CAPM <b>beta/alpha</b>，并给出<b>再平衡权重建议</b>（首选最大夏普，另附最小方差）与<b>再平衡时机</b>提示。CAPM 图显示组合风险与收益及有效前沿；对比图将组合收益以 100 为基准与 <b>KLCI／Mid 70／ACE</b> 指数对照。非投资建议。",
+    "pf.explain":"最多可建立 <b>3 个命名组合</b>。为每只持仓填写<b>股数</b>与<b>买入日期</b>。系统以约两年日收益估算组合的<b>风险</b>（年化波动）、<b>夏普比率</b>及相对 KLCI 的 CAPM <b>β/α 系数</b>，并给出<b>再平衡权重建议</b>（首选最大夏普，另附最小方差）与<b>再平衡时机</b>提示。CAPM 图显示组合风险与收益及有效前沿；对比图将组合收益以 100 为基准与 <b>KLCI／Mid 70／ACE</b> 指数对照。非投资建议。",
     "pf.add":"添加持仓","pf.stockPh":"搜索股票（代码或名称）","pf.sharesPh":"股数","pf.addBtn":"添加",
     "pf.new":"新建组合","pf.delConfirm":"删除此组合及其所有持仓？","pf.needPf":"请先创建一个组合。",
     "pf.capmTitle":"CAPM 风险—收益与有效前沿","pf.recoTitle":"再平衡权重建议",
@@ -938,7 +938,7 @@ const I18N = {
     "pf.corrLow":"偏低——个股较为独立，优化器会给予更高权重",
     "pf.corrNote":"约两年日收益的相关系数。绿色＝低/负（分散化）；红色＝高正（同向）。相关性越低，优化器越能在不牺牲收益的情况下降低风险。",
     "pf.risk":"风险（年化波动）","pf.riskSub":"年化波动率","pf.sharpe":"夏普比率","pf.expRet":"预期收益",
-    "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) 年化","pf.alphaSub":"相对 CAPM 的超额（年化）",
+    "pf.beta":"β 系数","pf.betaSub":"相对 KLCI · R²","pf.alpha":"α 系数（年化）","pf.alphaSub":"相对 CAPM 的超额（年化）",
     "pf.rebNow":"建议再平衡","pf.rebOk":"状态良好 — 暂无需再平衡","pf.rebOkSub":"权重接近目标且不足一个季度",
     "pf.maxDrift":"最大权重偏离","pf.daysSince":"天（自最早买入）",
     "pf.wNow":"当前","pf.wMaxSharpe":"★ 最优","pf.wMinVar":"最小方差","pf.wChange":"调整（个百分点）",
@@ -2841,7 +2841,7 @@ async function loadAnalysis(pid){
     cards.insertAdjacentHTML("beforeend",`
       <div class="card"><div class="k">${t("pf.risk")}</div><div class="v">${pfPct(c.vol,1)}</div><div class="d">${t("pf.riskSub")}</div></div>
       <div class="card"><div class="k">${t("pf.sharpe")}</div><div class="v ${c.sharpe>=0?"pos":"neg"}">${c.sharpe==null?"—":(+c.sharpe).toFixed(2)}</div><div class="d">${t("pf.expRet")} ${pfPct(c.ret,1)}</div></div>
-      <div class="card"><div class="k">${t("pf.beta")}</div><div class="v">${cm.beta==null?"—":(+cm.beta).toFixed(2)}</div><div class="d">vs KLCI · R² ${cm.r_squared==null?"—":(+cm.r_squared).toFixed(2)}</div></div>
+      <div class="card"><div class="k">${t("pf.beta")}</div><div class="v">${cm.beta==null?"—":(+cm.beta).toFixed(2)}</div><div class="d">${t("pf.betaSub")} ${cm.r_squared==null?"—":(+cm.r_squared).toFixed(2)}</div></div>
       <div class="card"><div class="k">${t("pf.alpha")}</div><div class="v ${(cm.alpha_annual||0)>=0?"pos":"neg"}">${cm.alpha_annual==null?"—":pfPct(cm.alpha_annual,1)}</div><div class="d">${t("pf.alphaSub")}</div></div>`);
     // rebalance advice banner
     const rbl=a.rebalance||{};
