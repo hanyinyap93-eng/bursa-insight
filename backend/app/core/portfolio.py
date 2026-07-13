@@ -217,6 +217,40 @@ def _rebase100(closes, index) -> list:
     return [round(100.0 * float(x) / base, 2) for x in s.values]
 
 
+def _time_weighted_100(holds, panel, index) -> list:
+    """Growth-of-100 TIME-WEIGHTED return of the portfolio over `index`.
+
+    Rebasing the raw market value is wrong when holdings have different buy
+    dates: on the day a new position is bought, its whole value is added to the
+    total and the line jumps vertically — that's capital added, not a return.
+
+    This instead compounds a daily portfolio return that is the value-weighted
+    average of the daily returns of the holdings held the PREVIOUS day. A
+    position bought today enters the weights only tomorrow, so its purchase adds
+    no step — making the line directly comparable to a price index.
+    """
+    cols = {}
+    for i, h in enumerate(holds):
+        col = panel.get(h["ticker"])
+        if col is None or col.dropna().empty:
+            continue
+        bd = pd.Timestamp(h["buy_date"])
+        cols[i] = col.where(col.index >= bd) * float(h["shares"])   # value while held
+    if not cols:
+        return []
+    vmat = pd.DataFrame(cols).reindex(index)
+    held_prev = vmat.shift(1)                          # each holding's value at t-1
+    wsum = held_prev.sum(axis=1)                       # total held value at t-1
+    weights = held_prev.div(wsum, axis=0).replace(
+        [float("inf"), float("-inf")], 0.0).fillna(0.0)
+    rets = vmat.div(vmat.shift(1)).sub(1.0)            # per-holding daily return (held both days)
+    port_ret = (weights * rets.fillna(0.0)).sum(axis=1).fillna(0.0)
+    eq = 100.0 * (1.0 + port_ret).cumprod()
+    if len(eq):
+        eq.iloc[0] = 100.0
+    return [round(float(x), 2) for x in eq.values]
+
+
 def performance(user: str, pid: int | None = None) -> dict:
     holds = list_holdings(user, pid)
     if not holds:
@@ -278,7 +312,9 @@ def performance(user: str, pid: int | None = None) -> dict:
     # earliest buy-in date, so their growth is directly comparable.
     rebased = {"dates": dates, "portfolio": [], "indices": {}}
     if value and value[0]:
-        rebased["portfolio"] = [round(100.0 * v / value[0], 2) for v in value]
+        # time-weighted growth of 100 (ignores capital added on later buy dates,
+        # so no vertical step when a new holding is bought)
+        rebased["portfolio"] = _time_weighted_100(holds, panel, total.index)
         idx_series = {}
         try:  # KLCI via the reliable ^KLSE OHLC feed
             kl = breadth_mod.index_ohlc("KLCI", lb)
