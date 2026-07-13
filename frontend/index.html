@@ -830,7 +830,8 @@ const I18N = {
     "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) p.a.","pf.alphaSub":"excess vs CAPM, annualised",
     "pf.rebNow":"Time to rebalance","pf.rebOk":"On track — no rebalance needed","pf.rebOkSub":"weights are close to target and it's been under a quarter",
     "pf.maxDrift":"max weight drift","pf.daysSince":"days since earliest buy",
-    "pf.wNow":"Current","pf.wMaxSharpe":"Max-Sharpe ★","pf.wMinVar":"Min-Var",
+    "pf.wNow":"Current","pf.wMaxSharpe":"★ Optimum","pf.wMinVar":"Min-Var","pf.wChange":"Change (pp)",
+    "pf.rebalanceLead":"For the next rebalance, move from today's weights to the ★ optimum (max-Sharpe) point:",
     "pf.recoNote":"Max-Sharpe = best risk-adjusted return (can concentrate into one name); Min-Variance = lowest risk, more diversified. Estimated in-sample from ~2y of returns — treat as a guide, not a guarantee.",
     "pf.legCur":"Your portfolio","pf.legMaxS":"Max Sharpe","pf.legMinV":"Min Variance","pf.legStock":"Individual stock","pf.legFront":"Efficient frontier",
     "pf.perf":"Portfolio vs benchmark indices","pf.rebased":"(rebased to 100 at your earliest buy date)","pf.legendPf":"Portfolio",
@@ -912,7 +913,8 @@ const I18N = {
     "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) 年化","pf.alphaSub":"相对 CAPM 的超额（年化）",
     "pf.rebNow":"建议再平衡","pf.rebOk":"状态良好 — 暂无需再平衡","pf.rebOkSub":"权重接近目标且不足一个季度",
     "pf.maxDrift":"最大权重偏离","pf.daysSince":"天（自最早买入）",
-    "pf.wNow":"当前","pf.wMaxSharpe":"最大夏普 ★","pf.wMinVar":"最小方差",
+    "pf.wNow":"当前","pf.wMaxSharpe":"★ 最优","pf.wMinVar":"最小方差","pf.wChange":"调整（个百分点）",
+    "pf.rebalanceLead":"下次再平衡时，从当前权重调整到 ★ 最优（最大夏普）点：",
     "pf.recoNote":"最大夏普＝风险调整后收益最优（可能集中于单只）；最小方差＝风险最低、更分散。以约两年样本内数据估算，仅供参考。",
     "pf.legCur":"你的组合","pf.legMaxS":"最大夏普","pf.legMinV":"最小方差","pf.legStock":"个股","pf.legFront":"有效前沿",
     "pf.perf":"组合 vs 基准指数","pf.rebased":"（以最早买入日为100基准）","pf.legendPf":"组合",
@@ -2611,7 +2613,8 @@ function efficientFrontierSVG(a,H=344){
   const X=v=>padL+(W-padL-padR)*(v-xlo)/((xhi-xlo)||1);
   const Y=v=>padT+(H-padT-padB)*(yhi-v)/((yhi-ylo)||1);
   const P=v=>(v*100).toFixed(0)+"%";
-  let out="";
+  let out=`<defs><marker id="pfArrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">`+
+    `<path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/></marker></defs>`;
   for(let i=0;i<=4;i++){ const xv=xlo+(xhi-xlo)*i/4, yv=ylo+(yhi-ylo)*i/4;
     out+=`<line x1="${X(xv)}" y1="${padT}" x2="${X(xv)}" y2="${H-padB}" stroke="var(--line2)" opacity=".22"/>`+
       `<line x1="${padL}" y1="${Y(yv)}" x2="${W-padR}" y2="${Y(yv)}" stroke="var(--line2)" opacity=".22"/>`+
@@ -2628,9 +2631,29 @@ function efficientFrontierSVG(a,H=344){
   const dot=(p,fill,r=6)=>p?`<circle cx="${X(p.vol).toFixed(1)}" cy="${Y(p.ret).toFixed(1)}" r="${r}" fill="${fill}" stroke="#000" stroke-width="1.2"/>`:"";
   const dia=(p,fill)=>{ if(!p)return""; const x=X(p.vol).toFixed(1),y=Y(p.ret).toFixed(1);
     return `<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="${fill}" stroke="#000" stroke-width="1.2" transform="rotate(45 ${x} ${y})"/>`; };
-  out+=dot(a.max_sharpe,"#ef4444");
+  // labelled callout chip near a point (readable over the cloud), with a leader line
+  const chip=(x,y,lines,color,vbias)=>{
+    const w=Math.max(...lines.map(l=>l.length))*5.15+14, h=lines.length*12+8;
+    const side=x>W*0.52?-1:1;
+    let cx=side<0?x-16-w:x+16, cy=vbias==="up"?y-18-h:y+18;
+    cx=Math.max(padL+2,Math.min(cx,W-padR-w-2)); cy=Math.max(padT+2,Math.min(cy,H-padB-h-2));
+    const ax=side<0?cx+w:cx, ay=cy+(vbias==="up"?h:0);
+    let s=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="${color}" stroke-width="1" opacity=".55"/>`;
+    s+=`<rect x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="7" fill="var(--panel)" fill-opacity=".95" stroke="${color}" stroke-width="1"/>`;
+    lines.forEach((l,i)=>{ s+=`<text x="${(cx+7).toFixed(1)}" y="${(cy+13+i*12).toFixed(1)}" font-size="${i===0?9.5:8.5}" font-weight="${i===0?700:400}" fill="${i===0?color:"var(--text)"}">${l}</text>`; });
+    return s;
+  };
   out+=dia(a.min_var,"#22d3ee");
+  // rebalance direction: an arrow from where you are now to the optimum
+  if(a.current&&a.max_sharpe) out+=`<line x1="${X(a.current.vol).toFixed(1)}" y1="${Y(a.current.ret).toFixed(1)}" x2="${X(a.max_sharpe.vol).toFixed(1)}" y2="${Y(a.max_sharpe.ret).toFixed(1)}" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="4 3" opacity=".7" marker-end="url(#pfArrow)"/>`;
+  // optimum (max-Sharpe) point + labelled value
+  out+=dot(a.max_sharpe,"#ef4444",6.5);
+  if(a.max_sharpe) out+=chip(X(a.max_sharpe.vol),Y(a.max_sharpe.ret),
+    ["★ Optimum (max Sharpe)",`${P(a.max_sharpe.ret)} return · ${P(a.max_sharpe.vol)} risk`,`Sharpe ${(a.max_sharpe.sharpe==null?0:a.max_sharpe.sharpe).toFixed(2)}`],"#ef4444","up");
+  // current portfolio point + labelled value
   out+=a.current?`<circle cx="${X(a.current.vol).toFixed(1)}" cy="${Y(a.current.ret).toFixed(1)}" r="7.5" fill="none" stroke="var(--accent)" stroke-width="2.6"/>`:"";
+  if(a.current) out+=chip(X(a.current.vol),Y(a.current.ret),
+    ["● Your portfolio now",`${P(a.current.ret)} return · ${P(a.current.vol)} risk`],"var(--accent)","down");
   out+=`<text x="${(padL+(W-padR))/2}" y="${H-4}" font-size="8.5" fill="var(--muted)" text-anchor="middle">Annualised volatility (risk) →</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
 }
@@ -2761,18 +2784,24 @@ async function loadAnalysis(pid){
         <div><b>${act?t("pf.rebNow"):t("pf.rebOk")}</b>${rbl.reasons&&rbl.reasons.length?" — "+rbl.reasons.join("; ")+"." :" — "+t("pf.rebOkSub")+"."}
         <div class="muted" style="font-size:11px;margin-top:2px">${t("pf.maxDrift")}: ${rbl.max_drift_pp}pp · ${rbl.days_since} ${t("pf.daysSince")}</div></div></div>`;
     }
-    // recommended weights table
+    // recommended weights table — the optimum (max-Sharpe) point's allocation,
+    // with the actual change to make from today's weights at the next rebalance
     const ms=a.max_sharpe.weights||{}, mv=a.min_var.weights||{};
     const rows=(a.stocks||[]).map(s=>{
-      const cur=s.weight||0, m=ms[s.name]||0, v=mv[s.name]||0;
+      const cur=s.weight||0, m=ms[s.name]||0, v=mv[s.name]||0, chg=(m-cur)*100;
+      const chgTxt=Math.abs(chg)<0.5?`<span class="muted">—</span>`
+        :`<span class="${chg>0?"pos":"neg"}">${chg>0?"▲ +":"▼ "}${chg.toFixed(1)}</span>`;
       return `<tr><td><b>${s.name}</b></td>
         <td class="num">${(cur*100).toFixed(1)}%</td>
         <td class="num" style="min-width:120px"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
           <span>${(m*100).toFixed(1)}%</span><div class="pf-w-bar" style="width:56px"><i style="width:${(m*100).toFixed(0)}%"></i></div></div></td>
-        <td class="num">${(v*100).toFixed(1)}%</td></tr>`;}).join("");
-    $("#pf-reco").innerHTML=`<div style="overflow-x:auto"><table><thead><tr>
+        <td class="num">${chgTxt}</td>
+        <td class="num muted">${(v*100).toFixed(1)}%</td></tr>`;}).join("");
+    $("#pf-reco").innerHTML=`<div class="muted" style="font-size:11.5px;margin-bottom:9px">${t("pf.rebalanceLead")}</div>
+      <div style="overflow-x:auto"><table><thead><tr>
       <th>${t("pf.stock")}</th><th class="num">${t("pf.wNow")}</th>
-      <th class="num">${t("pf.wMaxSharpe")}</th><th class="num">${t("pf.wMinVar")}</th></tr></thead>
+      <th class="num">${t("pf.wMaxSharpe")}</th><th class="num">${t("pf.wChange")}</th>
+      <th class="num">${t("pf.wMinVar")}</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
       <div class="muted" style="font-size:11px;margin-top:8px">${t("pf.recoNote")}</div>`;
     $("#pf-reco-panel").style.display="";
