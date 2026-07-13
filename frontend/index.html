@@ -700,10 +700,17 @@
   <div class="sub" id="pf-sub" style="margin-top:14px"></div>
   <div id="pf-reb-wrap"></div>
   <div class="cards" id="pf-cards"></div>
-  <div class="gx-panel" id="pf-capm-panel" style="display:none">
-    <h3 data-i18n="pf.capmTitle">CAPM risk–return &amp; efficient frontier</h3>
-    <div id="pf-capm"></div>
-    <div class="legend" id="pf-capm-legend"></div>
+  <div class="gx-grid">
+    <div class="gx-panel" id="pf-chart-panel" style="display:none">
+      <h3><span data-i18n="pf.perf">Portfolio vs benchmark indices</span> <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-i18n="pf.rebased">(rebased to 100 at your earliest buy date)</span></h3>
+      <div id="pf-chart"></div>
+      <div class="legend" id="pf-legend"></div>
+    </div>
+    <div class="gx-panel" id="pf-capm-panel" style="display:none">
+      <h3 data-i18n="pf.capmTitle">CAPM risk–return &amp; efficient frontier</h3>
+      <div id="pf-capm"></div>
+      <div class="legend" id="pf-capm-legend"></div>
+    </div>
   </div>
   <div class="gx-grid">
     <div class="gx-panel" id="pf-reco-panel" style="display:none">
@@ -717,11 +724,6 @@
       </h3>
       <div id="pf-corr"></div>
     </div>
-  </div>
-  <div class="gx-panel" id="pf-chart-panel" style="display:none">
-    <h3><span data-i18n="pf.perf">Portfolio vs benchmark indices</span> <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-i18n="pf.rebased">(rebased to 100 at your earliest buy date)</span></h3>
-    <div id="pf-chart"></div>
-    <div class="legend" id="pf-legend"></div>
   </div>
   <div id="pf-body"></div>
 </section>
