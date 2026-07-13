@@ -71,10 +71,10 @@
     overflow-y:auto;box-shadow:var(--shadow);padding:6px;}
   .search-dd.open{display:block;}
   .sd-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
-    padding:9px 12px;cursor:pointer;font-size:12.5px;border-radius:var(--radius-sm);}
+    padding:9px 12px;cursor:pointer;font-size:12px;border-radius:var(--radius-sm);}
   .sd-row:hover,.sd-row.active{background:var(--hover);}
   .sd-row .sn b{color:var(--text);} .sd-row .sn small{color:var(--muted);margin-left:7px;}
-  .sd-row .sp{text-align:right;font-variant-numeric:tabular-nums;font-size:11.5px;}
+  .sd-row .sp{text-align:right;font-variant-numeric:tabular-nums;font-size:11px;}
   nav{display:flex;gap:4px;}
   nav a{padding:8px 14px;border-radius:var(--radius-pill);color:var(--muted);text-decoration:none;
     font-weight:600;font-size:13px;cursor:pointer;transition:color .12s,background .12s;}
@@ -100,7 +100,7 @@
   .auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line);}
   .spacer{flex:1;}
   /* header greeting (shown when signed in with a name) */
-  .greet{color:var(--text);font-size:12.5px;font-weight:600;max-width:280px;
+  .greet{color:var(--text);font-size:12px;font-weight:600;max-width:280px;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.9;}
   @media(max-width:980px){ .greet{display:none !important;} }
   .lookback{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
@@ -108,10 +108,10 @@
   .lookback button.active{background:var(--text);color:var(--bg);font-weight:600;}
   /* compact Index Health term toggle (short / mid / long), sits beside an index */
   .termmini{padding:2px;}
-  .termmini button{padding:3px 8px;font-size:10.5px;font-weight:600;}
+  .termmini button{padding:3px 8px;font-size:10px;font-weight:600;}
   .termmini button.active{background:var(--text);color:var(--bg);}
   .btn{background:var(--text);color:var(--bg);border:none;border-radius:var(--radius-pill);
-    padding:11px 22px;font-weight:600;font-size:13.5px;letter-spacing:-.1px;transition:opacity .12s,transform .06s;}
+    padding:11px 22px;font-weight:600;font-size:13px;letter-spacing:-.1px;transition:opacity .12s,transform .06s;}
   .btn:hover{opacity:.88;}
   .btn:active{transform:scale(.98);}
   .btn.ghost{background:var(--panel2);color:var(--text);}
@@ -134,7 +134,7 @@
     animation:scroll 80s linear infinite;}
   .tape:hover .track{animation-play-state:paused;}   /* pause on hover to read */
   @keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
-  .tick{display:inline-flex;align-items:center;gap:7px;padding:0 20px;border-right:1px solid var(--line);height:16px;cursor:pointer;font-size:12.5px;}
+  .tick{display:inline-flex;align-items:center;gap:7px;padding:0 20px;border-right:1px solid var(--line);height:16px;cursor:pointer;font-size:12px;}
   .tick .sym{font-weight:600;color:var(--text);} .tick .px{color:var(--muted);} .tick .arrow{font-size:9px;}
 
   /* ---------- layout ---------- */
@@ -157,12 +157,12 @@
   /* chart */
   .chart-top{display:flex;align-items:center;flex-wrap:wrap;gap:8px 18px;padding:16px 20px;border-bottom:1px solid var(--line);}
   .sym-head{display:flex;align-items:baseline;gap:10px;}
-  .sym-head .s{font-size:18px;font-weight:600;letter-spacing:-.2px;} .sym-head .n{color:var(--muted);font-size:12.5px;}
+  .sym-head .s{font-size:18px;font-weight:600;letter-spacing:-.2px;} .sym-head .n{color:var(--muted);font-size:12px;}
   .sym-head .p{font-size:28px;font-weight:600;margin-left:8px;letter-spacing:-.8px;font-variant-numeric:tabular-nums;} .sym-head .c{font-size:13px;font-weight:600;}
-  .ohlc{display:flex;gap:14px;color:var(--muted);font-size:11.5px;white-space:nowrap;}
+  .ohlc{display:flex;gap:14px;color:var(--muted);font-size:11px;white-space:nowrap;}
   .ohlc b{color:var(--text);font-weight:600;}
   .tf{display:flex;gap:1px;margin-left:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
-  .tf button{background:none;border:none;color:var(--muted);padding:5px 10px;font-size:11.5px;}
+  .tf button{background:none;border:none;color:var(--muted);padding:5px 10px;font-size:11px;}
   .tf button.active{background:var(--hover);color:var(--text);}
   #chart{flex:1;min-height:0;}
   /* indicator toolbar */
@@ -170,14 +170,14 @@
     border-bottom:1px solid var(--line);background:var(--panel);}
   .ind-bar .ind-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-right:2px;}
   .ind-chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
-    border-radius:var(--radius-pill);padding:4px 11px;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .12s;}
+    border-radius:var(--radius-pill);padding:4px 11px;font-size:11px;font-weight:600;cursor:pointer;transition:all .12s;}
   .ind-chip:hover{color:var(--text);border-color:var(--line2);}
   .ind-chip.on{background:var(--text);border-color:var(--text);color:var(--bg);}
   /* chip + settings-gear grouped as one pill */
   .ind-group{display:inline-flex;align-items:stretch;}
   .ind-group .ind-chip.has-gear{border-top-right-radius:0;border-bottom-right-radius:0;}
   .ind-gear{background:var(--panel2);border:1px solid var(--line);border-left:none;color:var(--muted);
-    border-radius:0 var(--radius-pill) var(--radius-pill) 0;padding:0 8px;font-size:10.5px;cursor:pointer;
+    border-radius:0 var(--radius-pill) var(--radius-pill) 0;padding:0 8px;font-size:10px;cursor:pointer;
     display:flex;align-items:center;transition:color .12s;}
   .ind-gear:hover{color:var(--text);}
   /* indicator-settings popover */
@@ -205,14 +205,14 @@
   .corr-lb button.active{background:var(--text);color:var(--bg);}
   .corr-list{flex:1;overflow-y:auto;padding:0 12px 8px;display:grid;
     grid-template-columns:1fr 1fr;gap:1px 22px;align-content:start;}
-  .cr-row{display:grid;grid-template-columns:92px 1fr 36px;gap:8px;align-items:center;font-size:11.5px;padding:2px 0;}
+  .cr-row{display:grid;grid-template-columns:92px 1fr 36px;gap:8px;align-items:center;font-size:11px;padding:2px 0;}
   .cr-row .cn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);}
   .cr-bar{height:7px;background:var(--bg);border-radius:4px;position:relative;overflow:hidden;}
   .cr-bar::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line2);}
   .cr-bar>span{position:absolute;top:0;bottom:0;border-radius:2px;}
   .cr-val{text-align:right;font-variant-numeric:tabular-nums;}
   @media (max-width:760px){ .corr-list{grid-template-columns:1fr;} }
-  .pane-label{position:absolute;z-index:3;font-size:10.5px;color:var(--muted);padding:3px 7px;}
+  .pane-label{position:absolute;z-index:3;font-size:10px;color:var(--muted);padding:3px 7px;}
 
   /* right panels */
   .panel{border-bottom:1px solid var(--line);padding-bottom:14px;}
@@ -224,7 +224,7 @@
   /* KLCI index price mini-chart above the health indicator */
   .idxchart{height:48px;margin:2px 0 2px;}
   .idxchart svg{display:block;width:100%;height:48px;}
-  .mini-cap{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;margin-top:10px;}
+  .mini-cap{font-size:9px;text-transform:uppercase;letter-spacing:.6px;margin-top:10px;}
   /* diverging Index Health sparkline: green up / red down from a zero x-axis */
   .spark{position:relative;display:flex;align-items:stretch;gap:1px;height:40px;margin-top:4px;}
   .spark::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;
@@ -236,7 +236,7 @@
   .spark .col.down i{top:50%;}       /* negative: grows down below the axis */
   .comp{padding:2px 16px;}
   .comp-row{margin:7px 0;}
-  .comp-row .hd{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px;}
+  .comp-row .hd{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;}
   .comp-row .hd small{color:var(--muted);}
   .bar{height:6px;border-radius:3px;background:var(--bg);overflow:hidden;}
   .bar>span{display:block;height:100%;}
@@ -248,26 +248,26 @@
   .cm-head span{white-space:nowrap;}
   .cm-head span:nth-child(2),.cm-head span:nth-child(3){text-align:right;}
   .cm-row{display:grid;grid-template-columns:1fr auto 64px;gap:8px;align-items:center;
-    padding:3px 0;font-size:11.5px;cursor:pointer;border-bottom:1px solid var(--panel);}
+    padding:3px 0;font-size:11px;cursor:pointer;border-bottom:1px solid var(--panel);}
   .cm-row:hover .nm{color:var(--accent);}
   .cm-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .cm-row .corr,.cm-row span.mono{text-align:right;}
   .cm-row .corr{color:var(--muted);font-variant-numeric:tabular-nums;}
-  .reset-link{color:var(--accent);cursor:pointer;font-size:10.5px;text-transform:none;letter-spacing:0;}
+  .reset-link{color:var(--accent);cursor:pointer;font-size:10px;text-transform:none;letter-spacing:0;}
   .reset-link:hover{text-decoration:underline;}
-  .rot-row{display:grid;grid-template-columns:96px 1fr 44px;gap:8px;align-items:center;padding:5px 16px;font-size:11.5px;cursor:pointer;}
+  .rot-row{display:grid;grid-template-columns:96px 1fr 44px;gap:8px;align-items:center;padding:5px 16px;font-size:11px;cursor:pointer;}
   .rot-row:hover{background:var(--hover);}
   .rot-row.sel{box-shadow:inset 3px 0 0 var(--accent);background:var(--hover);}
   .rot-row .cells{display:flex;gap:1px;height:13px;}
   .rot-row .cells .c{flex:1;border-radius:1px;}
   .rot-row .val{text-align:right;font-weight:600;}
   .news a{color:var(--text);text-decoration:none;display:block;padding:10px 16px;border-bottom:1px solid var(--line);}
-  .news a:hover{background:var(--hover);} .news .meta{color:var(--muted);font-size:10.5px;margin-top:3px;}
+  .news a:hover{background:var(--hover);} .news .meta{color:var(--muted);font-size:10px;margin-top:3px;}
 
   /* tables (GEX / Market Index / R-Appetite pages) */
-  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
   th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
-  th{color:var(--muted);font-weight:500;font-size:10.5px;letter-spacing:.2px;position:sticky;top:0;background:var(--panel);}
+  th{color:var(--muted);font-weight:500;font-size:10px;letter-spacing:.2px;position:sticky;top:0;background:var(--panel);}
   td.num{text-align:right;font-variant-numeric:tabular-nums;}
   tr.click{cursor:pointer;} tr.click:hover td{background:var(--hover);}
   /* sortable table headers */
@@ -277,7 +277,7 @@
   th.th-sort .sarr{font-size:9px;opacity:.45;}
   th.th-sort.active .sarr{opacity:1;}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-  .chip{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:5px 12px;font-size:11.5px;}
+  .chip{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:5px 12px;font-size:11px;}
   .chip:hover,.chip.active{border-color:var(--accent);color:#fff;background:var(--accent);}
   .muted{color:var(--muted);} .loading{color:var(--muted);font-style:italic;}
 
@@ -285,13 +285,13 @@
   .page{display:none;height:calc(100vh - var(--h-header) - var(--h-tape));overflow-y:auto;
     padding:18px 22px 40px;background:var(--bg);}
   .page.open{display:block;}
-  .page h2{font-size:15px;font-weight:700;margin:22px 0 4px;}
+  .page h2{font-size:16px;font-weight:700;margin:22px 0 4px;}
   .page h2:first-child{margin-top:0;}
-  .page .sub{color:var(--muted);font-size:11.5px;margin-bottom:12px;}
+  .page .sub{color:var(--muted);font-size:11px;margin-bottom:12px;}
   .cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
   .card{background:var(--panel);border:none;border-radius:var(--radius);
     padding:16px 20px;min-width:140px;}
-  .card .k{font-size:10.5px;letter-spacing:.2px;color:var(--muted);margin-bottom:6px;font-weight:500;}
+  .card .k{font-size:10px;letter-spacing:.2px;color:var(--muted);margin-bottom:6px;font-weight:500;}
   .card .v{font-size:24px;font-weight:600;letter-spacing:-.6px;font-variant-numeric:tabular-nums;}
   .card .d{font-size:11px;color:var(--muted);margin-top:3px;}
   /* portfolio add-holding form */
@@ -339,26 +339,26 @@
   /* portfolio stock-correlation heatmap */
   .pf-corr-tbl th,.pf-corr-tbl td{text-align:center;font-variant-numeric:tabular-nums;border:none;padding:8px 9px;}
   .pf-corr-tbl td.rh{text-align:left;}
-  .pf-corr-tbl th{font-size:10.5px;}
+  .pf-corr-tbl th{font-size:10px;}
   /* fund-flow diverging bar rows (reuse .cr-bar for the centre-line bar) */
-  .ff-row{display:grid;grid-template-columns:1fr 1fr 74px;gap:10px;align-items:center;font-size:11.5px;padding:2.5px 0;}
+  .ff-row{display:grid;grid-template-columns:1fr 1fr 74px;gap:10px;align-items:center;font-size:11px;padding:2.5px 0;}
   .ff-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .ff-val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
   /* per-constituent 30-day histogram grid */
   .ff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 16px;}
   .ffp{min-width:0;}
-  .ffp-t{font-size:10.5px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ffp-t{font-size:10px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .ffp-t .sig{font-weight:600;opacity:.9;}
   #ff-daily svg{display:block;width:100%;}
   .gx-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   @media (max-width:980px){ .gx-grid{grid-template-columns:1fr;} }
   .gx-panel{background:var(--panel);border:none;border-radius:var(--radius);
     padding:18px 20px;min-width:0;}
-  .gx-panel h3{font-size:12.5px;letter-spacing:-.1px;color:var(--text);
+  .gx-panel h3{font-size:12px;letter-spacing:-.1px;color:var(--text);
     font-weight:600;margin:0 0 12px;}
   .gx-panel svg{display:block;width:100%;}
   .readout{border-left:3px solid var(--accent);padding:10px 14px;background:var(--panel);
-    border-radius:var(--radius-sm);font-size:12.5px;margin:12px 0;}
+    border-radius:var(--radius-sm);font-size:12px;margin:12px 0;}
   .readout b{display:block;margin-bottom:3px;}
   /* analyst sentiment */
   .sent-gauge{position:relative;height:14px;border-radius:7px;margin:26px 8px 4px;
@@ -367,13 +367,13 @@
   .sent-gauge .pv{position:absolute;top:-24px;transform:translateX(-50%);font-weight:700;font-size:13px;}
   .sent-scale{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;padding:4px 8px 0;}
   .sr{display:grid;grid-template-columns:110px 1fr 84px;gap:10px;align-items:center;
-    padding:3px 0;font-size:11.5px;}
+    padding:3px 0;font-size:11px;}
   .sr .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
   .sr .nm:hover{color:var(--accent);}
   .sr .stack{display:flex;height:14px;border-radius:3px;overflow:hidden;background:var(--bg);}
   .sr .stack i{display:block;height:100%;}
   .sr .sc{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--muted);margin-top:10px;}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:10px;}
   .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;}
   /* clickable legend: click a series/category to show/hide it */
   .legend-toggle,.legend-cat{gap:6px;}
@@ -401,7 +401,7 @@
   }
   .page-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px;}
   .explain{background:var(--panel);border:none;border-radius:var(--radius-sm);
-    margin:0 0 16px;font-size:12.5px;max-width:880px;}
+    margin:0 0 16px;font-size:12px;max-width:880px;}
   .explain summary{cursor:pointer;padding:12px 16px;color:var(--muted);font-weight:500;
     list-style:none;user-select:none;transition:color .12s;}
   .explain summary:hover{color:var(--text);}
@@ -437,11 +437,11 @@
     .search input{width:100%;}
     .search input:focus{width:100%;}
     nav{order:6;flex:1 1 100%;gap:2px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
-    nav a{padding:7px 11px;font-size:12.5px;flex:0 0 auto;}
+    nav a{padding:7px 11px;font-size:12px;flex:0 0 auto;}
 
     /* ticker tape a touch shorter */
     .tape{--h-tape:34px;}
-    .tick{padding:0 14px;font-size:11.5px;}
+    .tick{padding:0 14px;font-size:11px;}
 
     /* main dashboard: single column, chart on top, right rail below */
     .grid{height:auto;grid-template-columns:1fr;grid-template-rows:auto auto;}
@@ -763,7 +763,7 @@
     <!-- INFO state: "check your email" after signup, or "confirm first" on login -->
     <div id="auth-info" style="display:none">
       <h3 id="auth-info-title" data-i18n="auth.checkEmailTitle">Check your email</h3>
-      <p id="auth-info-msg" style="font-size:12.5px;color:var(--muted);line-height:1.6"></p>
+      <p id="auth-info-msg" style="font-size:12px;color:var(--muted);line-height:1.6"></p>
       <div class="err" id="auth-info-err" style="color:var(--green)"></div>
       <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:14px">
         <a id="auth-resend" class="reset-link" data-i18n="auth.resend">Resend link</a>
@@ -1869,7 +1869,7 @@ async function loadSentiment(retried,force){
         const w=st[k]/st.total*100;
         return w?`<i style="width:${w}%;background:${c}" title="${k}: ${st[k]}"></i>`:"";
       }).join("");
-      const up=st.upside_pct!=null?` <span class="${cls(st.upside_pct)}" style="font-size:9.5px" title="avg target upside">${fmt(st.upside_pct,0)}%</span>`:"";
+      const up=st.upside_pct!=null?` <span class="${cls(st.upside_pct)}" style="font-size:9px" title="avg target upside">${fmt(st.upside_pct,0)}%</span>`:"";
       return `<div class="sr"><span class="nm" data-code="${st.code}" data-ticker="${st.ticker}" data-name="${st.name}" title="Open chart"><b>${st.name}</b></span>
         <span class="stack">${stack}</span>
         <span class="sc"><b class="${cls(st.score)}">${fmt(st.score)}</b> (${st.total})${up}</span></div>`;
@@ -2110,7 +2110,7 @@ async function loadGex(retried,force){
           <table><thead><tr><th>Warrant</th><th class="num">Strike</th><th>Type</th><th>Expiry</th>
             <th class="num">IV</th><th class="num">GEX RM mn/1%</th></tr></thead><tbody>${topRows}</tbody></table></div>
         <div class="gx-panel"><h3>Assumptions</h3>
-          <div class="muted" style="font-size:11.5px;line-height:1.7">
+          <div class="muted" style="font-size:11px;line-height:1.7">
             r = ${(g.assumptions.r*100).toFixed(1)}% · div yield = ${(g.assumptions.q*100).toFixed(1)}% ·
             IV fallback = ${(g.assumptions.default_iv*100).toFixed(0)}% · haircut = ${g.assumptions.haircut}<br>
             ${g.assumptions.note}. Bursa SW issuers are always short the warrants they list and
@@ -2189,7 +2189,7 @@ async function loadFbmIndex(key,retried,force){
         <span class="cn" title="${s.sector}">${s.sector} <span class="muted">(${s.members})</span></span>
         <span class="cr-bar"><span style="${st}"></span></span>
         <span class="cr-val ${cls(s.health_pct)}">${fmt(s.health_pct,0)}%
-          <span class="muted" style="font-size:9.5px">${fmt(s.chg_5d,0)} 5d</span></span></div>`;
+          <span class="muted" style="font-size:9px">${fmt(s.chg_5d,0)} 5d</span></span></div>`;
     }).join("");
     el.innerHTML=`<h3>${d.name}</h3>
       <div class="row" style="justify-content:space-between;align-items:center">
@@ -2531,15 +2531,20 @@ function ffDailyChart(rows,H=240){
   const _MMM=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const fmtD=iso=>{ const p=(iso||"").split("-"); return p.length===3?(+p[2])+" "+_MMM[(+p[1])-1]:iso; };
   const vals=rows.map(r=>r.net/1e6);
-  const lo=Math.min(0,...vals), hi=Math.max(0,...vals);
+  // y-axis on FIXED 100-unit steps: round the bounds out to the nearest 100 so
+  // gridlines land on ...-200, -100, 0, 100, 200... (coarsen the step only if a
+  // huge range would otherwise crowd the axis with >18 lines).
+  const rawLo=Math.min(0,...vals), rawHi=Math.max(0,...vals);
+  let step=100; while((Math.ceil(rawHi/step)-Math.floor(rawLo/step))>18) step+=100;
+  const lo=Math.floor(rawLo/step)*step, hi=Math.ceil(rawHi/step)*step;
   const Y=v=>padT+(H-padT-padB)*(hi-v)/((hi-lo)||1);
   const slot=(W-padL-padR)/rows.length, bw=Math.max(3,slot*0.72);
   let out="";
-  // y gridlines + labels
-  for(let i=0;i<=4;i++){ const v=lo+(hi-lo)*i/4;
-    out+=`<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="var(--line2)" opacity=".35"/>`+
-      `<text x="${padL-5}" y="${Y(v)+3}" font-size="9" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}</text>`; }
-  out+=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--muted)" opacity=".6"/>`;
+  // gridlines + labels at every `step`; the zero line is emphasised
+  for(let v=lo; v<=hi+1e-6; v+=step){
+    out+=`<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="var(--${v===0?'muted':'line2'})" opacity="${v===0?'.6':'.35'}"/>`+
+      `<text x="${padL-5}" y="${Y(v)+3}" font-size="9" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}</text>`;
+  }
   rows.forEach((r,i)=>{ const v=r.net/1e6, x=padL+i*slot+(slot-bw)/2;
     const y=Y(Math.max(0,v)), h=Math.max(0.5,Math.abs(Y(v)-Y(0)));
     out+=`<rect class="ffd-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
@@ -2646,12 +2651,12 @@ async function loadFundFlow(force){
     body.innerHTML=`
       <div class="gx-panel"><h3>${t("ff.dailyTitle")} (MYR m)</h3><div id="ff-daily">${ffDailyChart(d.index_daily)}</div></div>
       <div class="gx-panel" style="margin-top:14px"><h3>${t("ff.perStockTitle")}</h3>
-        <div class="muted" style="font-size:10.5px;margin:-4px 0 10px">${t("ff.perStockSub")}</div>
+        <div class="muted" style="font-size:10px;margin:-4px 0 10px">${t("ff.perStockSub")}</div>
         <div class="ff-grid">${grid}</div></div>
       <div class="gx-grid" style="margin-top:14px">
         <div class="gx-panel"><h3>${t("ff.latestTitle")} (${d.latest_day})</h3>${ffBars(d.latest,stock)}</div>
       </div>
-      <div class="muted" style="font-size:10.5px;margin-top:8px">${t("ff.note").replace("{interval}",d.interval)}</div>`;
+      <div class="muted" style="font-size:10px;margin-top:8px">${t("ff.note").replace("{interval}",d.interval)}</div>`;
     wireSparkHover(body);   // hover the sector histograms -> date + net value
     wireFfDaily(body);      // hover the total daily chart -> date + net value
   }catch(e){
@@ -2908,7 +2913,7 @@ async function loadAnalysis(pid){
           <span>${(m*100).toFixed(1)}%</span><div class="pf-w-bar" style="width:56px"><i style="width:${(m*100).toFixed(0)}%"></i></div></div></td>
         <td class="num">${chgTxt}</td>
         <td class="num muted">${(v*100).toFixed(1)}%</td></tr>`;}).join("");
-    $("#pf-reco").innerHTML=`<div class="muted" style="font-size:11.5px;margin-bottom:9px">${t("pf.rebalanceLead")}</div>
+    $("#pf-reco").innerHTML=`<div class="muted" style="font-size:11px;margin-bottom:9px">${t("pf.rebalanceLead")}</div>
       <div style="overflow-x:auto"><table><thead><tr>
       <th>${t("pf.stock")}</th><th class="num">${t("pf.wNow")}</th>
       <th class="num">${t("pf.wMaxSharpe")}</th><th class="num">${t("pf.wChange")}</th>
