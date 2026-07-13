@@ -449,9 +449,10 @@ def analyze_portfolio(user: str, pid: int | None = None) -> dict:
     earliest = min(v["buy_date"] for v in by_ticker.values())
     days_since = (date.today() - date.fromisoformat(earliest)).days
     reasons = []
+    drift_top = None
     if max_drift > _DRIFT_PP:
-        top = max(drifts, key=drifts.get)
-        reasons.append(f"{top} is {drifts[top]:.0f} pts off its target weight")
+        drift_top = max(drifts, key=drifts.get)
+        reasons.append(f"{drift_top} is {drifts[drift_top]:.0f} pts off its target weight")
     if days_since >= _QUARTER_DAYS:
         reasons.append(f"~{days_since // 30} months since your earliest buy")
     action = "rebalance" if reasons else "hold"
@@ -461,6 +462,11 @@ def analyze_portfolio(user: str, pid: int | None = None) -> dict:
         "action": action,
         "max_drift_pp": round(max_drift, 1),
         "days_since": days_since,
+        # structured fields so the frontend can localise the reason text;
+        # `reasons` (English) kept for backward compatibility
+        "drift_top": drift_top,
+        "drift_top_pp": round(drifts[drift_top], 0) if drift_top else None,
+        "months_since": days_since // 30,
         "reasons": reasons,
         "target": "max_sharpe",
     }

@@ -852,6 +852,11 @@ const I18N = {
     "pf.rebalanceLead":"For the next rebalance, move from today's weights to the ★ optimum (max-Sharpe) point:",
     "pf.recoNote":"Max-Sharpe = best risk-adjusted return (can concentrate into one name); Min-Variance = lowest risk, more diversified. Estimated in-sample from ~2y of returns — treat as a guide, not a guarantee.",
     "pf.legCur":"Your portfolio","pf.legMaxS":"Max Sharpe","pf.legMinV":"Min Variance","pf.legStock":"Individual stock","pf.legFront":"Efficient frontier",
+    "pf.chipOpt":"★ Optimum (max Sharpe)","pf.chipCur":"● Your portfolio now",
+    "pf.chipRet":"return","pf.chipRisk":"risk","pf.chipSharpe":"Sharpe",
+    "pf.axisVol":"Annualised volatility (risk) →",
+    "pf.reasonDrift":"{stock} is {pp} pts off its target weight",
+    "pf.reasonTime":"~{months} months since your earliest buy","pf.reasonSep":"; ",
     "pf.perf":"Portfolio vs benchmark indices","pf.rebased":"(rebased to 100 at your earliest buy date)","pf.legendPf":"Portfolio",
     "pf.empty":"No holdings yet — add a stock above to see its past performance.",
     "pf.holding":"holding","pf.holdings":"holdings",
@@ -940,6 +945,11 @@ const I18N = {
     "pf.rebalanceLead":"下次再平衡时，从当前权重调整到 ★ 最优（最大夏普）点：",
     "pf.recoNote":"最大夏普＝风险调整后收益最优（可能集中于单只）；最小方差＝风险最低、更分散。以约两年样本内数据估算，仅供参考。",
     "pf.legCur":"你的组合","pf.legMaxS":"最大夏普","pf.legMinV":"最小方差","pf.legStock":"个股","pf.legFront":"有效前沿",
+    "pf.chipOpt":"★ 最优（最大夏普）","pf.chipCur":"● 你的当前组合",
+    "pf.chipRet":"收益","pf.chipRisk":"风险","pf.chipSharpe":"夏普",
+    "pf.axisVol":"年化波动率（风险）→",
+    "pf.reasonDrift":"{stock} 偏离目标权重 {pp} 个百分点",
+    "pf.reasonTime":"距最早买入已约 {months} 个月","pf.reasonSep":"；",
     "pf.perf":"组合 vs 基准指数","pf.rebased":"（以最早买入日为100基准）","pf.legendPf":"组合",
     "pf.empty":"暂无持仓——在上方添加股票查看其历史表现。",
     "pf.holding":"只持仓","pf.holdings":"只持仓",
@@ -985,6 +995,7 @@ function setLang(lang){
   if(openGex){ SENT_LOADED=GEX_LOADED=true; loadSentiment(); loadGex(); }
   else if(openFbm){ FBM_LOADED=true; loadFbm(); }
   else if(openRa){ RA_LOADED=true; loadRiskAppetite(); }
+  else if($("#page-portfolio").classList.contains("open")){ renderPfTabs(); loadPortfolio(); }
 }
 function applyStaticI18n(){
   document.documentElement.lang = (LANG==="zh"?"zh-Hans":"en");
@@ -2656,7 +2667,9 @@ function efficientFrontierSVG(a,H=344){
     return `<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="${fill}" stroke="#000" stroke-width="1.2" transform="rotate(45 ${x} ${y})"/>`; };
   // labelled callout chip near a point (readable over the cloud), with a leader line
   const chip=(x,y,lines,color,vbias)=>{
-    const w=Math.max(...lines.map(l=>l.length))*5.15+14, h=lines.length*12+8;
+    // width estimate: CJK glyphs are ~1.9x wider than Latin at this size
+    const est=s=>[...s].reduce((n,ch)=>n+(/[　-鿿＀-￯]/.test(ch)?9.8:5.15),0);
+    const w=Math.max(...lines.map(est))+14, h=lines.length*12+8;
     const side=x>W*0.52?-1:1;
     let cx=side<0?x-16-w:x+16, cy=vbias==="up"?y-18-h:y+18;
     cx=Math.max(padL+2,Math.min(cx,W-padR-w-2)); cy=Math.max(padT+2,Math.min(cy,H-padB-h-2));
@@ -2672,12 +2685,12 @@ function efficientFrontierSVG(a,H=344){
   // optimum (max-Sharpe) point + labelled value
   out+=dot(a.max_sharpe,"#ef4444",6.5);
   if(a.max_sharpe) out+=chip(X(a.max_sharpe.vol),Y(a.max_sharpe.ret),
-    ["★ Optimum (max Sharpe)",`${P(a.max_sharpe.ret)} return · ${P(a.max_sharpe.vol)} risk`,`Sharpe ${(a.max_sharpe.sharpe==null?0:a.max_sharpe.sharpe).toFixed(2)}`],"#ef4444","up");
+    [t("pf.chipOpt"),`${t("pf.chipRet")} ${P(a.max_sharpe.ret)} · ${t("pf.chipRisk")} ${P(a.max_sharpe.vol)}`,`${t("pf.chipSharpe")} ${(a.max_sharpe.sharpe==null?0:a.max_sharpe.sharpe).toFixed(2)}`],"#ef4444","up");
   // current portfolio point + labelled value
   out+=a.current?`<circle cx="${X(a.current.vol).toFixed(1)}" cy="${Y(a.current.ret).toFixed(1)}" r="7.5" fill="none" stroke="var(--accent)" stroke-width="2.6"/>`:"";
   if(a.current) out+=chip(X(a.current.vol),Y(a.current.ret),
-    ["● Your portfolio now",`${P(a.current.ret)} return · ${P(a.current.vol)} risk`],"var(--accent)","down");
-  out+=`<text x="${(padL+(W-padR))/2}" y="${H-4}" font-size="8.5" fill="var(--muted)" text-anchor="middle">Annualised volatility (risk) →</text>`;
+    [t("pf.chipCur"),`${t("pf.chipRet")} ${P(a.current.ret)} · ${t("pf.chipRisk")} ${P(a.current.vol)}`],"var(--accent)","down");
+  out+=`<text x="${(padL+(W-padR))/2}" y="${H-4}" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("pf.axisVol")}</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
 }
 
@@ -2752,11 +2765,11 @@ async function loadPortfolio(force){
     const rb=d.rebased;
     if(rb && rb.portfolio && rb.portfolio.length>1){
       const idxColors={"FBM KLCI":"var(--muted)","FBM MID 70":"#f59e0b","FBM ACE":"#e879f9"};
-      const series=[{label:"Portfolio",color:"var(--accent)",values:rb.portfolio,width:2.4}];
+      const series=[{label:t("pf.legendPf"),color:"var(--accent)",values:rb.portfolio,width:2.4}];
       Object.entries(rb.indices||{}).forEach(([label,vals])=>
         series.push({label,color:idxColors[label]||"var(--muted)",values:vals,width:1.4}));
       $("#pf-chart").innerHTML=multiLineSVG(rb.dates||d.dates,series,
-        {H:260,fmtTick:v=>v.toFixed(0),xTickFont:6.5,tipMode:"dec1",guides:[{v:100,color:"var(--line2)",dash:"2 4"}]});
+        {H:344,fmtTick:v=>v.toFixed(0),xTickFont:6.5,tipMode:"dec1",guides:[{v:100,color:"var(--line2)",dash:"2 4"}]});
       wireXhair($("#pf-chart"));
       $("#pf-legend").innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join("");
       $("#pf-chart-panel").style.display="";
@@ -2834,9 +2847,16 @@ async function loadAnalysis(pid){
     const rbl=a.rebalance||{};
     if(rbl.action){
       const act=rbl.action==="rebalance";
+      // build the reason text locally from structured fields so it follows the
+      // UI language (backend `reasons` strings are English-only)
+      const rs=[];
+      if(rbl.drift_top!=null) rs.push(t("pf.reasonDrift").replace("{stock}",rbl.drift_top).replace("{pp}",rbl.drift_top_pp));
+      if(rbl.days_since>=91 && rbl.months_since!=null) rs.push(t("pf.reasonTime").replace("{months}",rbl.months_since));
+      const reasonTxt=rs.length?rs.join(t("pf.reasonSep")):(rbl.reasons||[]).join("; ");
+      const period=LANG==="zh"?"。":".";
       $("#pf-reb-wrap").innerHTML=`<div class="pf-reb ${act?"act":"ok"}">
         <span class="ic">${act?"⚠️":"✅"}</span>
-        <div><b>${act?t("pf.rebNow"):t("pf.rebOk")}</b>${rbl.reasons&&rbl.reasons.length?" — "+rbl.reasons.join("; ")+"." :" — "+t("pf.rebOkSub")+"."}
+        <div><b>${act?t("pf.rebNow"):t("pf.rebOk")}</b>${" — "+(reasonTxt||t("pf.rebOkSub"))+period}
         <div class="muted" style="font-size:11px;margin-top:2px">${t("pf.maxDrift")}: ${rbl.max_drift_pp}pp · ${rbl.days_since} ${t("pf.daysSince")}</div></div></div>`;
     }
     // recommended weights table — the optimum (max-Sharpe) point's allocation,
