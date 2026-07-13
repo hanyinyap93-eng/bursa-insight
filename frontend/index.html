@@ -2542,8 +2542,8 @@ function ffDailyChart(rows,H=240){
   out+=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--muted)" opacity=".6"/>`;
   rows.forEach((r,i)=>{ const v=r.net/1e6, x=padL+i*slot+(slot-bw)/2;
     const y=Y(Math.max(0,v)), h=Math.max(0.5,Math.abs(Y(v)-Y(0)));
-    out+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
-      fill="${v>=0?'var(--green)':'var(--red)'}" opacity=".9"><title>${r.date}: ${v>=0?"+":""}${v.toFixed(1)}m</title></rect>`;
+    out+=`<rect class="ffd-bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"
+      fill="${v>=0?'var(--green)':'var(--red)'}" opacity=".9"/>`;
     // slanted full date label (thin out only when there are a lot of bars).
     // rotate +45 (up-left) with anchor=end so the label stays inside the frame.
     const step=Math.max(1,Math.ceil(rows.length/26));
@@ -2551,7 +2551,12 @@ function ffDailyChart(rows,H=240){
       out+=`<text x="${lx}" y="${H-6}" font-size="8.5" fill="var(--muted)"
         text-anchor="end" transform="rotate(45 ${lx} ${H-6})">${fmtD(r.date)}</text>`; }
   });
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${out}</svg>`;
+  // hover crosshair layer (positioned by wireFfDaily)
+  out+=`<line class="ffd-v" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="var(--muted)"`+
+    ` stroke-width="1" stroke-dasharray="3 3" opacity=".8" style="display:none"/>`;
+  const meta={W,padL,padR,padT,padB,H,slot,dates:rows.map(r=>r.date),vals};
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" class="ffd" style="cursor:crosshair"`+
+    ` data-ffd='${JSON.stringify(meta).replace(/'/g,"&#39;")}'>${out}</svg>`;
 }
 // one mini per-constituent daily histogram (diverging bars around a zero axis)
 let FF_DATES=[];   // shared date axis for the sector mini-histograms
@@ -2582,6 +2587,36 @@ function wireSparkHover(scope){
       tip.style.left=tx+"px"; tip.style.top=ty+"px";
     });
     el.addEventListener("mouseleave",()=>{ cols.forEach(c=>c.classList.remove("hi")); tip.style.display="none"; });
+  });
+}
+// hover the total daily fund-flow bar chart -> highlight the bar + date/value tooltip
+function wireFfDaily(scope){
+  const _MMM=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const fmtD=iso=>{ const p=(iso||"").split("-"); return p.length===3?(+p[2])+" "+_MMM[(+p[1])-1]:iso; };
+  scope.querySelectorAll("svg.ffd").forEach(svg=>{
+    let m; try{ m=JSON.parse(svg.dataset.ffd); }catch(_){ return; }
+    const n=m.dates.length, slot=m.slot||((m.W-m.padL-m.padR)/n);
+    const vline=svg.querySelector(".ffd-v"), bars=[...svg.querySelectorAll(".ffd-bar")], tip=mlxTip();
+    const move=e=>{
+      const ctm=svg.getScreenCTM(); if(!ctm) return;
+      const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const p=pt.matrixTransform(ctm.inverse());
+      let i=Math.floor((p.x-m.padL)/(slot||1)); i=Math.max(0,Math.min(n-1,i));
+      const x=m.padL+i*slot+slot/2;
+      vline.setAttribute("x1",x); vline.setAttribute("x2",x); vline.style.display="";
+      bars.forEach((b,bi)=>b.setAttribute("opacity",bi===i?"1":".4"));
+      const v=m.vals[i];
+      tip.innerHTML=`<div class="d">${fmtD(m.dates[i])}</div>`+
+        `<div class="r"><span>${t("ff.netFlow")}</span><b style="color:${v>=0?'var(--green)':'var(--red)'}">${v>=0?"+":""}${v.toFixed(1)}m</b></div>`;
+      tip.style.display="block";
+      let tx=e.clientX+14, ty=e.clientY+14;
+      if(tx+tip.offsetWidth>window.innerWidth-8) tx=e.clientX-tip.offsetWidth-14;
+      if(ty+tip.offsetHeight>window.innerHeight-8) ty=e.clientY-tip.offsetHeight-14;
+      tip.style.left=tx+"px"; tip.style.top=ty+"px";
+    };
+    svg.addEventListener("mousemove",move);
+    svg.addEventListener("mouseleave",()=>{ vline.style.display="none";
+      bars.forEach(b=>b.setAttribute("opacity",".9")); tip.style.display="none"; });
   });
 }
 async function loadFundFlow(force){
@@ -2618,6 +2653,7 @@ async function loadFundFlow(force){
       </div>
       <div class="muted" style="font-size:10.5px;margin-top:8px">${t("ff.note").replace("{interval}",d.interval)}</div>`;
     wireSparkHover(body);   // hover the sector histograms -> date + net value
+    wireFfDaily(body);      // hover the total daily chart -> date + net value
   }catch(e){
     sub.textContent=e.message||t("auth.failed");
     body.innerHTML=`<div class="muted">${e.message} <a class="reset-link" id="ff-retry">retry</a></div>`;
