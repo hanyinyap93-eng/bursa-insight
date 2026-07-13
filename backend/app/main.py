@@ -374,6 +374,15 @@ def portfolio_analysis(pid: int, user=Depends(auth_mod.require_auth)):
         raise HTTPException(502, f"portfolio analysis failed: {exc}")
 
 
+@app.get("/api/portfolios/{pid}/correlation")
+def portfolio_correlation(pid: int, lookback: str = "2y",
+                          user=Depends(auth_mod.require_auth)):
+    try:
+        return portfolio_mod.portfolio_correlation(user["sub"], pid, lookback)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"portfolio correlation failed: {exc}")
+
+
 # --------------------------------------------------------------------------- #
 # Indices & breadth
 # --------------------------------------------------------------------------- #

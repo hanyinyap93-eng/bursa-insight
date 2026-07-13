@@ -336,6 +336,10 @@
   .pf-reb b{color:var(--text);}
   .pf-w-bar{height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;min-width:60px;}
   .pf-w-bar i{display:block;height:100%;background:var(--accent);}
+  /* portfolio stock-correlation heatmap */
+  .pf-corr-tbl th,.pf-corr-tbl td{text-align:center;font-variant-numeric:tabular-nums;border:none;padding:8px 9px;}
+  .pf-corr-tbl td.rh{text-align:left;}
+  .pf-corr-tbl th{font-size:10.5px;}
   /* fund-flow diverging bar rows (reuse .cr-bar for the centre-line bar) */
   .ff-row{display:grid;grid-template-columns:1fr 1fr 74px;gap:10px;align-items:center;font-size:11.5px;padding:2.5px 0;}
   .ff-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -696,15 +700,22 @@
   <div class="sub" id="pf-sub" style="margin-top:14px"></div>
   <div id="pf-reb-wrap"></div>
   <div class="cards" id="pf-cards"></div>
+  <div class="gx-panel" id="pf-capm-panel" style="display:none">
+    <h3 data-i18n="pf.capmTitle">CAPM risk–return &amp; efficient frontier</h3>
+    <div id="pf-capm"></div>
+    <div class="legend" id="pf-capm-legend"></div>
+  </div>
   <div class="gx-grid">
-    <div class="gx-panel" id="pf-capm-panel" style="display:none">
-      <h3 data-i18n="pf.capmTitle">CAPM risk–return &amp; efficient frontier</h3>
-      <div id="pf-capm"></div>
-      <div class="legend" id="pf-capm-legend"></div>
-    </div>
     <div class="gx-panel" id="pf-reco-panel" style="display:none">
       <h3 data-i18n="pf.recoTitle">Recommended rebalance weights</h3>
       <div id="pf-reco"></div>
+    </div>
+    <div class="gx-panel" id="pf-corr-panel" style="display:none">
+      <h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <span data-i18n="pf.corrTitle">Stock correlations</span>
+        <span class="lookback" id="pf-corr-lb"></span>
+      </h3>
+      <div id="pf-corr"></div>
     </div>
   </div>
   <div class="gx-panel" id="pf-chart-panel" style="display:none">
@@ -826,6 +837,11 @@ const I18N = {
     "pf.add":"Add a holding","pf.stockPh":"Search stock (code or name)","pf.sharesPh":"Shares","pf.addBtn":"Add",
     "pf.new":"New portfolio","pf.delConfirm":"Delete this portfolio and all its holdings?","pf.needPf":"Create a portfolio first.",
     "pf.capmTitle":"CAPM risk–return & efficient frontier","pf.recoTitle":"Recommended rebalance weights",
+    "pf.corrTitle":"Stock correlations","pf.corrAvg":"Average pairwise correlation","pf.corrNeed":"Add at least 2 stocks to see correlations.",
+    "pf.corrHigh":"high — the stocks move together, so there's little diversification benefit",
+    "pf.corrMid":"moderate — some diversification",
+    "pf.corrLow":"low — the stocks are fairly independent, which the optimiser rewards",
+    "pf.corrNote":"Correlation of daily returns over ~2y. Green = low/negative (diversifying); red = high positive (move together). Lower correlations let the optimiser cut risk without cutting return.",
     "pf.risk":"Risk (ann. vol)","pf.riskSub":"annualised volatility","pf.sharpe":"Sharpe ratio","pf.expRet":"exp. return",
     "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) p.a.","pf.alphaSub":"excess vs CAPM, annualised",
     "pf.rebNow":"Time to rebalance","pf.rebOk":"On track — no rebalance needed","pf.rebOkSub":"weights are close to target and it's been under a quarter",
@@ -909,6 +925,11 @@ const I18N = {
     "pf.add":"添加持仓","pf.stockPh":"搜索股票（代码或名称）","pf.sharesPh":"股数","pf.addBtn":"添加",
     "pf.new":"新建组合","pf.delConfirm":"删除此组合及其所有持仓？","pf.needPf":"请先创建一个组合。",
     "pf.capmTitle":"CAPM 风险—收益与有效前沿","pf.recoTitle":"再平衡权重建议",
+    "pf.corrTitle":"个股相关性","pf.corrAvg":"平均两两相关性","pf.corrNeed":"至少添加 2 只股票才能查看相关性。",
+    "pf.corrHigh":"偏高——个股同涨同跌，分散化收益有限",
+    "pf.corrMid":"中等——具备一定分散化",
+    "pf.corrLow":"偏低——个股较为独立，优化器会给予更高权重",
+    "pf.corrNote":"约两年日收益的相关系数。绿色＝低/负（分散化）；红色＝高正（同向）。相关性越低，优化器越能在不牺牲收益的情况下降低风险。",
     "pf.risk":"风险（年化波动）","pf.riskSub":"年化波动率","pf.sharpe":"夏普比率","pf.expRet":"预期收益",
     "pf.beta":"Beta (β)","pf.alpha":"Alpha (α) 年化","pf.alphaSub":"相对 CAPM 的超额（年化）",
     "pf.rebNow":"建议再平衡","pf.rebOk":"状态良好 — 暂无需再平衡","pf.rebOkSub":"权重接近目标且不足一个季度",
@@ -2711,7 +2732,7 @@ async function loadPortfolio(force){
   if(PF_PID==null) return;
   const pid=PF_PID, body=$("#pf-body"), cards=$("#pf-cards"), sub=$("#pf-sub");
   sub.textContent=t("loading.default"); cards.innerHTML="";
-  ["pf-chart-panel","pf-capm-panel","pf-reco-panel"].forEach(id=>$("#"+id).style.display="none");
+  ["pf-chart-panel","pf-capm-panel","pf-reco-panel","pf-corr-panel"].forEach(id=>$("#"+id).style.display="none");
   $("#pf-reb-wrap").innerHTML="";
   try{
     const d=await get(`/api/portfolios/${pid}/performance`+(force?"?_="+Date.now():""), 120000);
@@ -2763,6 +2784,38 @@ async function loadPortfolio(force){
   }catch(e){ sub.textContent=e.message||t("auth.failed"); }
 }
 
+// stock-correlation heatmap with a selectable lookback
+let PF_CORR_LB="2y";
+const PF_CORR_LBS=[["3mo","3M"],["6mo","6M"],["1y","1Y"],["2y","2Y"]];
+function renderCorr(corr){
+  if(!corr || !corr.names || corr.names.length<2){ $("#pf-corr").innerHTML=`<div class="muted">${t("pf.corrNeed")||"Add at least 2 stocks to see correlations."}</div>`; return; }
+  const nm=corr.names, mtx=corr.matrix, shrt=s=>s.length>11?s.slice(0,10)+"…":s;
+  const cc=v=>{ const tt=Math.max(-1,Math.min(1,v)), al=(0.1+0.55*Math.abs(tt)).toFixed(2);
+    return tt>=0?`rgba(255,91,91,${al})`:`rgba(0,209,121,${al})`; };
+  let html=`<div style="overflow-x:auto"><table class="pf-corr-tbl"><thead><tr><th></th>`+
+    nm.map(n=>`<th title="${n}">${shrt(n)}</th>`).join("")+`</tr></thead><tbody>`;
+  for(let i=0;i<nm.length;i++){ html+=`<tr><td class="rh"><b>${shrt(nm[i])}</b></td>`+
+    nm.map((_,j)=>{ const v=mtx[i][j];
+      return `<td style="background:${i===j?"transparent":cc(v)}">${i===j?'<span class="muted">1.00</span>':v.toFixed(2)}</td>`; }).join("")+`</tr>`; }
+  html+="</tbody></table></div>";
+  const avgTxt=corr.avg!=null?`${t("pf.corrAvg")}: <b>${corr.avg.toFixed(2)}</b> — ${corr.avg>0.6?t("pf.corrHigh"):corr.avg<0.3?t("pf.corrLow"):t("pf.corrMid")}`:"";
+  $("#pf-corr").innerHTML=html+`<div class="muted" style="font-size:11px;margin-top:9px">${avgTxt?avgTxt+"<br>":""}${t("pf.corrNote")}</div>`;
+}
+function renderCorrLb(){
+  const el=$("#pf-corr-lb"); if(!el) return;
+  el.innerHTML=PF_CORR_LBS.map(([v,l])=>`<button data-lb="${v}" class="${v===PF_CORR_LB?"active":""}">${l}</button>`).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>loadCorrelation(b.dataset.lb));
+}
+async function loadCorrelation(lb){
+  if(PF_PID==null || lb===PF_CORR_LB) return;
+  PF_CORR_LB=lb; renderCorrLb();
+  $("#pf-corr").innerHTML=skeleton(2);
+  try{
+    const c=await get(`/api/portfolios/${PF_PID}/correlation?lookback=${encodeURIComponent(lb)}&_=`+Date.now(), 60000);
+    if(PF_PID==null) return;
+    renderCorr(c);
+  }catch(e){ $("#pf-corr").innerHTML=`<div class="muted">${e.message||t("auth.failed")}</div>`; }
+}
 async function loadAnalysis(pid){
   try{
     const a=await get(`/api/portfolios/${pid}/analysis?_=`+Date.now(), 120000);
@@ -2805,6 +2858,12 @@ async function loadAnalysis(pid){
       <tbody>${rows}</tbody></table></div>
       <div class="muted" style="font-size:11px;margin-top:8px">${t("pf.recoNote")}</div>`;
     $("#pf-reco-panel").style.display="";
+    // stock correlation matrix (with its own selectable lookback)
+    if(a.correlation && a.correlation.names && a.correlation.names.length>=2){
+      PF_CORR_LB=a.correlation.lookback||"2y";
+      renderCorr(a.correlation); renderCorrLb();
+      $("#pf-corr-panel").style.display="";
+    }
     // CAPM risk–return chart
     $("#pf-capm").innerHTML=efficientFrontierSVG(a);
     $("#pf-capm-legend").innerHTML=`

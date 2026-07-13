@@ -104,6 +104,26 @@ def capm(port_rets: pd.Series, bench_rets: pd.Series, rf: float = RISK_FREE) -> 
             "r_squared": round(corr * corr, 4), "n": int(len(df))}
 
 
+def corr_matrix(close: pd.DataFrame) -> dict:
+    """Pearson correlation of daily log returns between the columns of `close`,
+    plus the average off-diagonal correlation. Used by the standalone
+    correlation panel (with its own lookback) and by analyze()."""
+    close = close.dropna(how="all").ffill().dropna()
+    names = list(close.columns)
+    d = len(names)
+    if d == 0 or len(close) < 5:
+        return {"names": names, "matrix": [], "avg": None, "n": int(len(close))}
+    log_ret = np.log(close / close.shift(1)).dropna()
+    cmat = np.corrcoef(log_ret.values, rowvar=False) if d > 1 else np.array([[1.0]])
+    cmat = np.nan_to_num(np.atleast_2d(cmat), nan=0.0)
+    matrix = [[round(float(cmat[i][j]), 2) for j in range(d)] for i in range(d)]
+    avg = None
+    if d > 1:
+        off = [cmat[i][j] for i in range(d) for j in range(i + 1, d)]
+        avg = round(float(np.mean(off)), 2) if off else None
+    return {"names": names, "matrix": matrix, "avg": avg, "n": int(len(log_ret))}
+
+
 # --------------------------------------------------------------------------- #
 # Public: full analysis for one portfolio
 # --------------------------------------------------------------------------- #
@@ -171,6 +191,18 @@ def analyze(close: pd.DataFrame, weights_current, klci_rets: pd.Series | None,
     # concentration (Herfindahl) — 1/d is perfectly diversified
     hhi = float((wc ** 2).sum())
 
+    # correlation of daily returns between holdings (drives diversification: the
+    # optimiser rewards low/negative pairs). Average off-diagonal too.
+    cmat = np.corrcoef(log_ret.values, rowvar=False) if d > 1 else np.array([[1.0]])
+    cmat = np.nan_to_num(np.atleast_2d(cmat), nan=0.0)
+    correlation = {
+        "names": names,
+        "matrix": [[round(float(cmat[i][j]), 2) for j in range(d)] for i in range(d)],
+    }
+    if d > 1:
+        off = [cmat[i][j] for i in range(d) for j in range(i + 1, d)]
+        correlation["avg"] = round(float(np.mean(off)), 2) if off else None
+
     return {
         "ok": True,
         "names": names,
@@ -180,6 +212,7 @@ def analyze(close: pd.DataFrame, weights_current, klci_rets: pd.Series | None,
         "max_sharpe": max_sharpe,
         "min_var": min_var,
         "capm": capm_klci,
+        "correlation": correlation,
         "frontier": frontier,
         "cloud": cloud,
         "hhi": round(hhi, 3),

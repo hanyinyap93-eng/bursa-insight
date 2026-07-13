@@ -358,6 +358,53 @@ def performance(user: str, pid: int | None = None) -> dict:
 _ANALYSIS_LB = "2y"          # estimation window for mean/cov/beta
 _DRIFT_PP = 7.0              # rebalance when any weight drifts > this many points
 _QUARTER_DAYS = 91          # ...or when ~a quarter has passed since earliest buy
+_CORR_LBS = ("3mo", "6mo", "1y", "2y")   # selectable correlation windows
+
+
+def _named_close(holds, lookback):
+    """Build a price panel for a portfolio's holdings over `lookback`, with one
+    unique display-name column per ticker. Returns (close_df, by_ticker, label,
+    cols). Shared by the full analysis and the standalone correlation view."""
+    by_ticker: dict[str, dict] = {}
+    for h in holds:
+        t = h["ticker"]
+        by_ticker.setdefault(t, {"name": h["name"] or h["code"] or t,
+                                 "code": h["code"], "shares": 0.0,
+                                 "buy_date": h["buy_date"]})
+        by_ticker[t]["shares"] += float(h["shares"])
+        by_ticker[t]["buy_date"] = min(by_ticker[t]["buy_date"], h["buy_date"])
+
+    tickers = list(by_ticker)
+    panel = klse_prices.close_panel(tickers, lookback)
+    panel.index = pd.to_datetime(panel.index).normalize()
+    panel = panel.sort_index().ffill()
+
+    label, seen = {}, {}
+    for t in tickers:
+        nm = by_ticker[t]["name"]
+        if nm in seen:
+            nm = f"{nm} ({by_ticker[t]['code'] or t})"
+        seen[nm] = True
+        label[t] = nm
+    cols = [t for t in tickers if t in panel.columns]
+    close = panel[cols].rename(columns={t: label[t] for t in cols}) if cols else pd.DataFrame()
+    return close, by_ticker, label, cols
+
+
+def portfolio_correlation(user: str, pid: int | None = None,
+                          lookback: str | None = None) -> dict:
+    """Stock correlation matrix for a portfolio over a selectable lookback."""
+    from . import mpt as mpt_mod
+    lb = lookback if lookback in _CORR_LBS else _ANALYSIS_LB
+    holds = list_holdings(user, pid)
+    if not holds:
+        return {"names": [], "matrix": [], "avg": None, "lookback": lb}
+    close, _, _, cols = _named_close(holds, lb)
+    if not cols:
+        return {"names": [], "matrix": [], "avg": None, "lookback": lb}
+    res = mpt_mod.corr_matrix(close)
+    res["lookback"] = lb
+    return res
 
 
 def analyze_portfolio(user: str, pid: int | None = None) -> dict:
@@ -370,33 +417,9 @@ def analyze_portfolio(user: str, pid: int | None = None) -> dict:
     if not holds:
         return {"ok": False, "reason": "no holdings"}
 
-    # aggregate by ticker; a display name per column (unique)
-    by_ticker: dict[str, dict] = {}
-    for h in holds:
-        t = h["ticker"]
-        by_ticker.setdefault(t, {"name": h["name"] or h["code"] or t,
-                                 "code": h["code"], "shares": 0.0,
-                                 "buy_date": h["buy_date"]})
-        by_ticker[t]["shares"] += float(h["shares"])
-        by_ticker[t]["buy_date"] = min(by_ticker[t]["buy_date"], h["buy_date"])
-
-    tickers = list(by_ticker)
-    panel = klse_prices.close_panel(tickers, _ANALYSIS_LB)
-    panel.index = pd.to_datetime(panel.index).normalize()
-    panel = panel.sort_index().ffill()
-
-    # unique display-name columns (fall back to code/ticker on clashes)
-    label, seen = {}, {}
-    for t in tickers:
-        nm = by_ticker[t]["name"]
-        if nm in seen:
-            nm = f"{nm} ({by_ticker[t]['code'] or t})"
-        seen[nm] = True
-        label[t] = nm
-    cols = [t for t in tickers if t in panel.columns]
+    close, by_ticker, label, cols = _named_close(holds, _ANALYSIS_LB)
     if not cols:
         return {"ok": False, "reason": "no price data for these stocks"}
-    close = panel[cols].rename(columns={t: label[t] for t in cols})
 
     # current value weights = shares x last price
     last = close.ffill().iloc[-1]
@@ -423,7 +446,7 @@ def analyze_portfolio(user: str, pid: int | None = None) -> dict:
     cur_w = {s["name"]: s["weight"] for s in res["stocks"]}
     drifts = {nm: abs(cur_w.get(nm, 0.0) - target.get(nm, 0.0)) * 100 for nm in target}
     max_drift = max(drifts.values(), default=0.0)
-    earliest = min(by_ticker[t]["buy_date"] for t in tickers)
+    earliest = min(v["buy_date"] for v in by_ticker.values())
     days_since = (date.today() - date.fromisoformat(earliest)).days
     reasons = []
     if max_drift > _DRIFT_PP:
