@@ -12,7 +12,7 @@ _ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 class Settings(BaseSettings):
     app_name: str = "Bursa Insight API"
-    version: str = "0.1.0"
+    version: str = "0.1.1"
     # comma-separated origins for CORS; "*" in dev
     cors_origins: str = "*"
     default_lookback: str = "1y"
