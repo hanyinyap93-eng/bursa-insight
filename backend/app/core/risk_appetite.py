@@ -162,11 +162,14 @@ def build_risk_appetite(display_years: int = 1, roll: int = ROLL_WINDOW) -> dict
 
 
 def build_ra_correlation(lookback: str = "1y") -> dict:
-    """Correlation matrix of the four risk-appetite health-score series
-    (ACE-KLCI, 70-KLCI, ACE-70 and the composite H_RiskAppetite) over the most
-    recent `lookback` window. Scores use the canonical 252-day standardisation."""
+    """Correlation of each risk-appetite health-score series (ACE-KLCI, 70-KLCI,
+    ACE-70 and the composite H_RiskAppetite) with the FBM KLCI index level over
+    the most recent `lookback` window. Scores use the canonical 252-day
+    standardisation."""
     n = LB_DAYS.get(lookback, ROLL_WINDOW)
     closes = _load_index_closes()
+    if "FBM KLCI" not in closes:
+        return {"names": [], "corr": [], "vs": "FBM KLCI", "lookback": lookback, "n": 0}
     rets = pd.DataFrame({k: v.pct_change() for k, v in closes.items()}).dropna(how="all")
 
     h_series: dict = {}
@@ -182,22 +185,23 @@ def build_ra_correlation(lookback: str = "1y") -> dict:
 
     vs_klci = [h_series[t] for t in ("ACE-KLCI", "70-KLCI") if t in h_series]
     if not vs_klci:
-        return {"names": [], "matrix": [], "avg": None, "lookback": lookback, "n": 0}
+        return {"names": [], "corr": [], "vs": "FBM KLCI", "lookback": lookback, "n": 0}
     composite = pd.concat(vs_klci, axis=1).mean(axis=1).dropna()
 
     cols = {t: h_series[t] for t in ("ACE-KLCI", "70-KLCI", "ACE-70") if t in h_series}
     cols["H_RiskAppetite"] = composite
-    frame = pd.DataFrame(cols).dropna().tail(n)
+    frame = pd.DataFrame(cols)
+    frame["__KLCI__"] = closes["FBM KLCI"]     # the market to correlate each score against
+    frame = frame.dropna().tail(n)
 
-    names = list(frame.columns)
-    d = len(names)
-    if d < 2 or len(frame) < 5:
-        return {"names": names, "matrix": [], "avg": None,
-                "lookback": lookback, "n": int(len(frame))}
-    cmat = np.nan_to_num(np.corrcoef(frame.values, rowvar=False), nan=0.0)
-    cmat = np.atleast_2d(cmat)
-    matrix = [[round(float(cmat[i][j]), 2) for j in range(d)] for i in range(d)]
-    off = [cmat[i][j] for i in range(d) for j in range(i + 1, d)]
-    avg = round(float(np.mean(off)), 2) if off else None
-    return {"names": names, "matrix": matrix, "avg": avg,
-            "lookback": lookback, "n": int(len(frame))}
+    names = [c for c in cols]
+    if len(frame) < 5:
+        return {"names": names, "corr": [None] * len(names),
+                "vs": "FBM KLCI", "lookback": lookback, "n": int(len(frame))}
+    klci = frame["__KLCI__"].values
+    corr = []
+    for name in names:
+        c = np.corrcoef(frame[name].values, klci)[0, 1]
+        corr.append(round(float(c), 2) if c == c else None)   # NaN-safe
+    return {"names": names, "corr": corr,
+            "vs": "FBM KLCI", "lookback": lookback, "n": int(len(frame))}
