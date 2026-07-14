@@ -2846,8 +2846,9 @@ const PF_CORR_LBS=[["3mo","3M"],["6mo","6M"],["1y","1Y"],["2y","2Y"]];
 function renderCorr(corr){
   if(!corr || !corr.names || corr.names.length<2){ $("#pf-corr").innerHTML=`<div class="muted">${t("pf.corrNeed")||"Add at least 2 stocks to see correlations."}</div>`; return; }
   const nm=corr.names, mtx=corr.matrix, shrt=s=>s.length>11?s.slice(0,10)+"…":s;
+  // low (below 0.075) or negative correlation = green (diversifying); higher = red
   const cc=v=>{ const tt=Math.max(-1,Math.min(1,v)), al=(0.1+0.55*Math.abs(tt)).toFixed(2);
-    return tt>=0?`rgba(255,91,91,${al})`:`rgba(0,209,121,${al})`; };
+    return tt<0.075?`rgba(0,209,121,${al})`:`rgba(255,91,91,${al})`; };
   let html=`<div style="overflow-x:auto"><table class="pf-corr-tbl"><thead><tr><th></th>`+
     nm.map(n=>`<th title="${n}">${shrt(n)}</th>`).join("")+`</tr></thead><tbody>`;
   for(let i=0;i<nm.length;i++){ html+=`<tr><td class="rh"><b>${shrt(nm[i])}</b></td>`+
