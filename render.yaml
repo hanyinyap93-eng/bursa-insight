@@ -16,15 +16,28 @@ services:
     name: bursa-insight
     runtime: python
     rootDir: backend
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
     # --proxy-headers so request URLs use the real https scheme/host behind
     # Render's proxy (needed to build correct email-confirmation links when
     # BURSA_PUBLIC_URL isn't set).
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    # Persistent disk so the heavy on-disk caches (GEX warrant chain, index/
+    # sector OHLC, breadth, fund flow) SURVIVE redeploys — without it Render wipes
+    # the disk every deploy, forcing a slow cold rebuild (the GEX warrant scrape
+    # can take minutes) that times out the first load. BURSA_CACHE_DIR below
+    # points the cache at this volume. (A disk pins the service to 1 instance and
+    # a recreate-style deploy — fine for this app.)
+    disk:
+      name: bursa-cache
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      # Point all on-disk caches at the persistent volume above.
+      - key: BURSA_CACHE_DIR
+        value: /var/data/cache
       # Signs login/session tokens. Render generates a strong random value on
       # first deploy and keeps it secret — never in git. Do not edit by hand
       # (changing it just logs existing users out).

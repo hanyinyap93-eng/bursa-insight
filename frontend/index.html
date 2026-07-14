@@ -838,6 +838,7 @@ const I18N = {
     "pf.explain":"Keep up to <b>3 named portfolios</b>. Add each holding with its <b>shares</b> and <b>buy date</b>. The tool estimates each portfolio's <b>risk</b> (annualised volatility), <b>Sharpe ratio</b> and CAPM <b>beta/alpha</b> vs the KLCI from ~2 years of daily returns, then recommends the <b>rebalance weights</b> (max-Sharpe headline, min-variance alternative) and advises <b>when to rebalance</b>. The CAPM chart plots your portfolio's risk vs return against the efficient frontier; the benchmark chart rebases your return to 100 against the <b>KLCI / Mid 70 / ACE</b> indices. Not investment advice.",
     "pf.add":"Add a holding","pf.stockPh":"Search stock (code or name)","pf.sharesPh":"Shares","pf.addBtn":"Add",
     "pf.new":"New portfolio","pf.delConfirm":"Delete this portfolio and all its holdings?","pf.needPf":"Create a portfolio first.",
+    "pf.slowNote":"still computing on the server — please try again in a moment",
     "pf.capmTitle":"CAPM risk–return & efficient frontier","pf.recoTitle":"Recommended rebalance weights",
     "pf.corrTitle":"Stock correlations","pf.corrAvg":"Average pairwise correlation","pf.corrNeed":"Add at least 2 stocks to see correlations.",
     "pf.corrHigh":"high — the stocks move together, so there's little diversification benefit",
@@ -931,6 +932,7 @@ const I18N = {
     "pf.explain":"最多可建立 <b>3 个命名组合</b>。为每只持仓填写<b>股数</b>与<b>买入日期</b>。系统以约两年日收益估算组合的<b>风险</b>（年化波动）、<b>夏普比率</b>及相对 KLCI 的 CAPM <b>β/α 系数</b>，并给出<b>再平衡权重建议</b>（首选最大夏普，另附最小方差）与<b>再平衡时机</b>提示。CAPM 图显示组合风险与收益及有效前沿；对比图将组合收益以 100 为基准与 <b>KLCI／Mid 70／ACE</b> 指数对照。非投资建议。",
     "pf.add":"添加持仓","pf.stockPh":"搜索股票（代码或名称）","pf.sharesPh":"股数","pf.addBtn":"添加",
     "pf.new":"新建组合","pf.delConfirm":"删除此组合及其所有持仓？","pf.needPf":"请先创建一个组合。",
+    "pf.slowNote":"服务器仍在计算——请稍后再试",
     "pf.capmTitle":"CAPM 风险—收益与有效前沿","pf.recoTitle":"再平衡权重建议",
     "pf.corrTitle":"个股相关性","pf.corrAvg":"平均两两相关性","pf.corrNeed":"至少添加 2 只股票才能查看相关性。",
     "pf.corrHigh":"偏高——个股同涨同跌，分散化收益有限",
@@ -2784,14 +2786,14 @@ async function api(method,path,body){
   return r.status===204?null:r.json().catch(()=>null);
 }
 
-async function loadPortfolio(force){
+async function loadPortfolio(force,retried){
   if(PF_PID==null) return;
   const pid=PF_PID, body=$("#pf-body"), cards=$("#pf-cards"), sub=$("#pf-sub");
   sub.textContent=t("loading.default"); cards.innerHTML="";
   ["pf-chart-panel","pf-capm-panel","pf-reco-panel","pf-corr-panel"].forEach(id=>$("#"+id).style.display="none");
   $("#pf-reb-wrap").innerHTML="";
   try{
-    const d=await get(`/api/portfolios/${pid}/performance`+(force?"?_="+Date.now():""), 120000);
+    const d=await get(`/api/portfolios/${pid}/performance`+(force?"?_="+Date.now():""), 180000);
     if(PF_PID!==pid) return;   // user switched tabs mid-load
     const hs=d.holdings||[];
     if(!hs.length){ sub.textContent=t("pf.empty"); body.innerHTML=""; return; }
@@ -2837,7 +2839,11 @@ async function loadPortfolio(force){
         }).join("")}</tbody></table></div></div>`;
     body.querySelectorAll(".pf-del").forEach(x=>x.onclick=()=>removeHolding(+x.dataset.id));
     loadAnalysis(pid);   // CAPM/MPT (async; appends cards + fills panels)
-  }catch(e){ sub.textContent=e.message||t("auth.failed"); }
+  }catch(e){
+    if(e.message==="timeout" && !retried){ sub.textContent="";
+      autoRetry(body, ()=>loadPortfolio(true,1), t("pf.title")||"Your portfolio", 20); return; }
+    sub.textContent=(e.message==="timeout"?t("pf.slowNote")||"still computing on the server — try again in a moment":e.message)||t("auth.failed");
+  }
 }
 
 // stock-correlation heatmap with a selectable lookback
@@ -2868,14 +2874,14 @@ async function loadCorrelation(lb){
   PF_CORR_LB=lb; renderCorrLb();
   $("#pf-corr").innerHTML=skeleton(2);
   try{
-    const c=await get(`/api/portfolios/${PF_PID}/correlation?lookback=${encodeURIComponent(lb)}&_=`+Date.now(), 60000);
+    const c=await get(`/api/portfolios/${PF_PID}/correlation?lookback=${encodeURIComponent(lb)}&_=`+Date.now(), 120000);
     if(PF_PID==null) return;
     renderCorr(c);
   }catch(e){ $("#pf-corr").innerHTML=`<div class="muted">${e.message||t("auth.failed")}</div>`; }
 }
-async function loadAnalysis(pid){
+async function loadAnalysis(pid,retried){
   try{
-    const a=await get(`/api/portfolios/${pid}/analysis?_=`+Date.now(), 120000);
+    const a=await get(`/api/portfolios/${pid}/analysis?_=`+Date.now(), 180000);
     if(PF_PID!==pid) return;
     if(!a || !a.ok){ return; }
     const cards=$("#pf-cards"), c=a.current||{}, cm=a.capm||{};
@@ -2937,7 +2943,11 @@ async function loadAnalysis(pid){
       <span><i style="background:#fff;border:1px solid #000;border-radius:50%"></i>${t("pf.legStock")}</span>
       <span><i style="background:#22c55e"></i>${t("pf.legFront")}</span>`;
     $("#pf-capm-panel").style.display="";
-  }catch(_){ /* analysis is best-effort; leave panels hidden */ }
+  }catch(e){
+    // analysis is best-effort; on a slow cold-cache timeout, retry once quietly
+    if(e && e.message==="timeout" && !retried && PF_PID===pid)
+      setTimeout(()=>{ if(PF_PID===pid) loadAnalysis(pid,1); }, 10000);
+  }
 }
 
 async function addHolding(){
