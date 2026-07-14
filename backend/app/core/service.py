@@ -416,19 +416,32 @@ def get_fbm_health(key: str, lookback: str = "1y", term: str = "short",
     return _swr(cache_key, TTL_SECONDS * 16, builder, force=force)     # 8h TTL
 
 
-def get_risk_appetite(force: bool = False, nowait: bool = False):
-    """Risk-appetite index spreads (ACE / MID 70 vs KLCI), SWR-cached.
+def get_risk_appetite(lookback: str = "1y", force: bool = False, nowait: bool = False):
+    """Risk-appetite index spreads (ACE / MID 70 vs KLCI), SWR-cached per
+    health-score lookback (the z-score standardisation window).
 
     Light build (3 index histories from the klsescreener UDF feed) but slow on
     a rate-limited cloud host, so cached like everything else. nowait=True
     never blocks on a cold build (returns None, warms in the background).
     """
     from . import risk_appetite as ra_mod
-
-    builder = lambda: ra_mod.build_risk_appetite()
+    roll = ra_mod.LB_DAYS.get(lookback, ra_mod.ROLL_WINDOW)
+    key = f"riskapp:{lookback}"
+    builder = lambda: ra_mod.build_risk_appetite(roll=roll)
     if nowait:
-        return _cached_or_warm("riskapp:1", TTL_SECONDS * 6, builder)  # serve stale up to 3h
-    return _swr("riskapp:1", TTL_SECONDS * 6, builder, force=force)    # 3h TTL
+        return _cached_or_warm(key, TTL_SECONDS * 6, builder)          # serve stale up to 3h
+    return _swr(key, TTL_SECONDS * 6, builder, force=force)            # 3h TTL
+
+
+def get_ra_correlation(lookback: str = "1y", force: bool = False, nowait: bool = False):
+    """Correlation matrix of the four risk-appetite health-score series over the
+    given lookback window. SWR-cached (light — reuses the index closes)."""
+    from . import risk_appetite as ra_mod
+    key = f"riskappcorr:{lookback}"
+    builder = lambda: ra_mod.build_ra_correlation(lookback)
+    if nowait:
+        return _cached_or_warm(key, TTL_SECONDS * 6, builder)
+    return _swr(key, TTL_SECONDS * 6, builder, force=force)
 
 
 def warm_all():

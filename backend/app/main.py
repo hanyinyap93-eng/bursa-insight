@@ -585,17 +585,31 @@ def klci_gex(force: bool = False):
 # FBM market indexes (Mid 70 / ACE / EMAS / Fledgling)
 # --------------------------------------------------------------------------- #
 @app.get("/api/risk-appetite", dependencies=[Depends(auth_mod.require_auth)])
-def risk_appetite(force: bool = False):
+def risk_appetite(lookback: str = "1y", force: bool = False):
     """Risk appetite: FBM ACE / MID 70 / KLCI index spreads (Ziemba
     turn-of-year & size effect) — H scores, rolling betas, monthly
-    seasonality with t-stats, and rebased relative performance."""
+    seasonality with t-stats, and rebased relative performance. `lookback`
+    (3mo/6mo/1y/2y) sets the health-score z-score standardisation window."""
     try:
-        r = service.get_risk_appetite(nowait=True)
+        r = service.get_risk_appetite(lookback, nowait=True)
         if r is not None:
             return r
-        return {"warming": True, "error": service.build_error("riskapp:1")}
+        return {"warming": True, "error": service.build_error(f"riskapp:{lookback}")}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"risk appetite failed: {exc}")
+
+
+@app.get("/api/risk-appetite/correlation", dependencies=[Depends(auth_mod.require_auth)])
+def risk_appetite_correlation(lookback: str = "1y"):
+    """Correlation matrix of the four risk-appetite health-score series
+    (ACE-KLCI, 70-KLCI, ACE-70, H_RiskAppetite) over the given lookback."""
+    try:
+        r = service.get_ra_correlation(lookback, nowait=True)
+        if r is not None:
+            return r
+        return {"warming": True, "error": service.build_error(f"riskappcorr:{lookback}")}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"risk appetite correlation failed: {exc}")
 
 
 @app.get("/api/fbm/indexes", dependencies=[Depends(auth_mod.require_auth)])

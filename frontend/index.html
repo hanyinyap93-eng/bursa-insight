@@ -2235,6 +2235,36 @@ async function loadFbmIndex(key,retried,force){
 /* ---------------- R-Appetite page (ACE / MID 70 / KLCI spreads) ------------ */
 const RA_COLORS={"ACE-KLCI":"#f59e0b","70-KLCI":"#38bdf8","ACE-70":"#a78bfa"};
 const IDX_COLORS={"FBM KLCI":"var(--text)","FBM ACE":"#f59e0b","FBM MID 70":"#38bdf8"};
+// risk-appetite lookback selectors: health-score roll window + correlation window
+let RA_ROLL="1y", RA_CORR_LB="1y";
+const RA_LBS=[["3mo","3M"],["6mo","6M"],["1y","1Y"],["2y","2Y"]];
+function raPills(el,active,pick){ if(!el) return;
+  el.innerHTML=RA_LBS.map(([v,l])=>`<button data-lb="${v}" class="${v===active?"active":""}">${l}</button>`).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>pick(b.dataset.lb)); }
+function renderRaCorr(corr){
+  const box=$("#ra-corr"); if(!box) return;
+  if(!corr || !corr.names || corr.names.length<2){ box.innerHTML=`<div class="muted">not enough data for correlations</div>`; return; }
+  const disp=n=>n==="H_RiskAppetite"?"H_RA":n, nm=corr.names, mtx=corr.matrix;
+  const cc=v=>{ const tt=Math.max(-1,Math.min(1,v)), al=(0.1+0.55*Math.abs(tt)).toFixed(2);
+    return tt>=0?`rgba(255,91,91,${al})`:`rgba(0,209,121,${al})`; };
+  let html=`<div style="overflow-x:auto"><table class="pf-corr-tbl"><thead><tr><th></th>`+
+    nm.map(n=>`<th title="${n}">${disp(n)}</th>`).join("")+`</tr></thead><tbody>`;
+  for(let i=0;i<nm.length;i++){ html+=`<tr><td class="rh"><b title="${nm[i]}">${disp(nm[i])}</b></td>`+
+    nm.map((_,j)=>{ const v=mtx[i][j];
+      return `<td style="background:${i===j?"transparent":cc(v)}">${i===j?'<span class="muted">1.00</span>':v.toFixed(2)}</td>`; }).join("")+`</tr>`; }
+  html+="</tbody></table></div>";
+  const avgTxt=corr.avg!=null?`Average pairwise correlation: <b>${corr.avg.toFixed(2)}</b> · `:"";
+  box.innerHTML=html+`<div class="muted" style="font-size:11px;margin-top:9px">${avgTxt}over the last ${corr.n} trading days. Red = the scores move together; green = they move opposite.</div>`;
+}
+async function loadRaCorrelation(lb){
+  RA_CORR_LB=lb; raPills($("#ra-corr-lb"),lb,loadRaCorrelation);
+  const box=$("#ra-corr"); if(!box) return; box.innerHTML=skeleton(2);
+  try{
+    const c=await getCached(`/api/risk-appetite/correlation?lookback=${lb}`,10*60000,120000,false);
+    if(c&&c.warming){ box.innerHTML=`<div class="muted">preparing correlation…</div>`; setTimeout(()=>{ if(RA_CORR_LB===lb) loadRaCorrelation(lb); },6000); return; }
+    if(RA_CORR_LB!==lb) return; renderRaCorr(c);
+  }catch(e){ box.innerHTML=`<div class="muted">${e.message||t("auth.failed")}</div>`; }
+}
 
 // clickable legend whose items toggle the matching polyline (by data-s index)
 // in the sibling <svg>. `series` order MUST match the chart's series order.
@@ -2425,12 +2455,12 @@ function wireBarXhair(scope){
   });
 }
 
-async function loadRiskAppetite(retried,force){
-  const body=$("#ra-body");
+async function loadRiskAppetite(retried,force,roll){
+  const body=$("#ra-body"), lb=roll||RA_ROLL;
   body.innerHTML=skeleton(4);
   try{
-    const d=await getCached("/api/risk-appetite",10*60000,300000,force);
-    if(d&&d.warming){ warmingRetry(body, ()=>loadRiskAppetite(), "Preparing risk-appetite data…", d.error); return; }
+    const d=await getCached(`/api/risk-appetite?lookback=${lb}`,10*60000,300000,force);
+    if(d&&d.warming){ warmingRetry(body, ()=>loadRiskAppetite(false,false,lb), "Preparing risk-appetite data…", d.error); return; }
     $("#ra-sub").textContent=`as of ${d.as_of} · ${d.history} history, charts show last `+
       `${d.display_years}y · ${d.notes.score}`;
     const spreadCards=d.spreads.map(s=>`
@@ -2496,12 +2526,18 @@ async function loadRiskAppetite(retried,force){
         Both vs-KLCI scores high → risk appetite improving; both low → defensive market; ACE weak while
         KLCI stable → weak underlying breadth. ${d.notes.toy}</div>
       <div class="gx-grid">
-        <div class="gx-panel"><h3>Risk-appetite health scores — H = 50 + 50·tanh(z/2) (&gt;60 risk-on, &lt;40 defensive)</h3>
+        <div class="gx-panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <span>Risk-appetite health scores — H = 50 + 50·tanh(z/2) (&gt;60 risk-on, &lt;40 defensive)</span>
+            <span class="lookback" id="ra-roll-lb"></span></h3>
           ${hChart}${hLegend}
-          <div class="muted" style="font-size:10px;margin-top:4px">Click a series to hide it · double-click to view only that line</div></div>
+          <div class="muted" style="font-size:10px;margin-top:4px">Lookback = the z-score standardisation window · click a series to hide · double-click to isolate</div></div>
         <div class="gx-panel"><h3>Relative performance, rebased to 100 (last ${d.display_years}y)</h3>
           ${rbChart}${rbLegend}</div>
       </div>
+      <div class="gx-panel" style="margin-top:14px"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span>Correlation of the health-score series (ACE-KLCI, 70-KLCI, ACE-70, H_RiskAppetite)</span>
+          <span class="lookback" id="ra-corr-lb"></span></h3>
+        <div id="ra-corr"></div></div>
       <div class="gx-panel" style="margin-top:14px"><h3>Turn-of-year test — mean daily index spread by calendar month (bps, full history; Dec/Jan shaded)</h3>
         ${mChart}<div class="legend">${legend}<span class="muted">|t| ≥ 2 ≈ significant at 95%</span></div></div>
       <div class="gx-grid" style="margin-top:14px">${mTables}</div>
@@ -2509,6 +2545,8 @@ async function loadRiskAppetite(retried,force){
     wireLegends(body);   // make the two line-chart legends clickable toggles
     wireXhair(body);     // hover crosshair + value/date tooltip on the line charts
     wireBarXhair(body);  // hover month-highlight + tooltip on the monthly bar chart
+    raPills($("#ra-roll-lb"), lb, l=>{ RA_ROLL=l; loadRiskAppetite(false,false,l); });  // health-score lookback
+    loadRaCorrelation(RA_CORR_LB);   // fill the correlation heatmap (own lookback)
   }catch(e){
     if(e.message==="timeout"&&!retried){autoRetry(body,loadRiskAppetite,"The spread analysis");return;}
     const msg=e.message==="timeout"?"still computing…":e.message;
