@@ -197,8 +197,13 @@
   .osc-pane{height:110px;border-top:1px solid var(--line);position:relative;min-height:0;}
   /* correlation-to-indexes panel below the chart */
   #corr-panel{height:150px;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0;}
-  .corr-head{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 4px;}
-  .corr-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+  /* wrap so the lookback pills drop to their own line instead of overflowing
+     when the title is long (narrow screens) */
+  .corr-head{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 4px;
+    gap:6px 10px;flex-wrap:wrap;}
+  .corr-head .corr-lb{flex:0 0 auto;}
+  .corr-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+    flex:1 1 180px;min-width:0;}
   .corr-title b{color:var(--text);}
   .corr-lb{display:flex;background:var(--panel2);border-radius:var(--radius-pill);overflow:hidden;padding:2px;}
   .corr-lb button{background:none;border:none;color:var(--muted);padding:4px 10px;font-size:11px;cursor:pointer;border-radius:var(--radius-pill);}
@@ -361,6 +366,12 @@
     padding:18px 20px;min-width:0;}
   .gx-panel h3{font-size:12px;letter-spacing:-.1px;color:var(--text);
     font-weight:600;margin:0 0 12px;}
+  /* panel header with a control (e.g. a lookback selector) on the right: the
+     control wraps onto its own line on narrow screens instead of overflowing */
+  .gx-panel h3.panel-head{display:flex;justify-content:space-between;align-items:center;
+    gap:8px 10px;flex-wrap:wrap;}
+  .gx-panel h3.panel-head>span:first-child{flex:1 1 220px;min-width:0;}
+  .gx-panel h3.panel-head .lookback{flex:0 0 auto;}
   .gx-panel svg{display:block;width:100%;}
   .readout{border-left:3px solid var(--accent);padding:10px 14px;background:var(--panel);
     border-radius:var(--radius-sm);font-size:12px;margin:12px 0;}
@@ -723,7 +734,7 @@
       <div id="pf-reco"></div>
     </div>
     <div class="gx-panel" id="pf-corr-panel" style="display:none">
-      <h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <h3 class="panel-head">
         <span data-i18n="pf.corrTitle">Stock correlations</span>
         <span class="lookback" id="pf-corr-lb"></span>
       </h3>
@@ -2536,7 +2547,7 @@ async function loadRiskAppetite(retried,force,roll){
         Both vs-KLCI scores high → risk appetite improving; both low → defensive market; ACE weak while
         KLCI stable → weak underlying breadth. ${d.notes.toy}</div>
       <div class="gx-grid">
-        <div class="gx-panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div class="gx-panel"><h3 class="panel-head">
             <span>Risk-appetite health scores — H = 50 + 50·tanh(z/2) (&gt;60 risk-on, &lt;40 defensive)</span>
             <span class="lookback" id="ra-roll-lb"></span></h3>
           ${hChart}${hLegend}
@@ -2544,7 +2555,7 @@ async function loadRiskAppetite(retried,force,roll){
         <div class="gx-panel"><h3>Relative performance, rebased to 100 (last ${d.display_years}y)</h3>
           ${rbChart}${rbLegend}</div>
       </div>
-      <div class="gx-panel" style="margin-top:14px"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div class="gx-panel" style="margin-top:14px"><h3 class="panel-head">
           <span>Correlation of each health-score series (ACE-KLCI, 70-KLCI, ACE-70, H_RiskAppetite) vs the KLCI index</span>
           <span class="lookback" id="ra-corr-lb"></span></h3>
         <div id="ra-corr"></div></div>
