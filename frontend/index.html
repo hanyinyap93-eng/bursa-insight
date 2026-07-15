@@ -336,6 +336,11 @@
   .pf-reb b{color:var(--text);}
   .pf-w-bar{height:7px;border-radius:4px;background:var(--panel2);overflow:hidden;min-width:60px;}
   .pf-w-bar i{display:block;height:100%;background:var(--accent);}
+  /* holdings: a stock bought over several dates -> aggregate row + lot sublines */
+  .pf-grp td{border-bottom:none;}
+  .pf-lot td{font-size:11px;color:var(--muted);background:var(--panel2);}
+  .pf-lot td:first-child{padding-left:22px;opacity:.6;}
+  .pf-lot td b{color:var(--muted);font-weight:400;}
   /* portfolio stock-correlation heatmap */
   .pf-corr-tbl th,.pf-corr-tbl td{text-align:center;font-variant-numeric:tabular-nums;border:none;padding:8px 9px;}
   .pf-corr-tbl td.rh{text-align:left;}
@@ -864,6 +869,7 @@ const I18N = {
     "pf.invested":"Invested (cost)","pf.valueNow":"Value now","pf.gain":"Profit / Loss",
     "pf.holdingsTitle":"Holdings","pf.stock":"Stock","pf.shares":"Shares","pf.buyDate":"Buy date",
     "pf.buyPx":"Buy price","pf.lastPx":"Last price","pf.cost":"Cost","pf.value":"Value","pf.pl":"P/L","pf.remove":"Remove",
+    "pf.entries":"entries","pf.avgEntry":"avg entry",
     "pf.needStock":"Please pick a stock from the list.","pf.needShares":"Enter the number of shares.","pf.needDate":"Pick a buy date.",
     "rail.topCorrTo":"Top correlated to","rail.corr6m":"6M Corr",
     "auth.signin":"Sign in","auth.signout":"Sign out","auth.title":"Sign in",
@@ -958,6 +964,7 @@ const I18N = {
     "pf.invested":"投入（成本）","pf.valueNow":"当前价值","pf.gain":"盈亏",
     "pf.holdingsTitle":"持仓","pf.stock":"股票","pf.shares":"股数","pf.buyDate":"买入日期",
     "pf.buyPx":"买入价","pf.lastPx":"最新价","pf.cost":"成本","pf.value":"价值","pf.pl":"盈亏","pf.remove":"删除",
+    "pf.entries":"笔买入","pf.avgEntry":"平均买入价",
     "pf.needStock":"请从列表中选择股票。","pf.needShares":"请输入股数。","pf.needDate":"请选择买入日期。",
     "rail.topCorrTo":"相关性最高 —","rail.corr6m":"6月相关",
     "auth.signin":"登录","auth.signout":"退出","auth.title":"登录",
@@ -2859,25 +2866,63 @@ async function loadPortfolio(force,retried){
       $("#pf-chart-panel").style.display="";
     }
     // holdings table
+    // group lots by stock: a stock bought over several dates shows once as an
+    // aggregate (total shares, weighted-average entry, combined P/L) with each
+    // purchase listed as a subline beneath it.
+    const groups=[], byTicker=new Map();
+    hs.forEach(h=>{ const k=h.ticker||h.code;
+      if(!byTicker.has(k)){ const g={name:h.name,code:h.code,lots:[]}; byTicker.set(k,g); groups.push(g); }
+      byTicker.get(k).lots.push(h); });
+    // a stock with a single purchase renders as one plain row
+    const lotRowSingle=h=>`<tr>
+      <td><b>${h.name||h.code}</b> <span class="muted">${h.code}</span>${h.error?` <span class="muted" style="font-size:10px">(${h.error})</span>`:""}</td>
+      <td class="num">${(+h.shares).toLocaleString()}</td>
+      <td class="muted">${h.buy_date}</td>
+      <td class="num">${h.buy_price!=null?(+h.buy_price).toFixed(3):"—"}</td>
+      <td class="num">${h.last_price!=null?(+h.last_price).toFixed(3):"—"}</td>
+      <td class="num">${h.cost!=null?pfMoney(h.cost):"—"}</td>
+      <td class="num">${h.value!=null?pfMoney(h.value):"—"}</td>
+      <td class="num ${h.gain!=null?cls(h.gain):""}">${h.gain!=null?`${h.gain>=0?"+":""}${(+h.gain).toFixed(2)} (${fmt(h.gain_pct)}%)`:"—"}</td>
+      <td><span class="pf-del" data-id="${h.id}" title="${t("pf.remove")}">✕</span></td></tr>`;
+    const lotRow=l=>`<tr class="pf-lot">
+      <td>↳</td>
+      <td class="num">${(+l.shares).toLocaleString()}</td>
+      <td>${l.buy_date}</td>
+      <td class="num">${l.buy_price!=null?(+l.buy_price).toFixed(3):"—"}</td>
+      <td class="num">${l.last_price!=null?(+l.last_price).toFixed(3):"—"}</td>
+      <td class="num">${l.cost!=null?pfMoney(l.cost):"—"}</td>
+      <td class="num">${l.value!=null?pfMoney(l.value):"—"}</td>
+      <td class="num ${l.gain!=null?cls(l.gain):""}">${l.gain!=null?`${l.gain>=0?"+":""}${(+l.gain).toFixed(2)} (${fmt(l.gain_pct)}%)`:"—"}</td>
+      <td><span class="pf-del" data-id="${l.id}" title="${t("pf.remove")}">✕</span></td></tr>`;
+    const groupHtml=groups.map(g=>{
+      const priced=g.lots.filter(l=>l.cost!=null), multi=g.lots.length>1;
+      const sharesAll=g.lots.reduce((a,l)=>a+(+l.shares||0),0);
+      const sharesPriced=priced.reduce((a,l)=>a+(+l.shares||0),0);
+      const cost=priced.reduce((a,l)=>a+l.cost,0), value=priced.reduce((a,l)=>a+l.value,0);
+      const gain=value-cost, gainPct=cost?gain/cost*100:0;
+      const avgBuy=sharesPriced?cost/sharesPriced:null;          // weighted-average entry
+      const last=priced.length?priced[priced.length-1].last_price:null;
+      const errLot=g.lots.find(l=>l.error);
+      if(!multi) return lotRowSingle(g.lots[0]);                 // one purchase -> plain row
+      return `<tr class="pf-grp">
+        <td><b>${g.name||g.code}</b> <span class="muted">${g.code}</span>
+          <span class="muted" style="font-size:10px">· ${g.lots.length} ${t("pf.entries")}</span>${errLot?` <span class="muted" style="font-size:10px">(${errLot.error})</span>`:""}</td>
+        <td class="num">${sharesAll.toLocaleString()}</td>
+        <td class="muted">${t("pf.avgEntry")}</td>
+        <td class="num">${avgBuy!=null?avgBuy.toFixed(3):"—"}</td>
+        <td class="num">${last!=null?(+last).toFixed(3):"—"}</td>
+        <td class="num">${priced.length?pfMoney(cost):"—"}</td>
+        <td class="num">${priced.length?pfMoney(value):"—"}</td>
+        <td class="num ${priced.length?cls(gain):""}">${priced.length?`${gain>=0?"+":""}${gain.toFixed(2)} (${fmt(gainPct)}%)`:"—"}</td>
+        <td></td></tr>`+g.lots.map(lotRow).join("");
+    }).join("");
     body.innerHTML=`<div class="gx-panel" style="margin-top:14px"><h3>${t("pf.holdingsTitle")}</h3>
       <div style="overflow-x:auto"><table><thead><tr>
         <th>${t("pf.stock")}</th><th class="num">${t("pf.shares")}</th><th>${t("pf.buyDate")}</th>
         <th class="num">${t("pf.buyPx")}</th><th class="num">${t("pf.lastPx")}</th>
         <th class="num">${t("pf.cost")}</th><th class="num">${t("pf.value")}</th>
-        <th class="num">${t("pf.pl")}</th><th></th></tr></thead><tbody>${
-        hs.map(h=>{
-          const err=h.error?`<span class="muted" style="font-size:10px">(${h.error})</span>`:"";
-          return `<tr>
-            <td><b>${h.name||h.code}</b> <span class="muted">${h.code}</span> ${err}</td>
-            <td class="num">${(+h.shares).toLocaleString()}</td>
-            <td class="muted">${h.buy_date}</td>
-            <td class="num">${h.buy_price!=null?(+h.buy_price).toFixed(3):"—"}</td>
-            <td class="num">${h.last_price!=null?(+h.last_price).toFixed(3):"—"}</td>
-            <td class="num">${h.cost!=null?pfMoney(h.cost):"—"}</td>
-            <td class="num">${h.value!=null?pfMoney(h.value):"—"}</td>
-            <td class="num ${h.gain!=null?cls(h.gain):""}">${h.gain!=null?`${h.gain>=0?"+":""}${(+h.gain).toFixed(2)} (${fmt(h.gain_pct)}%)`:"—"}</td>
-            <td><span class="pf-del" data-id="${h.id}" title="${t("pf.remove")}">✕</span></td></tr>`;
-        }).join("")}</tbody></table></div></div>`;
+        <th class="num">${t("pf.pl")}</th><th></th></tr></thead>
+        <tbody>${groupHtml}</tbody></table></div></div>`;
     body.querySelectorAll(".pf-del").forEach(x=>x.onclick=()=>removeHolding(+x.dataset.id));
     loadAnalysis(pid);   // CAPM/MPT (async; appends cards + fills panels)
   }catch(e){
