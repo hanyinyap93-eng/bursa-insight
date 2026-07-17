@@ -410,10 +410,10 @@ def breadth_series(index: str = "KLCI", lookback: str = "1y", term: str = "short
 
 
 @app.get("/api/index/{key}/ohlc")
-def index_ohlc(key: str, lookback: str = "5y"):
+def index_ohlc(key: str, lookback: str = "5y", force: bool = False):
     """OHLC for an index (KLCI or a sector key) so it can be charted."""
     try:
-        return breadth_mod.index_ohlc(key, lookback)
+        return breadth_mod.index_ohlc(key, lookback, force=force)
     except ValueError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:  # noqa: BLE001

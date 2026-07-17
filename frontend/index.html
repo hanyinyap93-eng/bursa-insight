@@ -2050,7 +2050,7 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
   // gamma bands at each strike (left panel), red alpha ∝ |net gex|
   byStrike.forEach(b=>{ const a=Math.min(0.5,0.5*Math.abs(b.net_gex)/gmax);
     out+=`<rect x="${pxL}" y="${(Y(b.strike)-band).toFixed(1)}" width="${splitX-pxL}"`+
-      ` height="${(2*band).toFixed(1)}" fill="#2563eb" opacity="${a.toFixed(3)}"><title>K=${b.strike}: net GEX RM ${(b.net_gex/1e6).toFixed(1)} mn/1%</title></rect>`; });
+      ` height="${(2*band).toFixed(1)}" fill="var(--red)" opacity="${a.toFixed(3)}"><title>K=${b.strike}: net GEX RM ${(b.net_gex/1e6).toFixed(1)} mn/1%</title></rect>`; });
   // price line
   const X=i=>pxL+(splitX-pxL)*i/Math.max(1,close.length-1);
   out+=`<polyline points="${close.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}"`+
@@ -2073,7 +2073,7 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
   const bh=Math.max(4,band*1.4);
   byStrike.forEach(b=>{ const g=b.net_gex/1e6, w=rpW*Math.abs(g)/gmaxMn;
     out+=`<rect x="${(rpR-w).toFixed(1)}" y="${(Y(b.strike)-bh/2).toFixed(1)}" width="${w.toFixed(1)}"`+
-      ` height="${bh.toFixed(1)}" fill="#2563eb" opacity=".85"><title>K=${b.strike}: net GEX RM ${g.toFixed(1)} mn/1%</title></rect>`+
+      ` height="${bh.toFixed(1)}" fill="var(--red)" opacity=".85"><title>K=${b.strike}: net GEX RM ${g.toFixed(1)} mn/1%</title></rect>`+
       `<text x="${(rpR-w-3).toFixed(1)}" y="${(Y(b.strike)+3).toFixed(1)}" font-size="8" fill="var(--muted)" text-anchor="end">${b.strike}</text>`; });
   out+=`<line x1="${rpL}" y1="${Y(spot)}" x2="${rpR}" y2="${Y(spot)}" stroke="var(--accent)" stroke-dasharray="4 3"/>`+
     `<line x1="${rpL}" y1="${Y(trough)}" x2="${rpR}" y2="${Y(trough)}" stroke="#a855f7" stroke-dasharray="2 3"/>`+
@@ -2096,7 +2096,7 @@ async function loadGex(retried,force){
     if(g&&g.warming){ warmingRetry(body, ()=>loadGex(), "Preparing GEX data — the first build after a redeploy scrapes the warrant chain and can take a few minutes. This fills in automatically…", g.error); return; }
     GEX_LOADED=true;
     // KLCI close for the price+gamma-bands chart (fast; best-effort)
-    let kl=null; try{ kl=await getCached("/api/index/KLCI/ohlc?lookback=6mo",15*60000,60000,force); }catch(_){ kl=null; }
+    let kl=null; try{ kl=await getCached("/api/index/KLCI/ohlc?lookback=6mo"+(force?"&force=true":""),15*60000,60000,force); }catch(_){ kl=null; }
     // Draw "spot" at the latest KLCI close from the (fresher) price feed so the
     // spot line always sits exactly on the end of the close line. The GEX payload's
     // own spot can lag (it is cached far longer than the price series). Fall back
@@ -2114,7 +2114,7 @@ async function loadGex(retried,force){
     const bandsPanel=(kl&&kl.close&&kl.close.length)?`
       <div class="gx-panel" style="margin-top:14px"><h3>KLCI close + issuer gamma bands (darker = more short gamma) · GEX by strike</h3>
         <div style="overflow-x:auto">${gexPriceBandsSVG(kl.dates,kl.close,g.by_strike,spotLine,troughLevel)}</div>
-        <div class="legend"><span><i style="background:#2563eb"></i>issuer gamma band / GEX at strike</span>
+        <div class="legend"><span><i style="background:var(--red)"></i>issuer gamma band / GEX at strike</span>
           <span><i style="background:var(--accent)"></i>spot ${spotLine.toFixed(0)}</span>
           <span><i style="background:#a855f7"></i>gamma trough ${troughLevel.toFixed(0)}</span></div></div>`:"";
     body.innerHTML=`

@@ -140,18 +140,26 @@ def stock_index_correlations(ticker: str, lookback: str = "6mo") -> dict:
     return {"ticker": ticker, "lookback": lookback, "correlations": out}
 
 
-def index_ohlc(key: str, lookback: str = "5y") -> dict:
+def index_ohlc(key: str, lookback: str = "5y", force: bool = False) -> dict:
     """OHLC for an index so it can be charted like a stock.
 
     KLCI uses the real ^KLSE OHLC; a sector uses an equal-weight OHLC built from
-    its constituents (each normalised to 100 at the window start). Cached.
+    its constituents (each normalised to 100 at the window start).
+
+    Served stale-while-revalidate on a short TTL so the LAST bar tracks the
+    official close: an intraday value cached during the session is refreshed in
+    the background within one TTL once the close settles (a plain get-or-build
+    would otherwise pin the stale bar for the whole 12h disk-cache window, since
+    the persistent disk survives deploys).
     """
+    cache_key = f"indexohlc:{key}:{lookback}"
+    return service._swr(cache_key, service.TTL_SECONDS,
+                        lambda: _build_index_ohlc(key, lookback), force=force)
+
+
+def _build_index_ohlc(key: str, lookback: str) -> dict:
     import pandas as pd
     from . import klse_prices
-    cache_key = f"indexohlc:{key}:{lookback}"
-    cached = service._cache.get(cache_key, ttl=service.TTL_SECONDS)
-    if cached is not None:
-        return cached
 
     if key == "KLCI":
         raw = klse_prices.history(ih.INDEX_SYMBOL_KLCI, lookback=lookback)
@@ -209,7 +217,6 @@ def index_ohlc(key: str, lookback: str = "5y") -> dict:
         "sma10": [None if x != x else round(float(x), 4) for x in sma],
         "fundamentals": {},
     }
-    service._cache.set(cache_key, out)
     return out
 
 
