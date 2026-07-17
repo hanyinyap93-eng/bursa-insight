@@ -2197,16 +2197,23 @@ function vixChartSVG(d, warrantIv, nWarr){
   const YR=v=>padT+(H-padT-padB)*(cMax-v)/((cMax-cMin)||1);
   const X=i=>plotL+plotW*i/Math.max(1,n-1);
   let out="";
+  // Two scales share this plot, so each axis is COLOUR-CODED to its series:
+  // the LEFT (volatility %) axis is red — it belongs to the KLCI VIX + Yang-Zhang
+  // lines; the RIGHT axis is grey — it belongs to the KLCI index line only.
+  const VOLC="var(--red)", KLC="#8a8f98";
   // left (volatility %) axis ticks
   for(let t=0;t<=4;t++){ const v=volMin+(volMax-volMin)*t/4;
-    out+=`<line x1="${plotL}" y1="${YL(v).toFixed(1)}" x2="${plotR}" y2="${YL(v).toFixed(1)}" stroke="var(--line2)" opacity=".35"/>`+
-      `<text x="${plotL-5}" y="${(YL(v)+3).toFixed(1)}" font-size="9" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}%</text>`; }
+    out+=`<line x1="${plotL}" y1="${YL(v).toFixed(1)}" x2="${plotR}" y2="${YL(v).toFixed(1)}" stroke="var(--line2)" opacity=".25"/>`+
+      `<text x="${plotL-6}" y="${(YL(v)+3).toFixed(1)}" font-size="9" fill="${VOLC}" text-anchor="end">${v.toFixed(0)}%</text>`; }
   // right (KLCI close) axis ticks
   for(let t=0;t<=4;t++){ const v=cMin+(cMax-cMin)*t/4;
-    out+=`<text x="${plotR+5}" y="${(YR(v)+3).toFixed(1)}" font-size="9" fill="#8a8f98" text-anchor="start">${v.toFixed(0)}</text>`; }
+    out+=`<text x="${plotR+6}" y="${(YR(v)+3).toFixed(1)}" font-size="9" fill="${KLC}" text-anchor="start">${v.toFixed(0)}</text>`; }
+  // coloured axis spines so it is unmistakable which line reads on which scale
+  out+=`<line x1="${plotL}" y1="${padT}" x2="${plotL}" y2="${H-padB}" stroke="${VOLC}" stroke-width="1.4" opacity=".55"/>`+
+    `<line x1="${plotR}" y1="${padT}" x2="${plotR}" y2="${H-padB}" stroke="${KLC}" stroke-width="1.4" opacity=".7"/>`;
   // axis titles — VIX / Yang-Zhang read on the LEFT (vol %) scale, KLCI on the RIGHT
-  out+=`<text x="13" y="${midY}" font-size="9.5" fill="var(--muted)" text-anchor="middle" transform="rotate(-90 13 ${midY})">Annualized volatility (%)</text>`;
-  out+=`<text x="${W-13}" y="${midY}" font-size="9.5" fill="#8a8f98" text-anchor="middle" transform="rotate(-90 ${W-13} ${midY})">FBM KLCI close</text>`;
+  out+=`<text x="13" y="${midY}" font-size="10" font-weight="600" fill="${VOLC}" text-anchor="middle" transform="rotate(-90 13 ${midY})">← Annualized volatility (%)</text>`;
+  out+=`<text x="${W-13}" y="${midY}" font-size="10" font-weight="600" fill="${KLC}" text-anchor="middle" transform="rotate(-90 ${W-13} ${midY})">FBM KLCI close →</text>`;
   // percentile regime bands
   out+=`<line x1="${plotL}" y1="${YL(d.p90).toFixed(1)}" x2="${plotR}" y2="${YL(d.p90).toFixed(1)}" stroke="var(--red)" stroke-dasharray="5 3" stroke-width="1.1"/>`+
     `<text x="${plotL+3}" y="${(YL(d.p90)-3).toFixed(1)}" font-size="9" fill="var(--red)">90th pct ${d.p90.toFixed(0)}% · FEAR</text>`;
