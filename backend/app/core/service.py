@@ -376,9 +376,13 @@ def get_klci_gex(force: bool = False, nowait: bool = False):
             pass
         return gex_mod.build_gex_payload(health_pct=health_pct)
 
+    # 3h result TTL so the GEX map/spot track the same day's close (the warrant
+    # *discovery* stays on its own 12h cache in klci_gex, so a rebuild only
+    # re-fetches warrant prices, not the whole chain). The 20-min scheduler then
+    # rebuilds it ~every 3h.
     if nowait:
-        return _cached_or_warm(key, TTL_SECONDS * 24, _build)
-    return _swr(key, TTL_SECONDS * 24, _build, force=force)  # 12h TTL
+        return _cached_or_warm(key, TTL_SECONDS * 6, _build)
+    return _swr(key, TTL_SECONDS * 6, _build, force=force)  # 3h TTL
 
 
 def get_fund_flow(force: bool = False, nowait: bool = False):
