@@ -49,7 +49,7 @@ class _Entry:
 # Heavy results worth persisting to disk so a server restart doesn't re-scrape
 # the whole market (these are the slow, throttle-prone keys).
 _DISK_PREFIXES = ("sector:", "indexpanel:", "sectordata:", "health:", "indexohlc:",
-                  "sentiment:", "gex:", "fbm:", "riskapp:")
+                  "sentiment:", "gex:", "vix:", "fbm:", "riskapp:")
 _DISK_TTL = 60 * 60 * 12  # disk cache valid for 12h
 
 
@@ -385,6 +385,22 @@ def get_klci_gex(force: bool = False, nowait: bool = False):
     return _swr(key, TTL_SECONDS * 6, _build, force=force)  # 3h TTL
 
 
+def get_klci_vix(force: bool = False, nowait: bool = False):
+    """Synthetic KLCI VIX — 30-day volatility index (SWR-cached).
+
+    Cheap build (one KLCI price-history fetch + numpy vol estimators), but
+    cached with a 3h TTL so it tracks the same day's close as the GEX map on the
+    same page. nowait=True returns None (and warms in the background) instead of
+    blocking on a cold build."""
+    from . import klci_vix as vix_mod
+
+    key = "vix:KLCI"
+    builder = vix_mod.build_vix_payload
+    if nowait:
+        return _cached_or_warm(key, TTL_SECONDS * 6, builder)
+    return _swr(key, TTL_SECONDS * 6, builder, force=force)  # 3h TTL
+
+
 def get_fund_flow(force: bool = False, nowait: bool = False):
     """KLCI 30 tick-rule fund flow (SWR-cached). The intraday download + tick
     classification is slow, so it is cached with a 12h TTL and served
@@ -475,6 +491,8 @@ def warm_all():
         lambda: get_sector_health(term="long"),
         # R-Appetite (light) warmed here so it is never a cold on-request build
         lambda: get_risk_appetite(),
+        # KLCI VIX (light) — one price fetch; keep the GEX page's VIX chart warm
+        lambda: get_klci_vix(),
     ]
     # FBM market indexes × terms — prices shared per index; per-term recompute
     # is cheap. Warmed here (before the slow scrapes) so the Market Index page

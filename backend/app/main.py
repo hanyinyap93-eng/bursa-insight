@@ -11,6 +11,7 @@ Endpoints (MVP):
   GET  /api/screener/correlated  - top-N constituents correlated to the index
   GET  /api/sentiment/analyst    - Malaysia analyst sentiment (KLCI constituents)
   GET  /api/gex/klci             - KLCI warrant Gamma Exposure (issuer hedging map)
+  GET  /api/vix/klci             - synthetic KLCI VIX (30-day volatility index)
   GET  /api/fbm/indexes          - FBM market-index registry (Mid 70/ACE/EMAS/Fledgling)
   GET  /api/fbm/{key}            - FBM index health + per-sector health %
   GET  /api/risk-appetite        - ACE/MID70/KLCI spreads (Ziemba turn-of-year & size)
@@ -579,6 +580,22 @@ def klci_gex(force: bool = False):
         return {"warming": True, "error": service.build_error("gex:KLCI")}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"GEX compute failed: {exc}")
+
+
+@app.get("/api/vix/klci", dependencies=[Depends(auth_mod.require_auth)])
+def klci_vix(force: bool = False):
+    """Synthetic KLCI VIX — 30-day volatility index (Yang-Zhang realized blended
+    with an EWMA conditional-vol proxy), annualized %, with 10th/90th-percentile
+    FEAR / COMPLACENCY regime bands over the available history. Cheap build, but
+    served stale-while-revalidate (3h TTL); returns {warming:true} on a cold
+    cache."""
+    try:
+        r = service.get_klci_vix(nowait=True)
+        if r is not None:
+            return r
+        return {"warming": True, "error": service.build_error("vix:KLCI")}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"VIX compute failed: {exc}")
 
 
 # --------------------------------------------------------------------------- #

@@ -621,6 +621,20 @@
   </div></details>
   <div class="sub" id="gex-sub">loading…</div>
   <div id="gex-body"></div>
+
+  <h2 style="margin-top:30px"><span data-i18n="gex.vixTitle">KLCI VIX</span> <span class="muted" style="font-weight:400" data-i18n="gex.vixTitleSub">— synthetic 30-day volatility index</span></h2>
+  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="gex.vixExplain">
+    Bursa's KLCI options are too thin for a true VIX, so this is a <b>synthetic</b> fear gauge: it blends
+    <b>Yang-Zhang realized volatility</b> (which uses the open/high/low/close) with an <b>EWMA</b>
+    conditional-vol estimate, expressed like the VIX — an annualized % roughly one month ahead. When the
+    line pushes above the <b>90th-percentile</b> band it signals <b>fear</b> (often near a capitulation
+    bottom); below the <b>10th-percentile</b> band it signals <b>complacency</b> (calm that can let risk
+    build up). The purple diamond, when shown, is the volatility <b>implied by near-the-money KLCI
+    warrants</b> — the market's forward-looking read — pulled from the GEX chain above. The grey line is
+    the KLCI itself, for context.
+  </div></details>
+  <div class="sub" id="vix-sub">loading…</div>
+  <div id="vix-body"></div>
 </section>
 
 <!-- MARKET INDEX PAGE: FBM Mid 70 / ACE / EMAS / Fledgling index health -->
@@ -825,6 +839,8 @@ const I18N = {
     "gex.sentExplain":"Each bar shows how professional analysts currently rate one KLCI stock, from <b>Strong Buy</b> (dark green) to <b>Strong Sell</b> (red). The <b>score</b> next to each bar squeezes those ratings into one number from <b>−1</b> (everyone says sell) to <b>+1</b> (everyone says buy), with the number of analysts in brackets — more analysts means a more reliable score. The gauge on the right combines every rating on every stock into one overall market mood. Click a stock's name to open its price chart.",
     "gex.gexTitle":"KLCI Warrant Gamma Exposure (GEX)","gex.gexTitleSub":"— issuer hedging map",
     "gex.gexExplain":"Banks that issue KLCI warrants must constantly buy and sell FKLI futures to hedge them. This page maps where that hedging is concentrated. Bars grow <b>downward</b> because issuers are always \"short gamma\" — near those strikes their hedging <b>amplifies</b> market moves instead of damping them. The <b>gamma trough</b> (purple line) marks the index level with the strongest such pressure: expect faster, choppier moves if the KLCI trades into that zone. The readout box combines this with today's market breadth into one practical takeaway.",
+    "gex.vixTitle":"KLCI VIX","gex.vixTitleSub":"— synthetic 30-day volatility index",
+    "gex.vixExplain":"Bursa's KLCI options are too thin for a true VIX, so this is a <b>synthetic</b> fear gauge: it blends <b>Yang-Zhang realized volatility</b> (which uses the open/high/low/close) with an <b>EWMA</b> conditional-vol estimate, expressed like the VIX — an annualized % roughly one month ahead. When the line pushes above the <b>90th-percentile</b> band it signals <b>fear</b> (often near a capitulation bottom); below the <b>10th-percentile</b> band it signals <b>complacency</b> (calm that can let risk build up). The purple diamond, when shown, is the volatility <b>implied by near-the-money KLCI warrants</b> — the market's forward-looking read — pulled from the GEX chain above. The grey line is the KLCI itself, for context.",
     "fbm.title":"Malaysia market indexes","fbm.titleSub":"— FBM index health & per-sector health (%)",
     "fbm.intro":"Breadth-and-momentum Index Health over each index's constituents (equal-weight proxy — these indexes have no Yahoo symbol). First build downloads every member's prices, so a panel can take a minute.",
     "fbm.explain":"<b>Index Health %</b> measures how broadly an index is rising: every constituent is checked on four signals — above its moving average, making new highs vs new lows, positive momentum, and RSI — and the results are averaged. <b>+100%</b> means every stock passes every check, <b>−100%</b> means every stock fails; around <b>0</b> the market is mixed. The green/red histogram shows how that health has evolved; the line above it is the index itself (an equal-weight proxy, since these indexes have no public price feed). The sector bars underneath show which industries inside the index are driving or dragging it, with the number of member stocks in brackets and the 5-day change.",
@@ -920,6 +936,8 @@ const I18N = {
     "gex.sentExplain":"每根柱状图显示专业分析师目前对一只 KLCI 成分股的评级，从<b>强力买入</b>（深绿）到<b>强力卖出</b>（红）。柱旁的<b>评分</b>将这些评级归纳为一个数值，从 <b>−1</b>（全部看空）到 <b>+1</b>（全部看多），括号内为分析师人数——人数越多评分越可靠。右侧的仪表将所有股票的所有评级汇总为整体市场情绪。点击股票名称可打开其价格图表。",
     "gex.gexTitle":"KLCI 权证伽马敞口 (GEX)","gex.gexTitleSub":"— 发行商对冲图",
     "gex.gexExplain":"发行 KLCI 权证的银行必须不断买卖 FKLI 期货来对冲。本页显示这些对冲集中在何处。柱状图向<b>下</b>延伸，因为发行商始终“做空伽马”——在这些行使价附近，其对冲会<b>放大</b>而非抑制市场波动。<b>伽马谷</b>（紫线）标示对冲压力最强的指数水平：若 KLCI 进入该区域，预计波动更快、更震荡。解读框将其与当日市场广度结合为一个实用结论。",
+    "gex.vixTitle":"KLCI VIX","gex.vixTitleSub":"— 合成 30 天波动率指数",
+    "gex.vixExplain":"马来西亚 KLCI 期权流动性太低，无法计算真正的 VIX，因此这是一个<b>合成</b>恐慌指标：它将<b>杨-张（Yang-Zhang）已实现波动率</b>（使用开/高/低/收盘价）与 <b>EWMA</b> 条件波动率估计相结合，以类似 VIX 的方式表达——年化百分比、约一个月前瞻。当曲线突破<b>第 90 百分位</b>带时，表示<b>恐慌</b>（通常接近抛售底部）；跌破<b>第 10 百分位</b>带时，表示<b>自满</b>（平静可能让风险悄悄累积）。紫色菱形（如显示）是<b>近价平 KLCI 权证隐含</b>的波动率——市场的前瞻性读数，取自上方的 GEX 权证链。灰线为 KLCI 指数本身，供参考。",
     "fbm.title":"马来西亚市场指数","fbm.titleSub":"— FBM 指数健康与各板块健康（%）",
     "fbm.intro":"基于广度与动量的指数健康，覆盖每个指数的成分股（等权代理——这些指数没有 Yahoo 代码）。首次加载会下载每只成分股的价格，因此每个面板可能需要约一分钟。",
     "fbm.explain":"<b>指数健康 %</b> 衡量指数上涨的广泛程度：对每只成分股检查四个信号——高于其均线、创新高对创新低、正动量、以及 RSI——并取平均。<b>+100%</b> 表示每只股票都通过所有检查，<b>−100%</b> 表示全部未通过；接近 <b>0</b> 表示市场分化。绿/红柱状图显示健康度的演变；上方的线是指数本身（等权代理，因为这些指数没有公开价格源）。下方的板块条显示指数内部哪些行业在带动或拖累，括号内为成分股数量及 5 日变化。",
@@ -1011,8 +1029,8 @@ function setLang(lang){
   const openGex=$("#page-gex").classList.contains("open");
   const openFbm=$("#page-fbm").classList.contains("open");
   const openRa=$("#page-ra").classList.contains("open");
-  SENT_LOADED=GEX_LOADED=FBM_LOADED=RA_LOADED=false;   // force re-render when reopened
-  if(openGex){ SENT_LOADED=GEX_LOADED=true; loadSentiment(); loadGex(); }
+  SENT_LOADED=GEX_LOADED=VIX_LOADED=FBM_LOADED=RA_LOADED=false;   // force re-render when reopened
+  if(openGex){ SENT_LOADED=GEX_LOADED=VIX_LOADED=true; loadSentiment(); loadGex(); loadVix(); }
   else if(openFbm){ FBM_LOADED=true; loadFbm(); }
   else if(openRa){ RA_LOADED=true; loadRiskAppetite(); }
   else if($("#page-portfolio").classList.contains("open")){ renderPfTabs(); loadPortfolio(); }
@@ -1799,7 +1817,7 @@ async function loadNews(){
 /* ---------------- GEX page (analyst sentiment + warrant GEX) ---------------- */
 const RATING_META=[["strongBuy","Strong Buy","#1a9641"],["buy","Buy","#a6d96a"],
   ["hold","Hold","#bdbdbd"],["sell","Sell","#fdae61"],["strongSell","Strong Sell","#d7191c"]];
-let SENT_LOADED=false, GEX_LOADED=false, FBM_LOADED=false, RA_LOADED=false, FF_LOADED=false;
+let SENT_LOADED=false, GEX_LOADED=false, VIX_LOADED=false, FBM_LOADED=false, RA_LOADED=false, FF_LOADED=false;
 
 // views: the chart dashboard ('chart') and the full pages ('gex','fbm','ra')
 function showPage(name){
@@ -1813,7 +1831,7 @@ function showPage(name){
   $("#page-portfolio").classList.toggle("open", name==="portfolio");
   document.querySelectorAll("nav a").forEach(a=>
     a.classList.toggle("active", a.id==="nav-"+name || (name==="chart"&&a.id==="nav-chart")));
-  if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); }
+  if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); if(!VIX_LOADED)loadVix(); }
   if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
   if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
   if(name==="fundflow" && !FF_LOADED){ FF_LOADED=true; loadFundFlow(); }
@@ -2032,7 +2050,7 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
   // gamma bands at each strike (left panel), red alpha ∝ |net gex|
   byStrike.forEach(b=>{ const a=Math.min(0.5,0.5*Math.abs(b.net_gex)/gmax);
     out+=`<rect x="${pxL}" y="${(Y(b.strike)-band).toFixed(1)}" width="${splitX-pxL}"`+
-      ` height="${(2*band).toFixed(1)}" fill="#c62828" opacity="${a.toFixed(3)}"><title>K=${b.strike}: net GEX RM ${(b.net_gex/1e6).toFixed(1)} mn/1%</title></rect>`; });
+      ` height="${(2*band).toFixed(1)}" fill="#2563eb" opacity="${a.toFixed(3)}"><title>K=${b.strike}: net GEX RM ${(b.net_gex/1e6).toFixed(1)} mn/1%</title></rect>`; });
   // price line
   const X=i=>pxL+(splitX-pxL)*i/Math.max(1,close.length-1);
   out+=`<polyline points="${close.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}"`+
@@ -2055,7 +2073,7 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
   const bh=Math.max(4,band*1.4);
   byStrike.forEach(b=>{ const g=b.net_gex/1e6, w=rpW*Math.abs(g)/gmaxMn;
     out+=`<rect x="${(rpR-w).toFixed(1)}" y="${(Y(b.strike)-bh/2).toFixed(1)}" width="${w.toFixed(1)}"`+
-      ` height="${bh.toFixed(1)}" fill="#c62828" opacity=".82"><title>K=${b.strike}: net GEX RM ${g.toFixed(1)} mn/1%</title></rect>`+
+      ` height="${bh.toFixed(1)}" fill="#2563eb" opacity=".85"><title>K=${b.strike}: net GEX RM ${g.toFixed(1)} mn/1%</title></rect>`+
       `<text x="${(rpR-w-3).toFixed(1)}" y="${(Y(b.strike)+3).toFixed(1)}" font-size="8" fill="var(--muted)" text-anchor="end">${b.strike}</text>`; });
   out+=`<line x1="${rpL}" y1="${Y(spot)}" x2="${rpR}" y2="${Y(spot)}" stroke="var(--accent)" stroke-dasharray="4 3"/>`+
     `<line x1="${rpL}" y1="${Y(trough)}" x2="${rpR}" y2="${Y(trough)}" stroke="#a855f7" stroke-dasharray="2 3"/>`+
@@ -2096,7 +2114,7 @@ async function loadGex(retried,force){
     const bandsPanel=(kl&&kl.close&&kl.close.length)?`
       <div class="gx-panel" style="margin-top:14px"><h3>KLCI close + issuer gamma bands (darker = more short gamma) · GEX by strike</h3>
         <div style="overflow-x:auto">${gexPriceBandsSVG(kl.dates,kl.close,g.by_strike,spotLine,troughLevel)}</div>
-        <div class="legend"><span><i style="background:#c62828"></i>issuer gamma band / GEX at strike</span>
+        <div class="legend"><span><i style="background:#2563eb"></i>issuer gamma band / GEX at strike</span>
           <span><i style="background:var(--accent)"></i>spot ${spotLine.toFixed(0)}</span>
           <span><i style="background:#a855f7"></i>gamma trough ${troughLevel.toFixed(0)}</span></div></div>`:"";
     body.innerHTML=`
@@ -2159,6 +2177,151 @@ async function loadGex(retried,force){
     const msg=e.message==="timeout"?"still building the GEX map (first build scrapes ~20 warrant pages — retry in a minute)…":e.message;
     body.innerHTML=`<div class="muted">${msg} <a class="reset-link" id="gex-retry">retry</a></div>`;
     $("#gex-retry").onclick=()=>loadGex();
+  }
+}
+
+/* ---------------- KLCI VIX (synthetic 30-day volatility) ------------------ */
+// Synthetic VIX line with fear/complacency percentile bands, the Yang-Zhang
+// realized-vol underlay, the KLCI close on a secondary axis, and an optional
+// near-ATM warrant-implied-vol marker (from the GEX chain on the same page).
+function vixChartSVG(d, warrantIv, nWarr){
+  const W=920,H=340,padT=18,padB=26,padL=42,padR=44;
+  const n=d.dates.length, plotL=padL, plotR=W-padR, plotW=plotR-plotL;
+  const vixv=d.vix.filter(v=>v!=null), yzv=d.yz.filter(v=>v!=null);
+  const volMax=Math.max(d.p90, ...vixv, ...yzv, warrantIv!=null?warrantIv:0)*1.12;
+  const volMin=Math.max(0, Math.min(d.p10, ...vixv, ...yzv)*0.85);
+  const YL=v=>padT+(H-padT-padB)*(volMax-v)/((volMax-volMin)||1);
+  const cl=d.klci_close.filter(v=>v!=null);
+  const cMin=Math.min(...cl)-8, cMax=Math.max(...cl)+8;
+  const YR=v=>padT+(H-padT-padB)*(cMax-v)/((cMax-cMin)||1);
+  const X=i=>plotL+plotW*i/Math.max(1,n-1);
+  let out="";
+  // left (volatility %) axis ticks
+  for(let t=0;t<=4;t++){ const v=volMin+(volMax-volMin)*t/4;
+    out+=`<line x1="${plotL}" y1="${YL(v).toFixed(1)}" x2="${plotR}" y2="${YL(v).toFixed(1)}" stroke="var(--line2)" opacity=".35"/>`+
+      `<text x="${plotL-5}" y="${(YL(v)+3).toFixed(1)}" font-size="9" fill="var(--muted)" text-anchor="end">${v.toFixed(0)}%</text>`; }
+  // right (KLCI close) axis ticks
+  for(let t=0;t<=4;t++){ const v=cMin+(cMax-cMin)*t/4;
+    out+=`<text x="${plotR+5}" y="${(YR(v)+3).toFixed(1)}" font-size="9" fill="#8a8f98" text-anchor="start">${v.toFixed(0)}</text>`; }
+  // percentile regime bands
+  out+=`<line x1="${plotL}" y1="${YL(d.p90).toFixed(1)}" x2="${plotR}" y2="${YL(d.p90).toFixed(1)}" stroke="var(--red)" stroke-dasharray="5 3" stroke-width="1.1"/>`+
+    `<text x="${plotL+3}" y="${(YL(d.p90)-3).toFixed(1)}" font-size="9" fill="var(--red)">90th pct ${d.p90.toFixed(0)}% · FEAR</text>`;
+  out+=`<line x1="${plotL}" y1="${YL(d.p10).toFixed(1)}" x2="${plotR}" y2="${YL(d.p10).toFixed(1)}" stroke="var(--green)" stroke-dasharray="5 3" stroke-width="1.1"/>`+
+    `<text x="${plotL+3}" y="${(YL(d.p10)+11).toFixed(1)}" font-size="9" fill="var(--green)">10th pct ${d.p10.toFixed(0)}% · COMPLACENCY</text>`;
+  // KLCI close (secondary axis, grey)
+  const clPts=d.klci_close.map((v,i)=>v==null?null:`${X(i).toFixed(1)},${YR(v).toFixed(1)}`).filter(Boolean).join(" ");
+  out+=`<polyline points="${clPts}" fill="none" stroke="#8a8f98" stroke-width="1.1" opacity=".75" vector-effect="non-scaling-stroke"/>`;
+  // Yang-Zhang realized underlay
+  const yzPts=d.yz.map((v,i)=>v==null?null:`${X(i).toFixed(1)},${YL(v).toFixed(1)}`).filter(Boolean).join(" ");
+  out+=`<polyline points="${yzPts}" fill="none" stroke="var(--red)" stroke-width="0.9" opacity=".4" vector-effect="non-scaling-stroke"/>`;
+  // KLCI VIX line
+  const vxPts=d.vix.map((v,i)=>v==null?null:`${X(i).toFixed(1)},${YL(v).toFixed(1)}`).filter(Boolean).join(" ");
+  out+=`<polyline points="${vxPts}" fill="none" stroke="var(--red)" stroke-width="1.8" vector-effect="non-scaling-stroke"/>`;
+  // warrant-implied-vol marker (purple diamond) at the last point
+  if(warrantIv!=null){ const wx=X(n-1), wy=YL(warrantIv), s=5;
+    out+=`<polygon points="${wx},${(wy-s).toFixed(1)} ${(wx+s)},${wy.toFixed(1)} ${wx},${(wy+s).toFixed(1)} ${(wx-s)},${wy.toFixed(1)}"`+
+      ` fill="#a855f7" stroke="var(--panel)" stroke-width="1"><title>Near-ATM warrant IV ${warrantIv.toFixed(1)}% (${nWarr} warrant${nWarr===1?"":"s"})</title></polygon>`; }
+  // date ticks
+  const dtick=i=>`<text x="${X(i).toFixed(1)}" y="${H-8}" font-size="8.5" fill="var(--muted)"`+
+    ` text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${d.dates[i]}</text>`;
+  out+=dtick(0)+dtick(Math.floor(n/2))+dtick(n-1);
+  // hover crosshair layer
+  out+=`<line class="vxx-v" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" opacity=".85" style="display:none"/>`+
+    `<circle class="vxx-dot" r="3" fill="var(--red)" stroke="var(--panel)" stroke-width="1" style="display:none"/>`;
+  const meta={W,H,padT,padB,plotL,plotR,volMin,volMax,cMin,cMax,n,dates:d.dates,vix:d.vix,yz:d.yz,close:d.klci_close};
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;cursor:crosshair"`+
+    ` class="vxx" data-vxx='${JSON.stringify(meta).replace(/'/g,"&#39;")}'>${out}</svg>`;
+}
+function wireVixXhair(scope){
+  scope.querySelectorAll("svg.vxx").forEach(svg=>{
+    let m; try{ m=JSON.parse(svg.dataset.vxx); }catch(_){ return; }
+    const plotW=m.plotR-m.plotL;
+    const X=i=>m.plotL+plotW*i/Math.max(1,m.n-1);
+    const YL=v=>m.padT+(m.H-m.padT-m.padB)*(m.volMax-v)/((m.volMax-m.volMin)||1);
+    const vline=svg.querySelector(".vxx-v"), dot=svg.querySelector(".vxx-dot"), tip=mlxTip();
+    const hide=()=>{ vline.style.display="none"; dot.style.display="none"; tip.style.display="none"; };
+    const move=e=>{
+      const ctm=svg.getScreenCTM(); if(!ctm) return;
+      const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+      const p=pt.matrixTransform(ctm.inverse());
+      if(p.x<m.plotL-4 || p.x>m.plotR+4){ hide(); return; }
+      let i=Math.round((p.x-m.plotL)/(plotW||1)*(m.n-1)); i=Math.max(0,Math.min(m.n-1,i));
+      const vx=m.vix[i]; if(vx==null){ hide(); return; }
+      const x=X(i);
+      vline.setAttribute("x1",x); vline.setAttribute("x2",x); vline.style.display="";
+      dot.setAttribute("cx",x); dot.setAttribute("cy",YL(vx).toFixed(1)); dot.style.display="";
+      const row=(c,tag,val,suf)=>val==null?"":`<div class="r"><i style="background:${c}"></i><span>${tag}</span><b>${(+val).toFixed(suf==="%"?1:2)}${suf==="%"?"%":""}</b></div>`;
+      tip.innerHTML=`<div class="d">${m.dates[i]}</div>`+
+        row("var(--red)","KLCI VIX",vx,"%")+
+        row("var(--red)","Yang-Zhang",m.yz[i],"%")+
+        row("#8a8f98","KLCI close",m.close[i],"");
+      tip.style.display="block";
+      let tx=e.clientX+14, ty=e.clientY+14;
+      if(tx+tip.offsetWidth>window.innerWidth-8) tx=e.clientX-tip.offsetWidth-14;
+      if(ty+tip.offsetHeight>window.innerHeight-8) ty=e.clientY-tip.offsetHeight-14;
+      tip.style.left=tx+"px"; tip.style.top=ty+"px";
+    };
+    svg.addEventListener("mousemove",move);
+    svg.addEventListener("mouseleave",hide);
+  });
+}
+// near-ATM, short-dated warrant-implied vol from the GEX chain (matches the
+// notebook overlay): |strike/spot-1| <= 7%, 7-90 days to expiry, non-fallback IV.
+function warrantIvFromGex(g, spot){
+  try{
+    if(!g||!g.warrants||!g.warrants.length||!spot) return null;
+    const defIv=(g.assumptions&&g.assumptions.default_iv)||0.12;
+    const iv=g.warrants.filter(w=>w.iv!=null&&w.t_years!=null&&w.strike!=null
+        && Math.abs(w.iv-defIv)>1e-6
+        && w.t_years*365>=7 && w.t_years*365<=90
+        && Math.abs(w.strike/spot-1)<=0.07)
+      .map(w=>w.iv*100).sort((a,b)=>a-b);
+    if(!iv.length) return null;
+    const mid=Math.floor(iv.length/2);
+    const med=iv.length%2?iv[mid]:(iv[mid-1]+iv[mid])/2;
+    return {iv:med, n:iv.length};
+  }catch(_){ return null; }
+}
+async function loadVix(retried,force){
+  const body=$("#vix-body");
+  body.innerHTML=skeleton(3);
+  try{
+    const d=await getCached("/api/vix/klci",15*60000,120000,force);
+    if(d&&d.warming){ warmingRetry(body, ()=>loadVix(), "Preparing the KLCI VIX (computing the volatility history)…", d.error); return; }
+    VIX_LOADED=true;
+    // near-ATM warrant IV marker — reuse the GEX payload the page already caches
+    let wiv=null; try{ const g=await getCached("/api/gex/klci",15*60000,5000,false);
+      if(g&&!g.warming){ let sp=g.spot; try{ const kl=await getCached("/api/index/KLCI/ohlc?lookback=6mo",15*60000,5000,false);
+        if(kl&&kl.close&&kl.close.length) sp=+kl.close[kl.close.length-1]; }catch(_){}
+        wiv=warrantIvFromGex(g, sp); } }catch(_){ wiv=null; }
+    const regClr=d.regime==="FEAR"?"var(--red)":d.regime==="COMPLACENCY"?"var(--green)":"var(--muted)";
+    $("#vix-sub").innerHTML=`as of ${d.as_of.replace("T"," ")} · current <b>${d.current.toFixed(1)}%</b> · `+
+      `${d.percentile.toFixed(0)}th percentile (${d.history_years}y) · <b style="color:${regClr}">${d.regime}</b>`;
+    const readTxt=(LANG==="zh"&&d.read_zh)?d.read_zh:d.read;
+    body.innerHTML=`
+      <div class="cards">
+        <div class="card"><div class="k">KLCI VIX</div><div class="v" style="color:${regClr}">${d.current.toFixed(1)}%</div>
+          <div class="d">synthetic 30-day, annualized</div></div>
+        <div class="card"><div class="k">Percentile</div><div class="v">${d.percentile.toFixed(0)}th</div>
+          <div class="d">vs ${d.history_years}y history</div></div>
+        <div class="card"><div class="k">Regime</div><div class="v" style="color:${regClr};font-size:20px">${d.regime}</div>
+          <div class="d">10th–90th pct bands</div></div>
+        ${wiv?`<div class="card"><div class="k">Warrant IV</div><div class="v" style="color:#a855f7">${wiv.iv.toFixed(1)}%</div>
+          <div class="d">${wiv.n} near-ATM warrant${wiv.n===1?"":"s"}</div></div>`:""}
+      </div>
+      ${readTxt?`<div class="readout"><b>${d.regime}. </b>${readTxt}</div>`:""}
+      <div class="gx-panel" style="margin-top:14px"><h3>KLCI VIX — synthetic 30-day volatility index (trailing 12 months)</h3>
+        <div style="overflow-x:auto">${vixChartSVG(d, wiv?wiv.iv:null, wiv?wiv.n:0)}</div>
+        <div class="legend"><span><i style="background:var(--red)"></i>KLCI VIX</span>
+          <span><i style="background:var(--red);opacity:.4"></i>Yang-Zhang realized</span>
+          <span><i style="background:#8a8f98"></i>KLCI close</span>
+          ${wiv?`<span><i style="background:#a855f7"></i>near-ATM warrant IV</span>`:""}</div></div>`;
+    wireVixXhair(body);
+  }catch(e){
+    if(e.message==="timeout"&&!retried){autoRetry(body,loadVix,"The KLCI VIX",20);return;}
+    const msg=e.message==="timeout"?"still building the KLCI VIX…":e.message;
+    body.innerHTML=`<div class="muted">${msg} <a class="reset-link" id="vix-retry">retry</a></div>`;
+    $("#vix-retry").onclick=()=>loadVix();
   }
 }
 
@@ -3124,7 +3287,7 @@ function boot(){
     loadHealth(); loadRotation();
   });
   // per-page refresh buttons re-fetch (server serves cached + refreshes behind)
-  $("#gex-refresh").onclick=()=>{loadSentiment(false,true);loadGex(false,true);};
+  $("#gex-refresh").onclick=()=>{loadSentiment(false,true);loadGex(false,true);loadVix(false,true);};
   $("#fbm-refresh").onclick=()=>loadFbm(true);
   $("#ra-refresh").onclick=()=>loadRiskAppetite(false,true);
   // Esc anywhere (outside an input) returns to the chart
