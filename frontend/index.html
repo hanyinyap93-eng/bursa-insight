@@ -2185,8 +2185,9 @@ async function loadGex(retried,force){
 // realized-vol underlay, the KLCI close on a secondary axis, and an optional
 // near-ATM warrant-implied-vol marker (from the GEX chain on the same page).
 function vixChartSVG(d, warrantIv, nWarr){
-  const W=920,H=340,padT=18,padB=26,padL=42,padR=44;
+  const W=920,H=340,padT=18,padB=26,padL=58,padR=60;
   const n=d.dates.length, plotL=padL, plotR=W-padR, plotW=plotR-plotL;
+  const midY=((padT+(H-padB))/2).toFixed(1);
   const vixv=d.vix.filter(v=>v!=null), yzv=d.yz.filter(v=>v!=null);
   const volMax=Math.max(d.p90, ...vixv, ...yzv, warrantIv!=null?warrantIv:0)*1.12;
   const volMin=Math.max(0, Math.min(d.p10, ...vixv, ...yzv)*0.85);
@@ -2203,6 +2204,9 @@ function vixChartSVG(d, warrantIv, nWarr){
   // right (KLCI close) axis ticks
   for(let t=0;t<=4;t++){ const v=cMin+(cMax-cMin)*t/4;
     out+=`<text x="${plotR+5}" y="${(YR(v)+3).toFixed(1)}" font-size="9" fill="#8a8f98" text-anchor="start">${v.toFixed(0)}</text>`; }
+  // axis titles — VIX / Yang-Zhang read on the LEFT (vol %) scale, KLCI on the RIGHT
+  out+=`<text x="13" y="${midY}" font-size="9.5" fill="var(--muted)" text-anchor="middle" transform="rotate(-90 13 ${midY})">Annualized volatility (%)</text>`;
+  out+=`<text x="${W-13}" y="${midY}" font-size="9.5" fill="#8a8f98" text-anchor="middle" transform="rotate(-90 ${W-13} ${midY})">FBM KLCI close</text>`;
   // percentile regime bands
   out+=`<line x1="${plotL}" y1="${YL(d.p90).toFixed(1)}" x2="${plotR}" y2="${YL(d.p90).toFixed(1)}" stroke="var(--red)" stroke-dasharray="5 3" stroke-width="1.1"/>`+
     `<text x="${plotL+3}" y="${(YL(d.p90)-3).toFixed(1)}" font-size="9" fill="var(--red)">90th pct ${d.p90.toFixed(0)}% · FEAR</text>`;
