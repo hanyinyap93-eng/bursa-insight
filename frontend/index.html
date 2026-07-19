@@ -2189,7 +2189,12 @@ function vixChartSVG(d, warrantIv, nWarr){
   const n=d.dates.length, plotL=padL, plotR=W-padR, plotW=plotR-plotL;
   const midY=((padT+(H-padB))/2).toFixed(1);
   const vixv=d.vix.filter(v=>v!=null), yzv=d.yz.filter(v=>v!=null);
-  const volMax=Math.max(d.p90, ...vixv, ...yzv, warrantIv!=null?warrantIv:0)*1.12;
+  // Scale the volatility axis to the VIX / realized-vol series (and the percentile
+  // bands) ONLY — deliberately NOT the near-ATM warrant IV, which can spike to several
+  // hundred % and would otherwise flatten the whole VIX line into an unreadable sliver
+  // at the bottom. The warrant IV is still shown, but clamped to the top of the scale
+  // with an "off-scale" label (see the diamond marker below).
+  const volMax=Math.max(d.p90, ...vixv, ...yzv)*1.12;
   const volMin=Math.max(0, Math.min(d.p10, ...vixv, ...yzv)*0.85);
   const YL=v=>padT+(H-padT-padB)*(volMax-v)/((volMax-volMin)||1);
   const cl=d.klci_close.filter(v=>v!=null);
@@ -2228,10 +2233,16 @@ function vixChartSVG(d, warrantIv, nWarr){
   // KLCI VIX line
   const vxPts=d.vix.map((v,i)=>v==null?null:`${X(i).toFixed(1)},${YL(v).toFixed(1)}`).filter(Boolean).join(" ");
   out+=`<polyline points="${vxPts}" fill="none" stroke="var(--red)" stroke-width="1.8" vector-effect="non-scaling-stroke"/>`;
-  // warrant-implied-vol marker (purple diamond) at the last point
-  if(warrantIv!=null){ const wx=X(n-1), wy=YL(warrantIv), s=5;
+  // warrant-implied-vol marker (purple diamond) at the last point. If the IV sits
+  // above the volatility scale (common — short-dated warrant IV can run to 100s of %),
+  // clamp it to the top edge and label it, so it stays visible without distorting the axis.
+  if(warrantIv!=null){ const wx=X(n-1), s=5;
+    const aboveScale=warrantIv>volMax;
+    const wy=Math.max(padT+s+1, Math.min(H-padB-s-1, YL(warrantIv)));
     out+=`<polygon points="${wx},${(wy-s).toFixed(1)} ${(wx+s)},${wy.toFixed(1)} ${wx},${(wy+s).toFixed(1)} ${(wx-s)},${wy.toFixed(1)}"`+
-      ` fill="#a855f7" stroke="var(--panel)" stroke-width="1"><title>Near-ATM warrant IV ${warrantIv.toFixed(1)}% (${nWarr} warrant${nWarr===1?"":"s"})</title></polygon>`; }
+      ` fill="#a855f7" stroke="var(--panel)" stroke-width="1"><title>Near-ATM warrant IV ${warrantIv.toFixed(1)}% (${nWarr} warrant${nWarr===1?"":"s"})</title></polygon>`;
+    if(aboveScale){ out+=`<text x="${(wx-s-3).toFixed(1)}" y="${(wy+3).toFixed(1)}" font-size="8.5" fill="#a855f7" text-anchor="end">warrant IV ${warrantIv.toFixed(0)}% ↑</text>`; }
+  }
   // date ticks
   const dtick=i=>`<text x="${X(i).toFixed(1)}" y="${H-8}" font-size="8.5" fill="var(--muted)"`+
     ` text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${d.dates[i]}</text>`;
