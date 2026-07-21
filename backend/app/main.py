@@ -629,22 +629,6 @@ def risk_appetite_correlation(lookback: str = "1y"):
         raise HTTPException(502, f"risk appetite correlation failed: {exc}")
 
 
-@app.get("/api/risk-appetite/gtrends", dependencies=[Depends(auth_mod.require_auth)])
-def risk_appetite_gtrends(keyword: str = Query(..., min_length=1, max_length=80),
-                          lookback: str = "1y"):
-    """Google Trends search-interest correlation with FBM KLCI / Mid 70 / EMAS /
-    ACE over 3mo/6mo/1y/2y. FREE/unofficial source (pytrends) — Google may
-    rate-limit the server (returns 503); each (keyword, lookback) result is
-    cached for 6h."""
-    from .core import google_trends as gtrends_mod
-    try:
-        return gtrends_mod.correlate(keyword, lookback)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc))
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(503, f"google trends unavailable: {exc}")
-
-
 @app.get("/api/fbm/indexes", dependencies=[Depends(auth_mod.require_auth)])
 def fbm_indexes():
     """Registry of the FBM market indexes served by /api/fbm/{key}."""

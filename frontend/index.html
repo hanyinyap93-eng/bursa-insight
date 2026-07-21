@@ -673,22 +673,6 @@
   </div></details>
   <div class="sub" id="ra-sub">loading…</div>
   <div id="ra-body"></div>
-
-  <!-- Google Trends correlation (free/unofficial pytrends source) -->
-  <div class="gx-panel" id="gtrends-panel" style="margin-top:16px">
-    <h3 class="panel-head">
-      <span>Google Trends correlation
-        <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">— does public search interest move with the market?</span></span>
-      <span class="lookback" id="gt-lb"></span>
-    </h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:2px 0 10px">
-      <input id="gt-keyword" type="text" maxlength="80"
-        placeholder="Type a keyword — e.g. recession, EPF, gold, layoff"
-        style="flex:1;min-width:220px;padding:8px 11px;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;color:var(--text);font-size:13px" />
-      <button class="chip" id="gt-go">Check</button>
-    </div>
-    <div id="gt-body" class="muted" style="font-size:12px">Type a keyword and pick a period (3M / 6M / 1Y / 2Y) to see how Malaysian Google search interest correlates with the FBM KLCI, Mid 70, EMAS and ACE indices.</div>
-  </div>
 </section>
 
 <!-- FUND FLOW PAGE: KLCI 30 tick-rule net buy/sell -->
@@ -2677,58 +2661,6 @@ function wireBarXhair(scope){
   });
 }
 
-/* ---------------- Google Trends correlation (R-Appetite page) ---------------- */
-let GT_LB="1y";
-function gtRender(d){
-  const box=$("#gt-body"); if(!box) return;
-  const cs=d.correlations||[];
-  const rows=cs.map(c=>{
-    const has=c.correlation!=null;
-    const v=has?Math.max(-1,Math.min(1,c.correlation)):0;
-    const w=(Math.abs(v)*50).toFixed(1), left=v>=0?50:(50-Math.abs(v)*50).toFixed(1);
-    const col=v>=0?"var(--green)":"var(--red)";
-    return `<tr><td><b>${c.index}</b></td>
-      <td class="num ${has?(v>=0?'pos':'neg'):''}">${has?c.correlation.toFixed(2):"—"}</td>
-      <td style="min-width:170px"><div style="position:relative;height:9px;background:var(--panel2);border-radius:5px">
-        <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line2)"></div>
-        <div style="position:absolute;top:0;bottom:0;left:${left}%;width:${w}%;background:${col};border-radius:3px"></div></div></td>
-      <td class="num muted">${c.n||0}</td></tr>`;}).join("");
-  const best=cs.filter(c=>c.correlation!=null).sort((a,b)=>Math.abs(b.correlation)-Math.abs(a.correlation))[0];
-  const interest=(d.series&&d.series.interest)||[];
-  const bestLvl=best&&d.series.levels?(d.series.levels[best.index]||[]).filter(v=>v!=null):[];
-  box.innerHTML=`
-    <div style="overflow-x:auto"><table><thead><tr>
-      <th>Index</th><th class="num">Corr</th><th>−1 &nbsp;·&nbsp; 0 &nbsp;·&nbsp; +1</th><th class="num">wks</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>
-    <div class="gx-grid" style="margin-top:12px">
-      <div class="gx-panel"><h3>Search interest — "${d.keyword}" (${d.geo}, 0–100)</h3>${lineSVG(interest,56)}</div>
-      ${best&&bestLvl.length?`<div class="gx-panel"><h3>${best.index} — rebased 100 <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(most correlated: ${best.correlation.toFixed(2)})</span></h3>${lineSVG(bestLvl,56)}</div>`:""}
-    </div>
-    <div class="muted" style="font-size:11px;margin-top:9px">Weekly search interest vs weekly index return · as of ${d.as_of||"—"} · red bar = moves <b>with</b> the market (positive), green = <b>against</b> it. ${d.note||""}</div>`;
-}
-async function loadGtrends(){
-  const inp=$("#gt-keyword"), box=$("#gt-body"); if(!inp||!box) return;
-  const kw=(inp.value||"").trim();
-  if(!kw){ box.innerHTML=`<div class="muted" style="font-size:12px">Type a keyword and pick a period to begin.</div>`; return; }
-  box.innerHTML=skeleton(3);
-  try{
-    const d=await get(`/api/risk-appetite/gtrends?keyword=${encodeURIComponent(kw)}&lookback=${GT_LB}`, 60000);
-    gtRender(d);
-  }catch(e){
-    const rateLimited=/rate|429|too many|unavailable|timeout/i.test(e.message||"");
-    const msg=rateLimited
-      ? "Google Trends is rate-limiting the server right now (common with the free source — it blocks datacenter IPs). Please try again in a minute."
-      : (e.message||"failed");
-    box.innerHTML=`<div class="muted" style="font-size:12px">${msg} <a class="reset-link" id="gt-retry">retry</a></div>`;
-    const r=$("#gt-retry"); if(r) r.onclick=loadGtrends;
-  }
-}
-function wireGtrends(){
-  const inp=$("#gt-keyword"); if(!inp) return;
-  raPills($("#gt-lb"), GT_LB, l=>{ GT_LB=l; if(($("#gt-keyword").value||"").trim()) loadGtrends(); });
-  const go=$("#gt-go"); if(go) go.onclick=loadGtrends;
-  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); loadGtrends(); } });
-}
 async function loadRiskAppetite(retried,force,roll){
   const body=$("#ra-body"), lb=roll||RA_ROLL;
   body.innerHTML=skeleton(4);
@@ -3380,7 +3312,6 @@ function boot(){
   $("#gex-refresh").onclick=()=>{loadSentiment(false,true);loadGex(false,true);loadVix(false,true);};
   $("#fbm-refresh").onclick=()=>loadFbm(true);
   $("#ra-refresh").onclick=()=>loadRiskAppetite(false,true);
-  wireGtrends();   // Google Trends keyword-correlation panel on the R-Appetite page
   // Esc anywhere (outside an input) returns to the chart
   window.addEventListener("keydown",e=>{
     if(e.key!=="Escape") return;
