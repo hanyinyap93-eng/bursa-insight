@@ -799,6 +799,7 @@ def _r(x):
 # auto-deploy SKIPS commits that only touch ../frontend/. A frontend-only change
 # therefore needs a Manual Deploy in the Render dashboard, or any commit that also
 # touches a file under backend/ (like this note) to trigger a deploy.
+# (Deploy triggers so far: Investing.com widgets added, then removed.)
 # --------------------------------------------------------------------------- #
 from pathlib import Path  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
