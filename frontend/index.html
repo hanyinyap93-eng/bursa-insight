@@ -622,17 +622,6 @@
   <div class="sub" id="gex-sub">loading…</div>
   <div id="gex-body"></div>
 
-  <!-- KLCI Futures (FKLI) — free TradingView widget (delayed BMD data). It's an
-       external embed, so it can't be drawn onto the GEX chart above or coloured
-       vs the KLCI spot; TradingView colours it by its own daily change. -->
-  <h2 style="margin-top:30px">KLCI Futures <span class="muted" style="font-weight:400">— FKLI (front month, delayed)</span></h2>
-  <div class="gx-panel">
-    <div class="tradingview-widget-container" id="fkli-widget" style="min-height:220px"></div>
-    <div class="muted" style="font-size:11px;margin-top:6px">
-      Live FKLI chart via <a href="https://www.tradingview.com/symbols/MYX-FKLI1!/" rel="nofollow" target="_blank" style="color:var(--accent)">TradingView</a> · data delayed ~15&nbsp;min · green/red is FKLI's own day change, not vs KLCI spot.
-    </div>
-  </div>
-
   <h2 style="margin-top:30px"><span data-i18n="gex.vixTitle">KLCI VIX</span> <span class="muted" style="font-weight:400" data-i18n="gex.vixTitleSub">— synthetic 30-day volatility index</span></h2>
   <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="gex.vixExplain">
     Bursa's KLCI options are too thin for a true VIX, so this is a <b>synthetic</b> fear gauge: it blends
@@ -1889,7 +1878,7 @@ function showPage(name){
   $("#page-portfolio").classList.toggle("open", name==="portfolio");
   document.querySelectorAll("nav a").forEach(a=>
     a.classList.toggle("active", a.id==="nav-"+name || (name==="chart"&&a.id==="nav-chart")));
-  if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); if(!VIX_LOADED)loadVix(); loadFkliWidget(); }
+  if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); if(!VIX_LOADED)loadVix(); }
   if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
   if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
   if(name==="fundflow" && !FF_LOADED){ FF_LOADED=true; loadFundFlow(); }
@@ -2361,28 +2350,6 @@ function warrantIvFromGex(g, spot){
     const med=iv.length%2?iv[mid]:(iv[mid-1]+iv[mid])/2;
     return {iv:med, n:iv.length};
   }catch(_){ return null; }
-}
-// FKLI (KLCI Futures) — inject the free TradingView Symbol-Overview widget once,
-// lazily when the GEX page first opens (a hidden container would init at 0 width).
-let FKLI_LOADED=false;
-function loadFkliWidget(){
-  if(FKLI_LOADED) return;
-  const host=$("#fkli-widget"); if(!host) return;
-  FKLI_LOADED=true;
-  host.innerHTML='<div class="tradingview-widget-container__widget"></div>';
-  const cfg={
-    symbols:[["FTSE Bursa Malaysia KLCI Futures","MYX:FKLI1!|3M"]],
-    chartOnly:false, width:"100%", height:220, locale:"en",
-    colorTheme:"dark", autosize:true, showVolume:false, isTransparent:true,
-    changeMode:"price-and-percent", chartType:"area",
-    lineColor:"#4b83ff", topColor:"rgba(75,131,255,0.25)", bottomColor:"rgba(75,131,255,0)",
-    fontFamily:"inherit", valuesTracking:"1", scalePosition:"right"
-  };
-  const s=document.createElement("script");
-  s.type="text/javascript"; s.async=true;
-  s.src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js";
-  s.textContent=JSON.stringify(cfg);
-  host.appendChild(s);
 }
 async function loadVix(retried,force){
   const body=$("#vix-body");
