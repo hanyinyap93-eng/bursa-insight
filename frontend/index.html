@@ -833,7 +833,13 @@ const $ = s=>document.querySelector(s);
 let LB = "1y";                 // panel data lookback (health / indexes / quotes)
 let TERM = "short";            // Index Health horizon: short 10/25, mid 20/50, long 50/100
 try{ const t=localStorage.getItem("term"); if(["short","mid","long"].includes(t)) TERM=t; }catch(_){}
-const CHART_LB = "5y";         // chart fetches long history; scroll-wheel zoom changes the view
+// Lazy chart history: first paint fetches only 1y (fast, small payload); the
+// full 5y history is fetched ONCE per symbol when the user scrolls/zooms near
+// the left edge, and prepended without moving the view.
+const CHART_LB_FAST = "1y", CHART_LB_FULL = "5y";
+let CHART_FULL=false;          // current symbol already has full history?
+let CHART_UPGRADING=false;     // full-history fetch in flight?
+let CHART_LOADSEQ=0;           // guards against symbol switches mid-fetch
 let SYMBOL = {ticker:"1155.KL", code:"1155", name:"MAYBANK"};
 let QUOTES = [];
 let CHART_INIT = false;
@@ -1468,6 +1474,11 @@ function initChart(){
   vol=chart.addHistogramSeries({priceFormat:{type:'volume'},priceScaleId:'vol'});
   chart.priceScale('vol').applyOptions({scaleMargins:{top:0.82,bottom:0}});
   chart.subscribeCrosshairMove(p=>updateOHLC(p));
+  // lazy history: when scrolling/zooming within ~15 bars of the left edge of the
+  // loaded data, fetch the full 5y once and prepend it (see upgradeChartHistory)
+  chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{
+    if(r && r.from<15) upgradeChartHistory();
+  });
   ro=new ResizeObserver(()=>{chart.applyOptions({});});
   ro.observe($("#chart"));
 }
@@ -1624,31 +1635,67 @@ function updateOHLC(p){
   const c=bar.close>=bar.open?'var(--up)':'var(--down)';
   el.innerHTML=`<span style="color:${c}">O <b>${fmtP(bar.open,3)}</b> H <b>${fmtP(bar.high,3)}</b> L <b>${fmtP(bar.low,3)}</b> C <b>${fmtP(bar.close,3)}</b></span>`;
 }
+function fetchChartData(sym, lb){
+  return sym.isIndex
+    ? get(`/api/index/${encodeURIComponent(sym.indexKey||sym.code)}/ohlc?lookback=${lb}`, 120000)
+    : get(`/api/stock/${encodeURIComponent(sym.ticker)}?lookback=${lb}`, 20000);
+}
+// Render an OHLC payload into the chart. keep = {range, oldN} preserves the
+// current view when a longer history replaces a shorter one (bars are indexed
+// by position, so the visible range shifts by the number of prepended bars).
+function renderBars(d, keep){
+  const bars=d.dates.map((t,i)=>({time:t,open:d.open[i],high:d.high[i],low:d.low[i],close:d.close[i],volume:d.volume[i]||0}))
+    .filter(b=>b.open!=null&&b.close!=null);
+  LASTBARS=bars;
+  candle.setData(bars.map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
+  vol.setData(bars.map(b=>({time:b.time,value:b.volume,
+    color:(b.close>=b.open)?'rgba(38,166,154,.5)':'rgba(239,83,80,.5)'})));
+  // ONE canonical bar set: candles, volume, overlays and the RSI/MACD sub-panes
+  // all use these exact times → identical bar indexing → stacked panes stay
+  // pixel-aligned with the candles.
+  CHART_SRC={dates:bars.map(b=>b.time), close:bars.map(b=>b.close),
+             high:bars.map(b=>b.high), low:bars.map(b=>b.low)};
+  const N=bars.length;
+  if(keep&&keep.range){
+    const added=N-keep.oldN;   // bars prepended by the longer history
+    chart.timeScale().setVisibleLogicalRange({from:keep.range.from+added, to:keep.range.to+added});
+  } else {
+    // default view = last ~6 months (~126 trading days)
+    const SHOW=126;
+    chart.timeScale().setVisibleLogicalRange({from:Math.max(0,N-SHOW), to:N+1});
+  }
+  applyIndicators();   // draw whichever indicators are toggled on
+}
+// Fetch the full 5y history once the user nears the left edge of the 1y data,
+// prepending it without moving the view (lazy history: fast first paint).
+async function upgradeChartHistory(){
+  if(CHART_FULL||CHART_UPGRADING||!SYMBOL) return;
+  const seq=CHART_LOADSEQ, sym=SYMBOL;
+  CHART_UPGRADING=true;
+  try{
+    const d=await fetchChartData(sym, CHART_LB_FULL);
+    if(seq!==CHART_LOADSEQ) return;             // user switched symbol meanwhile
+    renderBars(d, {range:chart.timeScale().getVisibleLogicalRange(), oldN:LASTBARS.length});
+    CHART_FULL=true;
+    updateOHLC(null);
+  }catch(_){ /* keep the 1y view; another scroll retries */ }
+  finally{ CHART_UPGRADING=false; }
+}
 async function loadChart(sym){
   SYMBOL=sym;
+  const seq=++CHART_LOADSEQ;
+  CHART_FULL=false;
   $("#ch-sym").textContent=sym.code;
   $("#ch-name").textContent=sym.name;
   $("#lbl-price").textContent=sym.code+" · "+sym.name;
   try{
-    const d = sym.isIndex
-      ? await get(`/api/index/${encodeURIComponent(sym.indexKey||sym.code)}/ohlc?lookback=${CHART_LB}`, 120000)
-      : await get(`/api/stock/${encodeURIComponent(sym.ticker)}?lookback=${CHART_LB}`, 20000);
+    const d = await fetchChartData(sym, CHART_LB_FAST);
+    if(seq!==CHART_LOADSEQ) return;             // a newer symbol load superseded this one
     if(d.name){ $("#ch-name").textContent=d.name; $("#lbl-price").textContent=sym.code+" · "+d.name; }
-    const bars=d.dates.map((t,i)=>({time:t,open:d.open[i],high:d.high[i],low:d.low[i],close:d.close[i],volume:d.volume[i]||0}))
-      .filter(b=>b.open!=null&&b.close!=null);
-    LASTBARS=bars;
-    candle.setData(bars.map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
-    vol.setData(bars.map(b=>({time:b.time,value:b.volume,
-      color:(b.close>=b.open)?'rgba(38,166,154,.5)':'rgba(239,83,80,.5)'})));
-    // ONE canonical bar set: candles, volume, overlays and the RSI/MACD sub-panes
-    // all use these exact times → identical bar indexing → stacked panes stay
-    // pixel-aligned with the candles.
-    CHART_SRC={dates:bars.map(b=>b.time), close:bars.map(b=>b.close),
-               high:bars.map(b=>b.high), low:bars.map(b=>b.low)};
-    // default view = last ~6 months (~126 trading days); scroll-wheel zooms out to 5y
-    const N=bars.length, SHOW=126;
-    chart.timeScale().setVisibleLogicalRange({from:Math.max(0,N-SHOW), to:N+1});
-    applyIndicators();   // draw whichever indicators are toggled on
+    renderBars(d);
+    // fetch the full history quietly AFTER first paint (scrolling left also
+    // triggers it sooner); seq guard skips it if the user switched symbol
+    setTimeout(()=>{ if(seq===CHART_LOADSEQ) upgradeChartHistory(); }, 2500);
     const last=d.close[d.close.length-1], prev=d.close[d.close.length-2]||last;
     const chg=last-prev, pct=prev?chg/prev*100:0;
     $("#ch-price").textContent=fmtP(last,3);
