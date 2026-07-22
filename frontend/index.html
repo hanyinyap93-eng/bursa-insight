@@ -2091,7 +2091,7 @@ function renderSortableTable(container,rows,cols,opts={}){
 // KLCI close + issuer gamma bands (left) sharing its price axis with a
 // horizontal GEX-by-strike bar panel (right) — the notebook's Health x GEX
 // Panels A & B. Bands shade red ∝ |net GEX| at each strike.
-function gexPriceBandsSVG(dates,close,byStrike,spot,trough,fkli){
+function gexPriceBandsSVG(dates,close,byStrike,spot,trough){
   const W=920,H=360,padT=16,padB=26,padL=44,splitR=250; // right GEX panel width
   const pxR=W-8, pxL=padL, splitX=pxR-splitR;            // price panel: padL..splitX
   const strikes=byStrike.map(b=>b.strike);
@@ -2118,13 +2118,6 @@ function gexPriceBandsSVG(dates,close,byStrike,spot,trough,fkli){
     `<text x="${pxL+3}" y="${Y(trough)-3}" font-size="9" fill="#a855f7">gamma trough ${trough.toFixed(0)}</text>`;
   out+=`<line x1="${pxL}" y1="${Y(spot)}" x2="${splitX}" y2="${Y(spot)}" stroke="var(--accent)" stroke-dasharray="4 3" stroke-width="1.4"/>`+
     `<text x="${splitX-3}" y="${Y(spot)-3}" font-size="9" fill="var(--accent)" text-anchor="end">spot ${spot.toFixed(0)}</text>`;
-  // manual FKLI (KLCI Futures) level — GREEN above the KLCI close (spot), RED below.
-  // Drawn only inside the visible price range so an out-of-range typo can't distort it.
-  if(fkli!=null && isFinite(fkli) && fkli>=lo && fkli<=hi){
-    const up=fkli>=spot, col=up?'var(--green)':'var(--red)', diff=fkli-spot;
-    out+=`<line x1="${pxL}" y1="${Y(fkli).toFixed(1)}" x2="${splitX}" y2="${Y(fkli).toFixed(1)}" stroke="${col}" stroke-width="1.8"/>`+
-      `<text x="${pxL+3}" y="${(Y(fkli)+(up?-4:12)).toFixed(1)}" font-size="9" font-weight="700" fill="${col}">FKLI ${fkli.toFixed(1)} (${diff>=0?'+':''}${diff.toFixed(1)} vs spot)</text>`;
-  }
   // date ticks on the price panel
   const dtick=i=>`<text x="${X(i)}" y="${H-8}" font-size="8.5" fill="var(--muted)"`+
     ` text-anchor="${i===0?'start':i===close.length-1?'end':'middle'}">${dates[i]}</text>`;
@@ -2167,10 +2160,6 @@ async function loadGex(retried,force){
     // own spot can lag (it is cached far longer than the price series). Fall back
     // to g.spot only when the close series is unavailable.
     const spotLine=(kl&&kl.close&&kl.close.length)?+kl.close[kl.close.length-1]:g.spot;
-    // manual FKLI value (set by a signed-in user; no free live feed exists)
-    let fkliData={value:null,updated_at:null};
-    try{ const fk=await get("/api/fkli"); if(fk&&typeof fk==="object") fkliData=fk; }catch(_){}
-    const fkliVal=(fkliData.value!=null)?+fkliData.value:null;
     $("#gex-sub").textContent=`as of ${g.as_of.replace("T"," ")} · spot ${spotLine.toLocaleString()} · `+
       `${g.warrants_live} live warrants (${g.calls} calls, ${g.puts} puts) · issuers short gamma; negative = destabilising hedge flow`;
     const r=g.readout||{};
@@ -2182,19 +2171,10 @@ async function loadGex(retried,force){
     // price + gamma-bands panel (only when the KLCI close series is available)
     const bandsPanel=(kl&&kl.close&&kl.close.length)?`
       <div class="gx-panel" style="margin-top:14px"><h3>KLCI close + issuer gamma bands (darker = more short gamma) · GEX by strike</h3>
-        <div style="overflow-x:auto">${gexPriceBandsSVG(kl.dates,kl.close,g.by_strike,spotLine,troughLevel,fkliVal)}</div>
+        <div style="overflow-x:auto">${gexPriceBandsSVG(kl.dates,kl.close,g.by_strike,spotLine,troughLevel)}</div>
         <div class="legend"><span><i style="background:var(--red)"></i>issuer gamma band / GEX at strike</span>
           <span><i style="background:var(--accent)"></i>spot ${spotLine.toFixed(0)}</span>
-          <span><i style="background:#a855f7"></i>gamma trough ${troughLevel.toFixed(0)}</span>
-          ${fkliVal!=null?`<span><i style="background:${fkliVal>=spotLine?'var(--green)':'var(--red)'}"></i>FKLI ${fkliVal.toFixed(1)}</span>`:""}</div>
-        <div class="muted" style="font-size:11px;margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <span>Manual FKLI (no free live feed) —</span>
-          <input id="fkli-input" type="number" step="0.5" placeholder="e.g. 1719.5" value="${fkliVal!=null?fkliVal:''}"
-            style="width:100px;padding:4px 7px;background:var(--panel2);border:1px solid var(--line2);border-radius:6px;color:var(--text);font-size:12px" />
-          <button class="chip" id="fkli-save">Save</button>
-          ${fkliData.updated_at?`<span>· set ${fkliData.updated_at.replace('T',' ').replace('Z',' UTC')}</span>`:""}
-          <span>· green above / red below spot</span>
-        </div></div>`:"";
+          <span><i style="background:#a855f7"></i>gamma trough ${troughLevel.toFixed(0)}</span></div></div>`:"";
     body.innerHTML=`
       <div class="cards">
         <div class="card"><div class="k">Net issuer GEX</div>
@@ -2250,17 +2230,6 @@ async function loadGex(retried,force){
     ], {sortKey:"gex_rm_per_1pct", dir:1});   // most-negative (strongest short gamma) first
     wireCatLegends(body);   // Call/Put legend toggles on the GEX-by-strike chart
     wireGexXhair(body);     // hover crosshair: date + KLCI close on the price panel
-    // manual FKLI value: save + redraw the chart with the new line
-    const fkliSave=$("#fkli-save");
-    if(fkliSave) fkliSave.onclick=async()=>{
-      const v=parseFloat(($("#fkli-input").value||"").trim());
-      if(!isFinite(v)){ toast("Enter a numeric FKLI value","err"); return; }
-      fkliSave.disabled=true; fkliSave.textContent="Saving…";
-      try{ await post("/api/fkli",{value:v}); await loadGex(false,true); }
-      catch(err){ fkliSave.disabled=false; fkliSave.textContent="Save"; toast("Save failed: "+(err.message||""),"err"); }
-    };
-    const fkliInput=$("#fkli-input");
-    if(fkliInput) fkliInput.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#fkli-save").click(); } });
   }catch(e){
     if(e.message==="timeout"&&!retried){autoRetry(body,loadGex,"The warrant GEX map",20);return;}
     const msg=e.message==="timeout"?"still building the GEX map (first build scrapes ~20 warrant pages — retry in a minute)…":e.message;

@@ -156,49 +156,6 @@ def public_config():
             "signup_email_domains": sorted(_SIGNUP_DOMAINS)}
 
 
-# --------------------------------------------------------------------------- #
-# Manual FKLI (KLCI Futures) value. No free live feed reaches the server
-# (klsescreener has no futures; Investing/Bursa 403 datacenter IPs), so a
-# signed-in user sets the FKLI level by hand (e.g. from their broker terminal)
-# and it's drawn on the GEX price-bands chart, coloured green/red vs the KLCI
-# spot. Persisted as one small JSON on the cache disk so it survives redeploys.
-# --------------------------------------------------------------------------- #
-def _fkli_path():
-    return service.CACHE_DIR / "fkli_manual.json"
-
-
-@app.get("/api/fkli")
-def get_fkli():
-    import json
-    try:
-        p = _fkli_path()
-        if p.exists():
-            return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        pass
-    return {"value": None, "updated_at": None}
-
-
-@app.post("/api/fkli", dependencies=[Depends(auth_mod.require_auth)])
-def set_fkli(body: dict):
-    import datetime
-    import json
-    try:
-        val = float(body.get("value"))
-    except (TypeError, ValueError):
-        raise HTTPException(400, "value must be a number")
-    if not (100.0 <= val <= 5000.0):
-        raise HTTPException(400, "value out of plausible range for FKLI")
-    data = {"value": round(val, 2),
-            "updated_at": datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"}
-    try:
-        service.CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        _fkli_path().write_text(json.dumps(data), encoding="utf-8")
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(500, f"could not save FKLI value: {exc}")
-    return data
-
-
 def _require_email_auth():
     """Reject email endpoints when email sign-in is switched off (Google-only)."""
     if not settings.email_auth_enabled:
