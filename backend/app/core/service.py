@@ -494,23 +494,25 @@ def warm_all():
         # KLCI VIX (light) — one price fetch; keep the GEX page's VIX chart warm
         lambda: get_klci_vix(),
     ]
-    # FBM market indexes × terms — prices shared per index; per-term recompute
-    # is cheap. Warmed here (before the slow scrapes) so the Market Index page
-    # is never a cold on-request build.
+    # FBM market indexes — only the DEFAULT (short) term is pre-warmed to keep the
+    # resident cache small on a 512 MB host; mid/long recompute cheaply on demand
+    # (prices are already cached) the first time a user switches term.
     for k in fbm_mod.FBM_INDEXES:
-        for term in ("short", "mid", "long"):
-            jobs.append(lambda k=k, term=term: get_fbm_health(k, term=term))
-    # Per-sector DETAIL data (default term) so clicking a sector in the right
-    # rail is instant instead of showing "preparing…" on every fresh session.
-    from . import breadth as _breadth
-    for skey in ih.SECTOR_INDEX_CODES:
-        jobs.append(lambda skey=skey: _breadth._sector_data(skey, "1y", "short"))
+        jobs.append(lambda k=k: get_fbm_health(k, term="short"))
+    # NOTE: per-sector DETAIL (clicking a sector in the right rail) is intentionally
+    # NOT pre-warmed — holding all 13 constituent panels resident is the single
+    # biggest memory cost. Each builds on demand (a brief "preparing…" on first
+    # click) and SWR keeps it fresh after that. Re-add here only on a bigger plan.
 
+    import gc
     for fn in jobs:
         try:
             fn()
         except Exception:  # noqa: BLE001
             pass
+        finally:
+            gc.collect()   # release pandas intermediates between heavy builds
+    gc.collect()
 
     # Slow / flaky scrapes LAST, each in its own background thread so neither
     # can block the reliable warming above (the GEX warrant scrape can take
