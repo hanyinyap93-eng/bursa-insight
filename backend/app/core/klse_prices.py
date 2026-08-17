@@ -73,16 +73,11 @@ def history(ticker: str, lookback: str = "5y", resolution: str = "D",
     raise RuntimeError(f"klse history failed for {ticker}: {last}")
 
 
-def close_panel(tickers, lookback: str = "1y", max_workers: int = 8) -> pd.DataFrame:
+def close_panel(tickers, lookback: str = "1y", max_workers: int = 16) -> pd.DataFrame:
     """Close-price panel (Date x ticker) fetched concurrently from the UDF feed.
 
     Columns are keyed by the ORIGINAL ticker (e.g. '^KLSE', '1155.KL') so callers
     that look up a specific symbol keep working.
-
-    Memory: max_workers is kept modest (8) so fewer response buffers + per-symbol
-    Series are alive at once during a build, and the panel is stored as float32 —
-    these wide 200+-stock panels are the app's biggest objects, and float32 halves
-    them with no meaningful loss on 2-3 dp prices (breadth/health maths tolerate it).
     """
     syms = list(dict.fromkeys(tickers))
     out = {}
@@ -99,4 +94,4 @@ def close_panel(tickers, lookback: str = "1y", max_workers: int = 8) -> pd.DataF
                 out[t] = s
     if not out:
         raise RuntimeError("klse close_panel: no data for any symbol")
-    return pd.DataFrame(out).sort_index().astype("float32")
+    return pd.DataFrame(out).sort_index()
