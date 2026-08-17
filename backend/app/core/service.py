@@ -537,6 +537,19 @@ def start_scheduler():
     _scheduler_started = True
     import os
 
+    # LITE BOOT (the default). warm_all() builds many wide price panels at once;
+    # on a 512 MB instance that gets the process OOM-killed during boot, so it
+    # crash-loops and NOTHING ever serves (site 502s). With warming off the app
+    # boots in a few MB and every view builds on demand instead, then stays in
+    # the SWR cache — first visit to a heavy page is slow, the rest are normal.
+    #
+    # On a >= 2 GB plan set BURSA_WARM_ON_BOOT=1 (Render → Environment) to get
+    # proactive warming back, so users never hit a cold build.
+    if os.environ.get("BURSA_WARM_ON_BOOT", "").strip().lower() not in ("1", "true", "yes"):
+        print("[bursa] lite boot: proactive cache warming disabled "
+              "(set BURSA_WARM_ON_BOOT=1 on a larger instance to enable)", flush=True)
+        return
+
     minutes = float(os.environ.get("BURSA_REFRESH_MINUTES", "20"))
     interval = max(60.0, minutes * 60.0)
 
