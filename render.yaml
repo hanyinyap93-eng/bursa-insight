@@ -1,15 +1,15 @@
-# Render.com blueprint — deploys Bursa Insight as a web service + Postgres.
+# Render.com blueprint — deploys Bursa Insight as a single web service.
 # Push the `bursa-insight` folder as your GitHub repo root, then in Render:
 #   New + → Blueprint → pick the repo. It reads this file automatically.
 
-# Hosted Postgres so email/password accounts survive redeploys (SQLite on the
-# web service's disk would be wiped each deploy). The web service reads its URL
-# via the DATABASE_URL env var wired below.
-databases:
-  - name: bursa-db
-    plan: free
-    databaseName: bursa
-    user: bursa
+# NOTE: this used to provision a `plan: free` Postgres. Render DELETES free
+# databases after ~30 days; when it vanished the app could no longer connect and
+# crashed on startup with SQLAlchemy OperationalError (sqlalche.me/e/20/e3q8),
+# so every request — even /health — returned 502 and rolling back could not help
+# (the database is external to the code). Accounts now use the app's built-in
+# SQLite fallback, stored on the persistent disk below so it survives redeploys
+# and never expires. To go back to Postgres, add a paid `databases:` block and
+# re-add a DATABASE_URL env var wired to it (DATABASE_URL takes precedence).
 
 services:
   - type: web
@@ -27,7 +27,8 @@ services:
     # the disk every deploy, forcing a slow cold rebuild (the GEX warrant scrape
     # can take minutes) that times out the first load. BURSA_CACHE_DIR below
     # points the cache at this volume. (A disk pins the service to 1 instance and
-    # a recreate-style deploy — fine for this app.)
+    # a recreate-style deploy — fine for this app.) It also holds the SQLite
+    # accounts database (BURSA_DB_PATH), which is why that data now persists.
     disk:
       name: bursa-cache
       mountPath: /var/data
@@ -38,18 +39,16 @@ services:
       # Point all on-disk caches at the persistent volume above.
       - key: BURSA_CACHE_DIR
         value: /var/data/cache
+      # SQLite accounts/logins/portfolios DB on the persistent disk (see note at
+      # the top). Kept OFF the ephemeral container filesystem so sign-ups are not
+      # wiped on every deploy.
+      - key: BURSA_DB_PATH
+        value: /var/data/bursa.db
       # Signs login/session tokens. Render generates a strong random value on
       # first deploy and keeps it secret — never in git. Do not edit by hand
       # (changing it just logs existing users out).
       - key: BURSA_JWT_SECRET
         generateValue: true
-      # Postgres connection string, injected automatically from the bursa-db
-      # database above. The app normalises the scheme and creates its table on
-      # first boot — no manual setup needed.
-      - key: DATABASE_URL
-        fromDatabase:
-          name: bursa-db
-          property: connectionString
       # OPTIONAL: to point this deployment at a DIFFERENT Google "Sign in with
       # Google" client, add an env var named BURSA_GOOGLE_CLIENT_ID in the Render
       # dashboard (Environment tab). If you don't, the app uses its built-in
