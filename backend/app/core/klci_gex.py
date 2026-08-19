@@ -4,7 +4,8 @@ KLCI index-warrant Gamma Exposure (GEX) — issuer hedging map.
 Backend port of the notebook's Sections 7-8 (klci_gex.py). Pipeline:
 
   1. DISCOVER the live FBMKLCI structured-warrant chain. Layers are merged:
-       [T]  TradingView symbol search (live-only by construction, primary)
+       [K]  klsescreener warrant screener, m_code=0650 (primary; full live chain)
+       [T]  TradingView symbol search (live-only by construction)
        [M]  Macquarie Malaysia warrant-search API (best-effort)
        [i3] i3investor related-warrants pages seeded from known counters
        [L]  legacy klsescreener endpoints (only if still <3 names)
@@ -54,14 +55,14 @@ GEX_HAIRCUT = 0.5    # fraction of issue size assumed investor-held
 GEX_LIVE_CACHE = CACHE_DIR / "klci_live_warrants.csv"
 GEX_LIVE_TTL_H = 12  # hours before re-discovery
 
-# Embedded fallback chain (screener-warrants UI snapshot 2026-07-05; expired
+# Embedded fallback chain (screener-warrants snapshot 2026-08-18; expired
 # names are dropped automatically at fetch). Used only if discovery fails.
 GEX_CODES = [
-    "FBMKLCI-HEK", "FBMKLCI-CRG", "FBMKLCI-HEP", "FBMKLCI-CRF",
-    "FBMKLCI-HEG", "FBMKLCI-CRR", "FBMKLCI-CRJ", "FBMKLCI-HER",
-    "FBMKLCI-HEO", "FBMKLCI-HEM", "FBMKLCI-CRI", "FBMKLCI-HEQ",
-    "FBMKLCI-CRH", "FBMKLCI-HEN", "FBMKLCI-CRQ", "FBMKLCI-HEL",
-    "FBMKLCI-CRB", "FBMKLCI-CRK", "FBMKLCI-HEJ", "FBMKLCI-CRE",
+    "FBMKLCI-CRE", "FBMKLCI-CRH", "FBMKLCI-CRI", "FBMKLCI-CRJ",
+    "FBMKLCI-CRK", "FBMKLCI-CRQ", "FBMKLCI-CRR", "FBMKLCI-CRS",
+    "FBMKLCI-CRT", "FBMKLCI-CRU", "FBMKLCI-HEJ", "FBMKLCI-HEM",
+    "FBMKLCI-HEN", "FBMKLCI-HEO", "FBMKLCI-HEP", "FBMKLCI-HEQ",
+    "FBMKLCI-HER", "FBMKLCI-HES", "FBMKLCI-HET", "FBMKLCI-HEU",
 ]
 
 I3_BASE = "https://klse.i3investor.com"
@@ -73,6 +74,11 @@ MQ_CANDIDATES = [
     "&maturity=all&expiry=all&moneyness=all&effectiveGearing=all&indicator=all",
     "/apimqmy/searchwarrantsdata?underlying=FBMKLCI",
 ]
+
+# klsescreener warrant screener (primary discovery — see _klse_chain).
+# NOTE the underscore: /v2/screener_warrants/... The hyphenated path 404s.
+GEX_KLSE_WARRANTS = GEX_BASE + "/v2/screener_warrants/quote_results"
+GEX_KLSE_MCODE = "0650"      # FBMKLCI underlying (warrant codes are 0650xx)
 
 GEX_TV_QUERIES = ["FBMKLCI-", "FBMKLCI"]
 GEX_TV_ENDPOINTS = [  # TradingView migrated search to v3; try both shapes
@@ -119,6 +125,27 @@ def _harvest(text, found):
         nm = m.group(1).upper()
         found.setdefault(nm, _name_to_code(nm))
     return found
+
+
+def _klse_chain(sess):
+    """{name: code} of live FBMKLCI warrants from klsescreener's warrant screener.
+
+    This is the same list the user sees on /v2/screener-warrants. Two details
+    matter and were previously wrong, which is why this layer silently died and
+    discovery fell through to the embedded snapshot:
+      * the results endpoint is screener_warrants (UNDERSCORE); the old
+        screener-warrants (hyphen) path now 404s;
+      * m_code=0650 filters to the FBMKLCI underlying — without it the response
+        is paginated over every warrant on Bursa and contains no KLCI rows.
+    klsescreener is reachable from Render (it is already the primary price
+    feed), unlike TradingView/Macquarie which can block datacenter IPs, so this
+    runs FIRST.
+    """
+    r = sess.post(GEX_KLSE_WARRANTS, data={"getquote": "1", "m_code": GEX_KLSE_MCODE},
+                  headers=GEX_HEADERS, timeout=45)
+    if not r.ok:
+        return {}
+    return _harvest(r.text, {})
 
 
 def _tv_items(sess, query):
@@ -205,7 +232,12 @@ def gex_discover(sess):
     hdr.update({"Accept": "text/html,application/xhtml+xml,application/json,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.9"})
 
-    try:  # [T] TradingView — live-only by construction (primary)
+    try:  # [K] klsescreener warrant screener — the full live chain, and the one
+          # source proven reachable from Render, so it goes first
+        _merge(_klse_chain(sess), "klsescreener")
+    except Exception:  # noqa: BLE001
+        pass
+    try:  # [T] TradingView — live-only by construction
         _merge(_tv_search(sess), "tradingview")
     except Exception:  # noqa: BLE001
         pass
@@ -229,8 +261,8 @@ def gex_discover(sess):
     # [L] legacy klsescreener endpoints
     if len(found) < 3:
         battery = [
-            ("POST", GEX_BASE + "/v2/screener-warrants/quote_results",
-             {"getquote": "1"}),
+            ("POST", GEX_KLSE_WARRANTS,
+             {"getquote": "1", "m_code": GEX_KLSE_MCODE}),
             ("POST", GEX_BASE + "/v2/screener/quote_results",
              {"getquote": "1", "board": "3", "sector": "24"}),
             ("GET", GEX_BASE + "/v2/announcements/index/1", None),
