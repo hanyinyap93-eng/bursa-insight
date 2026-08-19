@@ -148,6 +148,59 @@ def _klse_chain(sess):
     return _harvest(r.text, {})
 
 
+def _klse_terms(sess):
+    """{name: partial warrant dict} parsed straight from the warrant screener.
+
+    ONE request yields maturity/price/strike/underlying/ratio for the whole
+    chain (wtype falls out of the name: FBMKLCI-Cxx call / -Hxx put). Used as a
+    backstop when a warrant's own page can't be scraped from the server —
+    klsescreener rate-limits a burst of ~20 sequential page fetches from one
+    IP, which is exactly what silently dropped half the chain on Render.
+    Row layout: Name | Maturity | Price | Strike | Mother Share | Ratio | ...
+    """
+    r = sess.post(GEX_KLSE_WARRANTS, data={"getquote": "1", "m_code": GEX_KLSE_MCODE},
+                  headers=GEX_HEADERS, timeout=45)
+    out = {}
+    if not r.ok:
+        return out
+    for tr in _BS(r.text, "html.parser").find_all("tr"):
+        try:
+            a = tr.find("a", string=_re.compile(r"^FBMKLCI-[CH]"))
+            if a is None:
+                continue
+            nm = a.get_text(strip=True).upper()
+            mc = _re.search(r"/v2/stocks/view/(0650[A-Za-z0-9]{2})", a.get("href", ""))
+            tds = [td.get_text(strip=True) for td in tr.find_all("td")]
+            if len(tds) < 6 or not _re.match(r"\d{4}-\d{2}-\d{2}$", tds[1]):
+                continue
+            rm = _re.match(r"([\d.]+)\s*:\s*1", tds[5])
+            out[nm] = dict(
+                name=nm, code=(mc.group(1).upper() if mc else _name_to_code(nm)),
+                wtype="CALL" if nm.split("-")[1].startswith("C") else "PUT",
+                maturity=tds[1],
+                price=float(tds[2].replace(",", "")) if tds[2] else None,
+                strike=float(tds[3].replace(",", "")) if tds[3] else None,
+                underlying=float(tds[4].replace(",", "")) if tds[4] else None,
+                ratio=float(rm.group(1)) if rm else None,
+                issuer=None, issue_size=None)
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
+def _issue_size_from_announcements(sess, code):
+    """Issue size from the Bursa term-sheet title on the announcements page."""
+    try:
+        ra = sess.get(f"{GEX_BASE}/v2/announcements/stock/{code}",
+                      headers=GEX_HEADERS, timeout=30)
+        m = _re.search(r"UP TO\s+([\d,]+)\s+EUROPEAN", ra.text, _re.I)
+        if m:
+            return float(m.group(1).replace(",", ""))
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def _tv_items(sess, query):
     import json as _j
     for url in GEX_TV_ENDPOINTS:
@@ -399,14 +452,8 @@ def gex_fetch_warrant(sess, name, code):
                 w["issue_size"]]):
         w = _i3_terms(sess, name, w["code"], w)
     if not w.get("issue_size"):
-        try:  # term-sheet title on the warrant's announcements page
-            ra = sess.get(f"{GEX_BASE}/v2/announcements/stock/{w['code']}",
-                          headers=GEX_HEADERS, timeout=30)
-            m2 = _re.search(r"UP TO\s+([\d,]+)\s+EUROPEAN", ra.text, _re.I)
-            if m2:
-                w["issue_size"] = float(m2.group(1).replace(",", ""))
-        except Exception:  # noqa: BLE001
-            pass
+        # term-sheet title on the warrant's announcements page
+        w["issue_size"] = _issue_size_from_announcements(sess, w["code"])
     if not all([w["wtype"], w["maturity"], w["strike"], w["ratio"]]):
         return None
     return w
@@ -537,9 +584,26 @@ def run_klci_gex(spot=None, haircut=GEX_HAIRCUT, use_live_cache=True):
         warr = {c.upper(): _name_to_code(c.upper()) for c in GEX_CODES}
         wsrc = {k: "fallback" for k in warr}
     det = []
+    terms = {}
+    try:  # whole-chain terms in ONE request — backstop for the per-page scrapes
+        terms = _klse_terms(sess)
+    except Exception:  # noqa: BLE001
+        pass
     for nm, cd in sorted(warr.items()):
         w = gex_fetch_warrant(sess, nm, cd)
-        if w:
+        t = terms.get(nm)
+        if t:
+            if w is None:      # page scrape failed → the screener terms stand in
+                w = dict(t)
+            else:              # fill anything the page scrape missed
+                for k, v in t.items():
+                    if not w.get(k) and v is not None:
+                        w[k] = v
+            if not w.get("issue_size"):
+                w["issue_size"] = _issue_size_from_announcements(
+                    sess, w.get("code") or cd)
+        if w and all([w.get("wtype"), w.get("maturity"),
+                      w.get("strike"), w.get("ratio")]):
             det.append(w)
         _time.sleep(0.8)
     dfw = pd.DataFrame(det)
