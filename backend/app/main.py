@@ -32,27 +32,21 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from .config import settings
 from .core import alerts as alerts_mod
-from .core import auth as auth_mod
 from .core import backtest as bt
 from .core import breadth as breadth_mod
 from .core import index_health as ih
-from .core import logins as logins_mod
-from .core import mailer as mailer_mod
 from .core import news as news_mod
-from .core import portfolio as portfolio_mod
 from .core import screener as screener_mod
 from .core import service
-from .core import users as users_mod
 from .schemas import (
     AlertRequest, BacktestHealthRequest, BacktestScreenRequest,
-    EmailLoginRequest, EmailSignupRequest, GoogleAuthRequest, PortfolioAddRequest,
-    PortfolioNameRequest, ResendRequest, ScreenRequest, VerifyRequest,
+    ScreenRequest,
 )
 
 log = logging.getLogger("bursa.api")
@@ -126,267 +120,14 @@ def liveness():
 
 
 # --------------------------------------------------------------------------- #
-# Auth — verify a Google ID token server-side, then mint our own session JWT.
-# The gated routes below require that session JWT (see auth_mod.require_auth).
+# Public config
 # --------------------------------------------------------------------------- #
-_SIGNUP_DOMAINS = {d.strip().lower() for d in settings.signup_email_domains.split(",") if d.strip()}
-
-
-def _signup_domain_ok(email: str) -> bool:
-    """True if this email's domain is allowed to create an email+password account."""
-    if not _SIGNUP_DOMAINS:
-        return True
-    dom = email.rsplit("@", 1)[-1].strip().lower() if "@" in email else ""
-    return dom in _SIGNUP_DOMAINS
-
-
-def _signup_blocked_msg() -> str:
-    doms = " or ".join("@" + d for d in sorted(_SIGNUP_DOMAINS))
-    return (f"During our beta, email sign-up is limited to {doms} addresses. "
-            "You can use “Sign in with Google” with any Google account instead.")
-
 
 @app.get("/api/config")
 def public_config():
-    """Public front-end config resolved at deploy time from env vars, so the
-    Google client ID isn't frozen into the shipped HTML. The page reads this on
-    load and falls back to the built-in <meta> value if it's unreachable."""
-    return {"google_client_id": settings.google_client_id,
-            "email_auth_enabled": settings.email_auth_enabled,
-            "signup_email_domains": sorted(_SIGNUP_DOMAINS)}
-
-
-def _require_email_auth():
-    """Reject email endpoints when email sign-in is switched off (Google-only)."""
-    if not settings.email_auth_enabled:
-        raise HTTPException(404, "email sign-in is disabled; use Google sign-in")
-
-
-@app.post("/api/auth/google")
-def auth_google(req: GoogleAuthRequest):
-    try:
-        claims = auth_mod.verify_google_idtoken(req.credential)
-    except ValueError as exc:
-        raise HTTPException(401, f"Google sign-in rejected: {exc}")
-    except Exception as exc:  # noqa: BLE001 - e.g. Google certs unreachable
-        raise HTTPException(502, f"could not verify Google token: {exc}")
-    logins_mod.record(claims["email"], claims.get("name", ""), "google")
-    return auth_mod.make_session_jwt(claims["email"], claims.get("name", ""))
-
-
-def _verify_link(request: Request, email: str) -> str:
-    """Build the confirmation link the user clicks (points at the SPA, which
-    posts the token to /api/auth/verify)."""
-    base = (settings.public_url or str(request.base_url)).rstrip("/")
-    return f"{base}/?verify={auth_mod.make_verify_token(email)}"
-
-
-def _send_verification(request: Request, email: str) -> dict:
-    """Send (or dev-log) the confirmation email; return the signup response.
-    In dev mode (no SMTP configured) the link is returned so it can be tested."""
-    link = _verify_link(request, email)
-    sent = False
-    try:
-        sent = mailer_mod.send_verification(email, link)
-    except Exception as exc:  # noqa: BLE001 - SMTP failure shouldn't 500 the signup
-        log.warning("verification email to %s failed: %s", email, exc)
-        raise HTTPException(502, f"could not send confirmation email: {exc}")
-    resp = {"pending": True, "email": email}
-    if not sent:                      # dev mode: expose the link for local testing
-        resp["dev_link"] = link
-    return resp
-
-
-@app.post("/api/auth/signup")
-def auth_signup(req: EmailSignupRequest, request: Request):
-    """Create an UNVERIFIED email+password account and email a confirmation link.
-    Returns {pending:true} — no session token until the email is confirmed."""
-    _require_email_auth()
-    if not _signup_domain_ok(users_mod._norm(req.email)):
-        raise HTTPException(400, _signup_blocked_msg())
-    try:
-        users_mod.create_user(req.email, req.password, req.name or "")
-    except ValueError as exc:
-        # if the email exists but is unconfirmed, just (re)send the link
-        existing = users_mod.get_user(req.email)
-        if "already exists" in str(exc) and existing and not existing["verified"]:
-            return _send_verification(request, existing["email"])
-        raise HTTPException(400, str(exc))
-    return _send_verification(request, users_mod._norm(req.email))
-
-
-@app.post("/api/auth/verify")
-def auth_verify(req: VerifyRequest):
-    """Confirm an account from the emailed token, then return a session token
-    (so clicking the link signs the user straight in)."""
-    _require_email_auth()
-    try:
-        email = auth_mod.read_verify_token(req.token)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc))
-    u = users_mod.get_user(email)
-    if u is None:
-        raise HTTPException(404, "account not found")
-    users_mod.mark_verified(email)
-    logins_mod.record(u["email"], u["name"], "email")
-    return auth_mod.make_session_jwt(u["email"], u["name"])
-
-
-# --------------------------------------------------------------------------- #
-# Admin: who has logged in (owner-only)
-# --------------------------------------------------------------------------- #
-def _admin_emails() -> set[str]:
-    return {e.strip().lower() for e in settings.admin_emails.split(",") if e.strip()}
-
-
-@app.get("/api/admin/logins")
-def admin_logins(limit: int = Query(500, ge=1, le=5000),
-                 user=Depends(auth_mod.require_auth)):
-    """List recent successful logins (Google + email), newest first. Restricted
-    to the owner emails in BURSA_ADMIN_EMAILS — any other signed-in user gets 403."""
-    if (user.get("sub") or "").strip().lower() not in _admin_emails():
-        raise HTTPException(403, "admin access required")
-    return {"logins": logins_mod.recent(limit)}
-
-
-@app.post("/api/auth/resend")
-def auth_resend(req: ResendRequest, request: Request):
-    """Resend the confirmation email. Always returns ok (doesn't reveal whether
-    the address is registered); only actually sends for an unverified account."""
-    _require_email_auth()
-    u = users_mod.get_user(req.email)
-    if u is not None and not u["verified"]:
-        try:
-            mailer_mod.send_verification(u["email"], _verify_link(request, u["email"]))
-        except Exception as exc:  # noqa: BLE001 - don't reveal existence; just log
-            log.warning("resend to %s failed: %s", u["email"], exc)
-    return {"ok": True}
-
-
-@app.post("/api/auth/login")
-def auth_login(req: EmailLoginRequest):
-    """Log in with an email+password account and return a session token.
-    Refuses unverified accounts (403) so the caller can prompt to confirm."""
-    _require_email_auth()
-    try:
-        u = users_mod.authenticate(req.email, req.password)
-    except ValueError as exc:
-        raise HTTPException(401, str(exc))
-    if not u["verified"]:
-        raise HTTPException(403, "Please confirm your email first — check your inbox for the link.")
-    logins_mod.record(u["email"], u["name"], "email")
-    return auth_mod.make_session_jwt(u["email"], u["name"])
-
-
-# --------------------------------------------------------------------------- #
-# Portfolio (per signed-in user): holdings + buy-and-hold past performance
-# --------------------------------------------------------------------------- #
-@app.get("/api/portfolio")
-def portfolio_list(user=Depends(auth_mod.require_auth)):
-    return {"holdings": portfolio_mod.list_holdings(user["sub"])}
-
-
-@app.post("/api/portfolio")
-def portfolio_add(req: PortfolioAddRequest, user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.add_holding(user["sub"], req.code, req.ticker,
-                                         req.name or "", req.shares, req.buy_date)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc))
-
-
-@app.delete("/api/portfolio/{hid}")
-def portfolio_remove(hid: int, user=Depends(auth_mod.require_auth)):
-    if not portfolio_mod.remove_holding(user["sub"], hid):
-        raise HTTPException(404, "holding not found")
-    return {"deleted": hid}
-
-
-@app.get("/api/portfolio/performance")
-def portfolio_performance(user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.performance(user["sub"])
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"portfolio performance failed: {exc}")
-
-
-# --------------------------------------------------------------------------- #
-# Multiple named portfolios (up to 3) with CAPM/MPT analysis + rebalance advice
-# --------------------------------------------------------------------------- #
-@app.get("/api/portfolios")
-def portfolios_list(user=Depends(auth_mod.require_auth)):
-    return {"portfolios": portfolio_mod.list_portfolios(user["sub"])}
-
-
-@app.post("/api/portfolios")
-def portfolios_create(req: PortfolioNameRequest, user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.create_portfolio(user["sub"], req.name)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc))
-
-
-@app.patch("/api/portfolios/{pid}")
-def portfolios_rename(pid: int, req: PortfolioNameRequest,
-                      user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.rename_portfolio(user["sub"], pid, req.name)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc))
-
-
-@app.delete("/api/portfolios/{pid}")
-def portfolios_delete(pid: int, user=Depends(auth_mod.require_auth)):
-    if not portfolio_mod.delete_portfolio(user["sub"], pid):
-        raise HTTPException(404, "portfolio not found")
-    return {"deleted": pid}
-
-
-@app.get("/api/portfolios/{pid}/holdings")
-def portfolio_holdings(pid: int, user=Depends(auth_mod.require_auth)):
-    return {"holdings": portfolio_mod.list_holdings(user["sub"], pid)}
-
-
-@app.post("/api/portfolios/{pid}/holdings")
-def portfolio_holdings_add(pid: int, req: PortfolioAddRequest,
-                           user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.add_holding(user["sub"], req.code, req.ticker,
-                                         req.name or "", req.shares, req.buy_date, pid=pid)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc))
-
-
-@app.delete("/api/portfolios/{pid}/holdings/{hid}")
-def portfolio_holdings_remove(pid: int, hid: int, user=Depends(auth_mod.require_auth)):
-    if not portfolio_mod.remove_holding(user["sub"], hid, pid=pid):
-        raise HTTPException(404, "holding not found")
-    return {"deleted": hid}
-
-
-@app.get("/api/portfolios/{pid}/performance")
-def portfolio_perf_scoped(pid: int, user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.performance(user["sub"], pid)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"portfolio performance failed: {exc}")
-
-
-@app.get("/api/portfolios/{pid}/analysis")
-def portfolio_analysis(pid: int, user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.analyze_portfolio(user["sub"], pid)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"portfolio analysis failed: {exc}")
-
-
-@app.get("/api/portfolios/{pid}/correlation")
-def portfolio_correlation(pid: int, lookback: str = "2y",
-                          user=Depends(auth_mod.require_auth)):
-    try:
-        return portfolio_mod.portfolio_correlation(user["sub"], pid, lookback)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"portfolio correlation failed: {exc}")
+    """Public front-end config. Sign-in was removed: every data endpoint is
+    open, so this only reports that no auth provider is configured."""
+    return {"auth_required": False}
 
 
 # --------------------------------------------------------------------------- #
@@ -540,7 +281,7 @@ def screener_run(req: ScreenRequest):
 # --------------------------------------------------------------------------- #
 # Analyst sentiment & warrant GEX (KLCI)
 # --------------------------------------------------------------------------- #
-@app.get("/api/sentiment/analyst", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/sentiment/analyst")
 def analyst_sentiment(index: str = "KLCI", force: bool = False):
     """Malaysia analyst sentiment over the KLCI constituents: per-stock
     recommendation counts + -1..+1 scores and the overall gauge. Never blocks:
@@ -557,7 +298,7 @@ def analyst_sentiment(index: str = "KLCI", force: bool = False):
         raise HTTPException(502, f"analyst sentiment failed: {exc}")
 
 
-@app.get("/api/fundflow", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/fundflow")
 def fund_flow(force: bool = False):
     """KLCI 30 tick-rule fund flow (1-month net buy/sell per constituent, per
     sector, and the latest day ranked). Never blocks: serves the cached payload
@@ -571,7 +312,7 @@ def fund_flow(force: bool = False):
         raise HTTPException(502, f"fund flow failed: {exc}")
 
 
-@app.get("/api/gex/klci", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/gex/klci")
 def klci_gex(force: bool = False):
     """KLCI index-warrant Gamma Exposure: per-warrant issuer GEX, by-strike
     aggregation, net-GEX profile with the gamma trough, and the Index Health x
@@ -587,7 +328,7 @@ def klci_gex(force: bool = False):
         raise HTTPException(502, f"GEX compute failed: {exc}")
 
 
-@app.get("/api/vix/klci", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/vix/klci")
 def klci_vix(force: bool = False):
     """Synthetic KLCI VIX — 30-day volatility index (Yang-Zhang realized blended
     with an EWMA conditional-vol proxy), annualized %, with 10th/90th-percentile
@@ -606,7 +347,7 @@ def klci_vix(force: bool = False):
 # --------------------------------------------------------------------------- #
 # FBM market indexes (Mid 70 / ACE / EMAS / Fledgling)
 # --------------------------------------------------------------------------- #
-@app.get("/api/risk-appetite", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/risk-appetite")
 def risk_appetite(lookback: str = "1y", force: bool = False):
     """Risk appetite: FBM ACE / MID 70 / KLCI index spreads (Ziemba
     turn-of-year & size effect) — H scores, rolling betas, monthly
@@ -621,7 +362,7 @@ def risk_appetite(lookback: str = "1y", force: bool = False):
         raise HTTPException(502, f"risk appetite failed: {exc}")
 
 
-@app.get("/api/risk-appetite/correlation", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/risk-appetite/correlation")
 def risk_appetite_correlation(lookback: str = "1y"):
     """Correlation matrix of the four risk-appetite health-score series
     (ACE-KLCI, 70-KLCI, ACE-70, H_RiskAppetite) over the given lookback."""
@@ -634,14 +375,14 @@ def risk_appetite_correlation(lookback: str = "1y"):
         raise HTTPException(502, f"risk appetite correlation failed: {exc}")
 
 
-@app.get("/api/fbm/indexes", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/fbm/indexes")
 def fbm_indexes():
     """Registry of the FBM market indexes served by /api/fbm/{key}."""
     from .core import fbm_indexes as fbm_mod
     return [{"key": k, **v} for k, v in fbm_mod.FBM_INDEXES.items()]
 
 
-@app.get("/api/fbm/{key}", dependencies=[Depends(auth_mod.require_auth)])
+@app.get("/api/fbm/{key}")
 def fbm_health(key: str, lookback: str = "1y", term: str = "short", force: bool = False):
     """Index Health + per-sector Health % for one FBM market index.
     term: short (10/25) | mid (20/50) | long (50/100). The constituent scrape +

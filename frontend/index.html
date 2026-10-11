@@ -9,12 +9,6 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="manifest" href="site.webmanifest" />
 <meta name="theme-color" content="#000000" />
-<!-- Google Sign-In: paste your OAuth 2.0 Web Client ID here to enable the
-     "Sign in with Google" button (…apps.googleusercontent.com). Leave empty
-     to fall back to the email sign-in. Add your site's origin(s) to the
-     client's "Authorized JavaScript origins" in Google Cloud Console. -->
-<meta name="google-client-id" content="1005786557822-q5i4b4eqbkslkolnro3stbesa4kjg368.apps.googleusercontent.com" />
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="vendor/lightweight-charts.js"></script>
 <style>
   /* Trade Republic–inspired: soft near-black / clean white, muted grays,
@@ -502,7 +496,7 @@
     <div class="search-dd" id="search-dd"></div>
   </div>
   <nav>
-    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-fundflow" data-gated="1" data-i18n="nav.fundflow" title="KLCI 30 tick-rule fund flow (net buy/sell)">Fund Flow</a><a id="nav-gex" data-gated="1" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-gated="1" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-gated="1" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a><a id="nav-portfolio" data-gated="1" data-i18n="nav.portfolio" title="Your portfolio's past performance">Portfolio</a>
+    <a class="active" id="nav-chart" data-i18n="nav.chart" title="Price charts, screener, alerts & backtests">Chart</a><a id="nav-sectors" data-i18n="nav.sectors" title="Sector rotation heatmap (right panel)">Sectors</a><a id="nav-news" data-i18n="nav.news" title="Local + global market news (right panel)">News</a><a id="nav-fundflow" data-i18n="nav.fundflow" title="KLCI 30 tick-rule fund flow (net buy/sell)">Fund Flow</a><a id="nav-gex" data-i18n="nav.gex" title="Analyst sentiment + KLCI warrant Gamma Exposure">GEX</a><a id="nav-fbm" data-i18n="nav.marketIndex" title="FBM Mid 70 / ACE / EMAS / Fledgling index health">Market Index</a><a id="nav-ra" data-i18n="nav.rAppetite" title="Risk appetite: ACE / MID 70 / KLCI spreads">R-Appetite</a>
   </nav>
   <div class="spacer"></div>
   <div id="greeting" class="greet" style="display:none"></div>
@@ -524,7 +518,6 @@
       <line x1="10.5" y1="21" x2="13.5" y2="21"/>
     </svg>
   </button>
-  <button class="btn ghost" id="signin">Sign in</button>
 </header>
 
 <div class="tape"><div class="track" id="tape">Loading market…</div></div>
@@ -696,112 +689,8 @@
 </section>
 
 <!-- PORTFOLIO PAGE: add Bursa stocks (shares + buy date) and see past P&L -->
-<section class="page" id="page-portfolio">
-  <div class="page-tools">
-    <button class="chip" id="pf-refresh" data-i18n="common.refresh" title="Recompute performance">↻ Refresh</button>
-    <span class="muted" style="font-size:11px" data-i18n="common.escHint">Esc returns to the chart</span>
-  </div>
-  <h2><span data-i18n="pf.title">Portfolios</span> <span class="muted" style="font-weight:400" data-i18n="pf.titleSub">— CAPM / mean-variance analysis, rebalancing &amp; index benchmarks</span></h2>
-  <div class="pf-tabs" id="pf-tabs"></div>
-  <details class="explain"><summary data-i18n="common.whatLooking">What am I looking at?</summary><div class="ex-body" data-i18n-html="pf.explain">
-    Keep up to <b>3 named portfolios</b>. Add each holding with its <b>shares</b> and <b>buy date</b>.
-    The tool estimates each portfolio's <b>risk</b> (annualised volatility), <b>Sharpe ratio</b> and CAPM
-    <b>beta/alpha</b> vs the KLCI from ~2 years of daily returns, then recommends the <b>rebalance weights</b>
-    (max-Sharpe headline, min-variance alternative) and advises <b>when to rebalance</b>. The CAPM chart plots
-    your portfolio's risk vs return against the efficient frontier; the benchmark chart rebases your return to
-    100 against the <b>KLCI / Mid 70 / ACE</b> indices. Not investment advice.
-  </div></details>
-
-  <!-- add-holding form -->
-  <div class="gx-panel" style="max-width:880px">
-    <h3 data-i18n="pf.add">Add a holding</h3>
-    <div class="pf-add">
-      <div class="pf-search">
-        <input id="pf-stock" autocomplete="off" data-i18n-ph="pf.stockPh" placeholder="Search stock (code or name)"/>
-        <div class="search-dd" id="pf-stock-dd"></div>
-      </div>
-      <input id="pf-shares" type="number" min="0" step="1" data-i18n-ph="pf.sharesPh" placeholder="Shares"/>
-      <input id="pf-date" type="date"/>
-      <button class="btn" id="pf-add-btn" data-i18n="pf.addBtn">Add</button>
-    </div>
-    <div class="err" id="pf-add-err"></div>
-  </div>
-
-  <div class="sub" id="pf-sub" style="margin-top:14px"></div>
-  <div id="pf-reb-wrap"></div>
-  <div class="cards" id="pf-cards"></div>
-  <div class="gx-grid">
-    <div class="gx-panel" id="pf-chart-panel" style="display:none">
-      <h3><span data-i18n="pf.perf">Portfolio vs benchmark indices</span> <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400" data-i18n="pf.rebased">(rebased to 100 at your earliest buy date)</span></h3>
-      <div id="pf-chart"></div>
-      <div class="legend" id="pf-legend"></div>
-    </div>
-    <div class="gx-panel" id="pf-capm-panel" style="display:none">
-      <h3 data-i18n="pf.capmTitle">CAPM risk–return &amp; efficient frontier</h3>
-      <div id="pf-capm"></div>
-      <div class="legend" id="pf-capm-legend"></div>
-    </div>
-  </div>
-  <div class="gx-grid">
-    <div class="gx-panel" id="pf-reco-panel" style="display:none">
-      <h3 data-i18n="pf.recoTitle">Recommended rebalance weights</h3>
-      <div id="pf-reco"></div>
-    </div>
-    <div class="gx-panel" id="pf-corr-panel" style="display:none">
-      <h3 class="panel-head">
-        <span data-i18n="pf.corrTitle">Stock correlations</span>
-        <span class="lookback" id="pf-corr-lb"></span>
-      </h3>
-      <div id="pf-corr"></div>
-    </div>
-  </div>
-  <div id="pf-body"></div>
-</section>
 
 <!-- SIGN-IN MODAL (gates GEX + Market Index) -->
-<div class="modal-backdrop" id="auth-modal">
-  <div class="modal" role="dialog" aria-modal="true">
-    <!-- FORM state: Google (always) + optional email/password section -->
-    <div id="auth-form">
-      <h3 id="auth-title" data-i18n="auth.title">Sign in</h3>
-      <p data-i18n="auth.blurb">Sign in to unlock Fund Flow, GEX, Market Index, R-Appetite and Portfolio.</p>
-      <div id="gbtn-wrap" style="display:none">
-        <div id="gbtn" style="display:flex;justify-content:center"></div>
-      </div>
-      <div id="auth-noprovider" class="muted" style="display:none;font-size:12px;line-height:1.5"
-           data-i18n="auth.noProvider">Google sign-in isn't configured on this deployment.</div>
-      <!-- email/password — hidden unless email auth is enabled (Google-only by default) -->
-      <div id="auth-email-section" style="display:none">
-        <div class="auth-or" id="auth-or"><span data-i18n="auth.or">or</span></div>
-        <label id="auth-name-label" for="auth-name" style="display:none" data-i18n="auth.name">Name (optional)</label>
-        <input id="auth-name" type="text" autocomplete="name" style="display:none" data-i18n-ph="auth.namePh" placeholder="Your name"/>
-        <label for="auth-email" data-i18n="auth.email">Email</label>
-        <input id="auth-email" type="email" autocomplete="email" data-i18n-ph="auth.emailPh" placeholder="you@example.com"/>
-        <div id="auth-domain-hint" class="muted" style="display:none;font-size:11px;margin-top:4px;line-height:1.4"></div>
-        <label for="auth-pass" style="margin-top:10px;display:block" data-i18n="auth.password">Password</label>
-        <input id="auth-pass" type="password" autocomplete="current-password" data-i18n-ph="auth.passPh" placeholder="At least 8 characters"/>
-        <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:12px">
-          <a id="auth-toggle" class="reset-link" data-i18n="auth.noAccount">Create an account</a>
-          <button class="btn" id="auth-submit" data-i18n="auth.submit">Sign in</button>
-        </div>
-      </div>
-      <div class="err" id="auth-err"></div>
-      <div class="row" style="justify-content:flex-end;align-items:center;gap:8px;margin-top:14px">
-        <button class="btn ghost" id="auth-cancel" data-i18n="auth.cancel">Cancel</button>
-      </div>
-    </div>
-    <!-- INFO state: "check your email" after signup, or "confirm first" on login -->
-    <div id="auth-info" style="display:none">
-      <h3 id="auth-info-title" data-i18n="auth.checkEmailTitle">Check your email</h3>
-      <p id="auth-info-msg" style="font-size:12px;color:var(--muted);line-height:1.6"></p>
-      <div class="err" id="auth-info-err" style="color:var(--green)"></div>
-      <div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:14px">
-        <a id="auth-resend" class="reset-link" data-i18n="auth.resend">Resend link</a>
-        <button class="btn" id="auth-info-ok" data-i18n="auth.ok">OK</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 // Backend base URL.
@@ -1039,7 +928,6 @@ function setLang(lang){
   if(openGex){ SENT_LOADED=GEX_LOADED=VIX_LOADED=true; loadSentiment(); loadGex(); loadVix(); }
   else if(openFbm){ FBM_LOADED=true; loadFbm(); }
   else if(openRa){ RA_LOADED=true; loadRiskAppetite(); }
-  else if($("#page-portfolio").classList.contains("open")){ renderPfTabs(); loadPortfolio(); }
 }
 function applyStaticI18n(){
   document.documentElement.lang = (LANG==="zh"?"zh-Hans":"en");
@@ -1047,269 +935,8 @@ function applyStaticI18n(){
   document.querySelectorAll("[data-i18n-html]").forEach(el=>{ el.innerHTML=t(el.dataset.i18nHtml); });
   document.querySelectorAll("[data-i18n-ph]").forEach(el=>{ el.placeholder=t(el.dataset.i18nPh); });
   const ll=$("#lang-label"); if(ll) ll.textContent = (LANG==="en" ? "中文" : "EN");
-  updateAuthUI();
 }
 
-/* ---------------- sign-in gate (GEX + Market Index) ---------------- */
-// Gate: GEX + Market Index require sign-in. Primary is Google Sign-In
-// (Google Identity Services); an email sign-in is kept as a fallback for when
-// no Google Client ID is configured. State persists in localStorage.
-const GATED_PAGES = {gex:"nav-gex", fbm:"nav-fbm", ra:"nav-ra", portfolio:"nav-portfolio", fundflow:"nav-fundflow"};
-// Start from the built-in <meta> value; the backend (/api/config) may override
-// it per deployment so the ID isn't hard-frozen into the shipped HTML.
-let GOOGLE_CLIENT_ID = (document.querySelector('meta[name="google-client-id"]')?.content || "").trim();
-let SIGNUP_DOMAINS = [];   // allowed email-signup domains (empty = any)
-let EMAIL_AUTH = false;    // email+password sign-in shown? (Google-only when false)
-async function loadPublicConfig(){
-  try{
-    const c=await get("/api/config");
-    if(c && c.google_client_id) GOOGLE_CLIENT_ID = c.google_client_id.trim();
-    if(c && Array.isArray(c.signup_email_domains)) SIGNUP_DOMAINS = c.signup_email_domains.map(d=>d.toLowerCase());
-    EMAIL_AUTH = !!(c && c.email_auth_enabled);
-  }catch(_){ /* keep the <meta> fallback */ }
-}
-function emailDomainAllowed(email){
-  if(!SIGNUP_DOMAINS.length) return true;
-  const at=(email||"").lastIndexOf("@");
-  return at>=0 && SIGNUP_DOMAINS.includes(email.slice(at+1).trim().toLowerCase());
-}
-function authUser(){ try{ return localStorage.getItem("authUser")||""; }catch(_){ return ""; } }
-function authName(){ try{ return localStorage.getItem("authName")||""; }catch(_){ return ""; } }
-function authToken(){ try{ return localStorage.getItem("authToken")||""; }catch(_){ return ""; } }
-function clearAuth(){ try{ localStorage.removeItem("authToken"); localStorage.removeItem("authUser");
-  localStorage.removeItem("authName"); localStorage.removeItem("authPic"); }catch(_){} }
-// authed = we hold a session JWT that hasn't expired. This is a client-side UX
-// check only; the server independently verifies the signature + expiry on every
-// gated request, so tampering with localStorage can't unlock the real data.
-function isAuthed(){
-  const tok=authToken(); if(!tok) return false;
-  const p=decodeJwt(tok);
-  if(!p||!p.exp){ return false; }
-  if(Date.now()/1000 >= p.exp){ clearAuth(); return false; }
-  return true;
-}
-
-// --- Google Identity Services ---
-let _gsiReady=false;
-function decodeJwt(tok){
-  try{
-    const b=tok.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
-    const json=decodeURIComponent(atob(b).split("").map(c=>
-      "%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join(""));
-    return JSON.parse(json);
-  }catch(_){ return null; }
-}
-async function handleGoogleCredential(resp){
-  const cred = resp && resp.credential;
-  if(!cred){ $("#auth-err").textContent=t("auth.failed"); return; }
-  $("#auth-err").textContent=t("auth.verifying");
-  try{
-    // send the Google ID token to the backend, which verifies it against
-    // Google's public keys and returns OUR signed session token.
-    const r=await post("/api/auth/google", {credential:cred});
-    localStorage.setItem("authToken", r.token);
-    localStorage.setItem("authUser", r.email||"");
-    if(r.name) localStorage.setItem("authName", r.name); else localStorage.removeItem("authName");
-  }catch(e){ $("#auth-err").textContent=(t("auth.failed")+" "+(e.message||"")).trim(); return; }
-  const go=PENDING_PAGE; closeAuth(); updateAuthUI();
-  if(go) showPage(go);
-}
-function initGoogle(){
-  if(_gsiReady || !GOOGLE_CLIENT_ID) return _gsiReady;
-  if(!(window.google&&google.accounts&&google.accounts.id)) return false;
-  google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID, callback:handleGoogleCredential});
-  _gsiReady=true; return true;
-}
-let _gbtnRetry=null;
-function renderGoogleButton(){
-  const wrap=$("#gbtn-wrap"), box=$("#gbtn");
-  if(!GOOGLE_CLIENT_ID){ wrap.style.display="none"; return; }
-  if(_gbtnRetry){ clearInterval(_gbtnRetry); _gbtnRetry=null; }   // no overlapping retries
-  const draw=()=>{
-    if(!initGoogle()) return false;
-    box.innerHTML="";
-    google.accounts.id.renderButton(box, {theme: document.body.classList.contains("light")?"outline":"filled_black",
-      size:"large", width:288, text:"signin_with",
-      locale: LANG==="zh"?"zh_CN":"en"});
-    wrap.style.display="block"; return true;
-  };
-  if(draw()) return;
-  // GIS script may still be loading — retry briefly, then give up (email fallback stays)
-  let n=0; _gbtnRetry=setInterval(()=>{ if(draw()||++n>25){ clearInterval(_gbtnRetry); _gbtnRetry=null; } }, 200);
-}
-let PENDING_PAGE = null;   // page to open right after a successful sign-in
-function updateAuthUI(){
-  const authed=isAuthed();
-  const btn=$("#signin");
-  if(btn){
-    btn.textContent = authed ? t("auth.signout") : t("auth.signin");
-    btn.title = authed ? (t("auth.hi")+" "+authUser()) : t("auth.blurb");
-  }
-  if(btn && authed){ btn.title=t("auth.hi")+" "+(authName()||authUser()); }
-  document.querySelectorAll('nav a[data-gated]').forEach(a=>{
-    a.classList.toggle("locked", !authed);
-    if(!authed) a.title=t("auth.locked");
-  });
-  renderGreeting();
-}
-// personalised header greeting — a random template per session, kept stable so
-// it doesn't flicker on re-renders; only shown when signed in WITH a name.
-const GREETINGS={
-  en:["👋 Hello, {name} — nice to have you back!","👋 Welcome back, {name}!",
-      "✨ Good to see you, {name}!","👋 Hey {name}, great to have you here!",
-      "🙌 Welcome back, {name} — let's dive in!"],
-  zh:["👋 你好，{name}，欢迎回来！","👋 {name}，很高兴再次见到你！",
-      "✨ 欢迎回来，{name}！","🙌 嗨 {name}，很高兴你回来了！",
-      "👋 {name}，我们开始吧！"],
-};
-let _greetIdx=null;
-function renderGreeting(){
-  const el=$("#greeting"); if(!el) return;
-  const name=(authName()||"").trim();
-  if(!isAuthed() || !name){ el.textContent=""; el.style.display="none"; _greetIdx=null; return; }
-  const list=GREETINGS[LANG]||GREETINGS.en;
-  if(_greetIdx===null || _greetIdx>=list.length) _greetIdx=Math.floor(Math.random()*list.length);
-  el.textContent=list[_greetIdx].replace("{name}", name);
-  el.style.display="";
-}
-function openAuth(pendingPage){
-  PENDING_PAGE = pendingPage||null;
-  const m=$("#auth-modal"); m.classList.add("open");
-  renderGoogleButton();                          // "Sign in with Google" (if configured)
-  showAuthForm();                                // (not the "check your email" panel)
-  $("#auth-err").textContent="";
-  // email/password section only when enabled (Google-only by default)
-  const sec=$("#auth-email-section");
-  if(sec) sec.style.display = EMAIL_AUTH ? "" : "none";
-  if(EMAIL_AUTH){
-    $("#auth-email").value=""; $("#auth-pass").value=""; $("#auth-name").value="";
-    setAuthMode("login");
-    setTimeout(()=>$("#auth-email").focus(),30);
-  }
-  // show the "no provider" note only when there's truly no way to sign in
-  const np=$("#auth-noprovider"); if(np) np.style.display = (!GOOGLE_CLIENT_ID && !EMAIL_AUTH) ? "block" : "none";
-}
-function closeAuth(){ $("#auth-modal").classList.remove("open"); PENDING_PAGE=null; }
-
-// modal has two states: the sign-in/create form, and an info panel ("check your
-// email" after signup, or "confirm first" when logging into an unverified account)
-let PENDING_EMAIL="";
-function showAuthForm(){ $("#auth-form").style.display=""; $("#auth-info").style.display="none"; }
-function showAuthInfo(title,msg){
-  $("#auth-info-title").textContent=title;
-  $("#auth-info-msg").textContent=msg;
-  $("#auth-info-err").textContent="";
-  $("#auth-form").style.display="none"; $("#auth-info").style.display="";
-}
-function setSession(r,fallbackEmail){
-  localStorage.setItem("authToken", r.token);
-  localStorage.setItem("authUser", r.email||fallbackEmail||"");
-  if(r.name) localStorage.setItem("authName", r.name); else localStorage.removeItem("authName");
-}
-// brief top-of-screen notice (verification result, resend confirmation, …)
-function toast(msg, kind){
-  const el=document.createElement("div");
-  el.textContent=msg;
-  el.style.cssText="position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:600;"+
-    "padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow);"+
-    "background:var(--panel);border:1px solid "+(kind==="ok"?"var(--green)":kind==="err"?"var(--red)":"var(--line2)")+
-    ";color:var(--text);max-width:90vw;text-align:center;";
-  document.body.appendChild(el);
-  setTimeout(()=>{ el.style.transition="opacity .4s"; el.style.opacity="0"; setTimeout(()=>el.remove(),400); }, 4500);
-}
-
-// email/password: toggle between "Sign in" and "Create account" modes
-let AUTH_MODE="login";
-function setAuthMode(mode){
-  AUTH_MODE = mode==="signup" ? "signup" : "login";
-  const signup = AUTH_MODE==="signup";
-  $("#auth-title").textContent  = signup ? t("auth.createTitle") : t("auth.title");
-  $("#auth-submit").textContent = signup ? t("auth.create")      : t("auth.submit");
-  $("#auth-toggle").textContent = signup ? t("auth.haveAccount") : t("auth.noAccount");
-  $("#auth-name").style.display       = signup ? "" : "none";
-  $("#auth-name-label").style.display = signup ? "" : "none";
-  $("#auth-pass").setAttribute("autocomplete", signup ? "new-password" : "current-password");
-  $("#auth-err").textContent = "";
-  // beta domain restriction hint (only when creating an account and a list is set)
-  const hint=$("#auth-domain-hint");
-  if(hint){
-    if(signup && SIGNUP_DOMAINS.length){
-      hint.textContent = t("auth.domainHint").replace("{domains}",
-        SIGNUP_DOMAINS.map(d=>"@"+d).join(" / "));
-      hint.style.display="";
-    } else { hint.style.display="none"; }
-  }
-}
-async function submitEmailAuth(){
-  const email=($("#auth-email").value||"").trim();
-  const pass=$("#auth-pass").value||"";
-  const name=($("#auth-name").value||"").trim();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $("#auth-err").textContent=t("auth.needEmail"); return; }
-  if(pass.length<8){ $("#auth-err").textContent=t("auth.needPass"); return; }
-  if(AUTH_MODE==="signup" && !emailDomainAllowed(email)){
-    $("#auth-err").textContent=t("auth.domainBlocked").replace("{domains}",
-      SIGNUP_DOMAINS.map(d=>"@"+d).join(" / "));
-    return;
-  }
-  const signup=AUTH_MODE==="signup", btn=$("#auth-submit");
-  btn.disabled=true; $("#auth-err").textContent=t("auth.working");
-  PENDING_EMAIL=email;
-  try{
-    if(signup){
-      // account created but UNVERIFIED — show "check your email", no session yet
-      const r=await post("/api/auth/signup",{email,password:pass,name});
-      if(r.dev_link) console.log("DEV confirmation link:", r.dev_link);
-      btn.disabled=false;
-      showAuthInfo(t("auth.checkEmailTitle"),
-                   t("auth.checkEmailMsg")+" "+email+". "+t("auth.checkEmailMsg2"));
-      return;
-    }
-    const r=await post("/api/auth/login",{email,password:pass});
-    setSession(r,email);
-  }catch(e){
-    btn.disabled=false;
-    if(!signup && e.status===403){          // exists but not confirmed yet
-      showAuthInfo(t("auth.unverifiedTitle"), t("auth.unverifiedMsg"));
-      return;
-    }
-    $("#auth-err").textContent = e.message || t("auth.failed");
-    return;
-  }
-  btn.disabled=false;
-  const go=PENDING_PAGE; closeAuth(); updateAuthUI();
-  if(go) showPage(go);
-}
-// resend the confirmation email (from the info panel)
-async function resendVerification(){
-  if(!PENDING_EMAIL) return;
-  const el=$("#auth-info-err");
-  el.style.color="var(--muted)"; el.textContent=t("auth.working");
-  try{ await post("/api/auth/resend",{email:PENDING_EMAIL});
-    el.style.color="var(--green)"; el.textContent=t("auth.resent");
-  }catch(_){ el.style.color="var(--red)"; el.textContent=t("auth.resendFail"); }
-}
-// on load: if the URL carries a ?verify=<token> (from the emailed link), confirm
-// the account, sign in, and clean the token out of the address bar.
-async function handleVerifyParam(){
-  let tok=null;
-  try{ tok=new URL(location.href).searchParams.get("verify"); }catch(_){}
-  if(!tok) return;
-  try{ const u=new URL(location.href); u.searchParams.delete("verify");
-    history.replaceState({}, "", u.pathname+u.search+u.hash); }catch(_){}
-  try{
-    const r=await post("/api/auth/verify",{token:tok});
-    setSession(r); updateAuthUI(); toast(t("auth.verified"),"ok");
-  }catch(_){ toast(t("auth.verifyFail"),"err"); }
-}
-function signOut(){
-  clearAuth();
-  try{ if(window.google&&google.accounts&&google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(_){}
-  updateAuthUI();
-  // if currently viewing a gated page, fall back to the chart
-  if($("#page-gex").classList.contains("open")||$("#page-fbm").classList.contains("open")
-     ||$("#page-ra").classList.contains("open"))
-    showPage("chart");
-}
 
 const fmt=(x,d=2)=>x==null?"—":(x>0?"+":"")+(+x).toFixed(d);
 const fmtP=(x,d=2)=>x==null?"—":(+x).toFixed(d);
@@ -1322,25 +949,20 @@ function healthTrend(pct){
   return {key, cls: pct>=0?"pos":"neg"};
 }
 const arrow=x=>x>=0?"▲":"▼";
-// attach the session token so gated endpoints accept the request
-function authHeaders(){ const tok=authToken(); return tok?{Authorization:"Bearer "+tok}:{}; }
-// a rejected/expired session: drop the local token so the UI re-gates cleanly
-function on401(){ clearAuth(); try{ updateAuthUI(); }catch(_){} }
+// the API is open: requests carry no auth header
+function authHeaders(){ return {}; }
 // pull FastAPI's {"detail": "..."} out of an error body for a clean message
 async function errText(r){
   let s=""; try{ s=await r.text(); }catch(_){}
   try{ const j=JSON.parse(s); if(j&&j.detail!=null) return String(j.detail).slice(0,160); }catch(_){}
   return (s||("HTTP "+r.status)).slice(0,160);
 }
-// a 401 on a normal call means our session token was rejected -> clear it so the
-// UI re-gates. The /api/auth/* endpoints use 401/400 for bad credentials, so we
-// must NOT wipe state there — the caller surfaces the message instead.
+// every endpoint is public now, so a 401 is just a normal HTTP error
 function httpError(status, msg){ const e=new Error(msg); e.status=status; return e; }
 async function get(p,ms){
   const ctrl=ms?new AbortController():null, tmr=ms?setTimeout(()=>ctrl.abort(),ms):null;
   try{
     const r=await fetch(API+p, {headers:authHeaders(), ...(ctrl?{signal:ctrl.signal}:{})});
-    if(r.status===401 && !p.startsWith("/api/auth/")){ on401(); throw new Error("session expired — please sign in again"); }
     if(!r.ok) throw httpError(r.status, await errText(r));
     return await r.json();
   }catch(e){ if(e.name==='AbortError') throw new Error('timeout'); throw e; }
@@ -1349,7 +971,6 @@ async function get(p,ms){
 async function post(p,b){
   const r=await fetch(API+p,{method:"POST",
     headers:{"Content-Type":"application/json",...authHeaders()},body:JSON.stringify(b)});
-  if(r.status===401 && !p.startsWith("/api/auth/")){ on401(); throw new Error("session expired — please sign in again"); }
   if(!r.ok) throw httpError(r.status, await errText(r));
   return r.json();
 }
@@ -1868,21 +1489,17 @@ let SENT_LOADED=false, GEX_LOADED=false, VIX_LOADED=false, FBM_LOADED=false, RA_
 
 // views: the chart dashboard ('chart') and the full pages ('gex','fbm','ra')
 function showPage(name){
-  // GEX + Market Index require sign-in; open the sign-in modal instead
-  if(GATED_PAGES[name] && !isAuthed()){ openAuth(name); return; }
   $("#grid").style.display = name==="chart" ? "grid" : "none";
   $("#page-gex").classList.toggle("open", name==="gex");
   $("#page-fbm").classList.toggle("open", name==="fbm");
   $("#page-ra").classList.toggle("open", name==="ra");
   $("#page-fundflow").classList.toggle("open", name==="fundflow");
-  $("#page-portfolio").classList.toggle("open", name==="portfolio");
   document.querySelectorAll("nav a").forEach(a=>
     a.classList.toggle("active", a.id==="nav-"+name || (name==="chart"&&a.id==="nav-chart")));
   if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); if(!VIX_LOADED)loadVix(); }
   if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
   if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
   if(name==="fundflow" && !FF_LOADED){ FF_LOADED=true; loadFundFlow(); }
-  if(name==="portfolio") loadPortfolios();
   try{localStorage.setItem("view",name);}catch(_){}
 }
 const showGexPage=on=>showPage(on?"gex":"chart");
@@ -2959,370 +2576,8 @@ async function loadFundFlow(force){
   }
 }
 
-/* ---------------- Portfolio page (multi-portfolio + CAPM/MPT) ---------------- */
-let PF_SEL=null;          // stock chosen in the add form: {code,ticker,name}
-let PF_LIST=[];           // [{id,name,position}]
-let PF_PID=null;          // currently selected portfolio id
-function pfMoney(x){ return x==null?"—":"RM "+(+x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function pfPct(x,d=1){ return x==null?"—":(x>=0?"":"")+(x*100).toFixed(d)+"%"; }
-
-// CAPM / MPT risk–return chart: Monte-Carlo cloud (coloured by Sharpe), the
-// efficient frontier, each stock, and the current / max-Sharpe / min-variance
-// portfolios. x = annualised volatility (risk), y = annualised return.
-function efficientFrontierSVG(a,H=344){
-  const W=560,padL=42,padR=14,padT=14,padB=40;
-  const marks=[a.current,a.max_sharpe,a.min_var].filter(Boolean);
-  const pts=[...(a.cloud||[]),...(a.stocks||[]),...marks];
-  if(!pts.length) return "";
-  const xs=pts.map(p=>p.vol), ys=pts.map(p=>p.ret);
-  let xlo=Math.min(...xs),xhi=Math.max(...xs),ylo=Math.min(...ys),yhi=Math.max(...ys);
-  const xp=(xhi-xlo||0.05)*0.08, yp=(yhi-ylo||0.05)*0.12;
-  xlo=Math.max(0,xlo-xp); xhi+=xp; ylo-=yp; yhi+=yp;
-  const X=v=>padL+(W-padL-padR)*(v-xlo)/((xhi-xlo)||1);
-  const Y=v=>padT+(H-padT-padB)*(yhi-v)/((yhi-ylo)||1);
-  const P=v=>(v*100).toFixed(0)+"%";
-  let out=`<defs><marker id="pfArrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto">`+
-    `<path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/></marker></defs>`;
-  for(let i=0;i<=4;i++){ const xv=xlo+(xhi-xlo)*i/4, yv=ylo+(yhi-ylo)*i/4;
-    out+=`<line x1="${X(xv)}" y1="${padT}" x2="${X(xv)}" y2="${H-padB}" stroke="var(--line2)" opacity=".22"/>`+
-      `<line x1="${padL}" y1="${Y(yv)}" x2="${W-padR}" y2="${Y(yv)}" stroke="var(--line2)" opacity=".22"/>`+
-      `<text x="${X(xv)}" y="${H-padB+13}" font-size="8" fill="var(--muted)" text-anchor="middle">${P(xv)}</text>`+
-      `<text x="${padL-4}" y="${Y(yv)+3}" font-size="8" fill="var(--muted)" text-anchor="end">${P(yv)}</text>`; }
-  if(ylo<0&&yhi>0) out+=`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--line)" stroke-dasharray="2 3"/>`;
-  const srs=(a.cloud||[]).map(p=>p.sr), smin=Math.min(...srs,0), smax=Math.max(...srs,0.01);
-  const col=s=>{ const tt=Math.max(0,Math.min(1,(s-smin)/((smax-smin)||1))); return `hsl(${(45+230*(1-tt)).toFixed(0)},80%,55%)`; };
-  (a.cloud||[]).forEach(p=>{ out+=`<circle cx="${X(p.vol).toFixed(1)}" cy="${Y(p.ret).toFixed(1)}" r="1.6" fill="${col(p.sr)}" opacity=".55"/>`; });
-  if((a.frontier||[]).length>1){ const fp=a.frontier.map(p=>`${X(p.vol).toFixed(1)},${Y(p.ret).toFixed(1)}`).join(" ");
-    out+=`<polyline points="${fp}" fill="none" stroke="#22c55e" stroke-width="2" stroke-dasharray="5 3"/>`; }
-  (a.stocks||[]).forEach(p=>{ out+=`<circle cx="${X(p.vol).toFixed(1)}" cy="${Y(p.ret).toFixed(1)}" r="3.4" fill="#fff" stroke="#000" stroke-width="1"/>`+
-    `<text x="${(X(p.vol)+5).toFixed(1)}" y="${(Y(p.ret)-4).toFixed(1)}" font-size="8.5" fill="var(--text)">${p.name}</text>`; });
-  const dot=(p,fill,r=6)=>p?`<circle cx="${X(p.vol).toFixed(1)}" cy="${Y(p.ret).toFixed(1)}" r="${r}" fill="${fill}" stroke="#000" stroke-width="1.2"/>`:"";
-  const dia=(p,fill)=>{ if(!p)return""; const x=X(p.vol).toFixed(1),y=Y(p.ret).toFixed(1);
-    return `<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="${fill}" stroke="#000" stroke-width="1.2" transform="rotate(45 ${x} ${y})"/>`; };
-  // labelled callout chip near a point (readable over the cloud), with a leader line
-  const chip=(x,y,lines,color,vbias)=>{
-    // width estimate: CJK glyphs are ~1.9x wider than Latin at this size
-    const est=s=>[...s].reduce((n,ch)=>n+(/[　-鿿＀-￯]/.test(ch)?9.8:5.15),0);
-    const w=Math.max(...lines.map(est))+14, h=lines.length*12+8;
-    const side=x>W*0.52?-1:1;
-    let cx=side<0?x-16-w:x+16, cy=vbias==="up"?y-18-h:y+18;
-    cx=Math.max(padL+2,Math.min(cx,W-padR-w-2)); cy=Math.max(padT+2,Math.min(cy,H-padB-h-2));
-    const ax=side<0?cx+w:cx, ay=cy+(vbias==="up"?h:0);
-    let s=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${ax.toFixed(1)}" y2="${ay.toFixed(1)}" stroke="${color}" stroke-width="1" opacity=".55"/>`;
-    s+=`<rect x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="7" fill="var(--panel)" fill-opacity=".95" stroke="${color}" stroke-width="1"/>`;
-    lines.forEach((l,i)=>{ s+=`<text x="${(cx+7).toFixed(1)}" y="${(cy+13+i*12).toFixed(1)}" font-size="${i===0?9.5:8.5}" font-weight="${i===0?700:400}" fill="${i===0?color:"var(--text)"}">${l}</text>`; });
-    return s;
-  };
-  out+=dia(a.min_var,"#22d3ee");
-  // rebalance direction: an arrow from where you are now to the optimum
-  if(a.current&&a.max_sharpe) out+=`<line x1="${X(a.current.vol).toFixed(1)}" y1="${Y(a.current.ret).toFixed(1)}" x2="${X(a.max_sharpe.vol).toFixed(1)}" y2="${Y(a.max_sharpe.ret).toFixed(1)}" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="4 3" opacity=".7" marker-end="url(#pfArrow)"/>`;
-  // optimum (max-Sharpe) point + labelled value
-  out+=dot(a.max_sharpe,"#ef4444",6.5);
-  if(a.max_sharpe) out+=chip(X(a.max_sharpe.vol),Y(a.max_sharpe.ret),
-    [t("pf.chipOpt"),`${t("pf.chipRet")} ${P(a.max_sharpe.ret)} · ${t("pf.chipRisk")} ${P(a.max_sharpe.vol)}`,`${t("pf.chipSharpe")} ${(a.max_sharpe.sharpe==null?0:a.max_sharpe.sharpe).toFixed(2)}`],"#ef4444","up");
-  // current portfolio point + labelled value
-  out+=a.current?`<circle cx="${X(a.current.vol).toFixed(1)}" cy="${Y(a.current.ret).toFixed(1)}" r="7.5" fill="none" stroke="var(--accent)" stroke-width="2.6"/>`:"";
-  if(a.current) out+=chip(X(a.current.vol),Y(a.current.ret),
-    [t("pf.chipCur"),`${t("pf.chipRet")} ${P(a.current.ret)} · ${t("pf.chipRisk")} ${P(a.current.vol)}`],"var(--accent)","down");
-  out+=`<text x="${(padL+(W-padR))/2}" y="${H-4}" font-size="8.5" fill="var(--muted)" text-anchor="middle">${t("pf.axisVol")}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%">${out}</svg>`;
-}
-
-async function loadPortfolios(){
-  const tabs=$("#pf-tabs");
-  try{
-    PF_LIST=(await get("/api/portfolios")).portfolios||[];
-  }catch(e){ tabs.innerHTML=`<span class="muted">${e.message||t("auth.failed")}</span>`; return; }
-  if(!PF_LIST.length){ PF_LIST=[]; }
-  if(!PF_PID || !PF_LIST.some(p=>p.id===PF_PID)) PF_PID=PF_LIST.length?PF_LIST[0].id:null;
-  renderPfTabs();
-  if(PF_PID!=null) loadPortfolio(true);
-}
-function renderPfTabs(){
-  const tabs=$("#pf-tabs");
-  let h=PF_LIST.map(p=> p.id===PF_PID
-    ? `<span class="pf-tab active"><input class="pf-tab-name" data-id="${p.id}" value="${(p.name||"").replace(/"/g,"&quot;")}" size="${Math.max(6,(p.name||"").length)}"/>`+
-      (PF_LIST.length>1?`<span class="x" data-del="${p.id}" title="Delete portfolio">✕</span>`:"")+`</span>`
-    : `<span class="pf-tab" data-sel="${p.id}">${p.name||"Portfolio"}</span>`).join("");
-  if(PF_LIST.length<3) h+=`<span class="pf-tab-new" id="pf-new">+ ${t("pf.new")||"New portfolio"}</span>`;
-  tabs.innerHTML=h;
-  tabs.querySelectorAll("[data-sel]").forEach(el=>el.onclick=()=>{ PF_PID=+el.dataset.sel; renderPfTabs(); loadPortfolio(true); });
-  tabs.querySelectorAll("[data-del]").forEach(el=>el.onclick=()=>deletePortfolio(+el.dataset.del));
-  const nb=$("#pf-new"); if(nb) nb.onclick=createPortfolio;
-  const nm=tabs.querySelector(".pf-tab-name");
-  if(nm){ const commit=()=>renamePortfolio(+nm.dataset.id, nm.value);
-    nm.addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault(); nm.blur();} });
-    nm.addEventListener("blur",commit); }
-}
-async function createPortfolio(){
-  try{ const p=await post("/api/portfolios",{name:""}); PF_PID=p.id; await loadPortfolios(); }
-  catch(e){ $("#pf-sub").textContent=e.message||t("auth.failed"); }
-}
-async function renamePortfolio(pid,name){
-  const p=PF_LIST.find(x=>x.id===pid); if(!p||(name||"").trim()===p.name) return;
-  try{ await api("PATCH","/api/portfolios/"+pid,{name}); const q=PF_LIST.find(x=>x.id===pid); if(q)q.name=name.trim(); }
-  catch(e){ $("#pf-sub").textContent=e.message||t("auth.failed"); }
-}
-async function deletePortfolio(pid){
-  if(!confirm(t("pf.delConfirm")||"Delete this portfolio and all its holdings?")) return;
-  try{ await api("DELETE","/api/portfolios/"+pid); if(PF_PID===pid) PF_PID=null; await loadPortfolios(); }
-  catch(e){ $("#pf-sub").textContent=e.message||t("auth.failed"); }
-}
-// small helper for PATCH/DELETE with auth (get/post already exist)
-async function api(method,path,body){
-  const r=await fetch(API+path,{method,headers:{...authHeaders(),"Content-Type":"application/json"},
-    body:body?JSON.stringify(body):undefined});
-  if(!r.ok){ let m="request failed"; try{m=(await r.json()).detail||m;}catch(_){}
-    const e=new Error(m); e.status=r.status; throw e; }
-  return r.status===204?null:r.json().catch(()=>null);
-}
-
-async function loadPortfolio(force,retried){
-  if(PF_PID==null) return;
-  const pid=PF_PID, body=$("#pf-body"), cards=$("#pf-cards"), sub=$("#pf-sub");
-  sub.textContent=t("loading.default"); cards.innerHTML="";
-  ["pf-chart-panel","pf-capm-panel","pf-reco-panel","pf-corr-panel"].forEach(id=>$("#"+id).style.display="none");
-  $("#pf-reb-wrap").innerHTML="";
-  try{
-    const d=await get(`/api/portfolios/${pid}/performance`+(force?"?_="+Date.now():""), 180000);
-    if(PF_PID!==pid) return;   // user switched tabs mid-load
-    const hs=d.holdings||[];
-    if(!hs.length){ sub.textContent=t("pf.empty"); body.innerHTML=""; return; }
-    const T=d.totals||{};
-    sub.textContent = `${t("sub.asOf")} ${T.as_of||""} · ${hs.length} ${hs.length===1?t("pf.holding"):t("pf.holdings")}`;
-    cards.innerHTML=`
-      <div class="card"><div class="k">${t("pf.invested")}</div><div class="v">${pfMoney(T.cost)}</div></div>
-      <div class="card"><div class="k">${t("pf.valueNow")}</div><div class="v">${pfMoney(T.value)}</div></div>
-      <div class="card"><div class="k">${t("pf.gain")}</div>
-        <div class="v ${cls(T.gain)}">${T.gain>=0?"+":""}${pfMoney(T.gain).replace("RM ","RM ")}</div>
-        <div class="d ${cls(T.gain)}">${fmt(T.gain_pct)}%</div></div>`;
-    const rb=d.rebased;
-    if(rb && rb.portfolio && rb.portfolio.length>1){
-      const idxColors={"FBM KLCI":"var(--muted)","FBM MID 70":"#f59e0b","FBM ACE":"#e879f9"};
-      const series=[{label:t("pf.legendPf"),color:"var(--accent)",values:rb.portfolio,width:2.4}];
-      Object.entries(rb.indices||{}).forEach(([label,vals])=>
-        series.push({label,color:idxColors[label]||"var(--muted)",values:vals,width:1.4}));
-      $("#pf-chart").innerHTML=multiLineSVG(rb.dates||d.dates,series,
-        {H:344,fmtTick:v=>v.toFixed(0),xTickFont:6.5,tipMode:"dec1",guides:[{v:100,color:"var(--line2)",dash:"2 4"}]});
-      wireXhair($("#pf-chart"));
-      $("#pf-legend").innerHTML=series.map(s=>`<span><i style="background:${s.color}"></i>${s.label}</span>`).join("");
-      $("#pf-chart-panel").style.display="";
-    }
-    // holdings table
-    // group lots by stock: a stock bought over several dates shows once as an
-    // aggregate (total shares, weighted-average entry, combined P/L) with each
-    // purchase listed as a subline beneath it.
-    const groups=[], byTicker=new Map();
-    hs.forEach(h=>{ const k=h.ticker||h.code;
-      if(!byTicker.has(k)){ const g={name:h.name,code:h.code,lots:[]}; byTicker.set(k,g); groups.push(g); }
-      byTicker.get(k).lots.push(h); });
-    // a stock with a single purchase renders as one plain row
-    const lotRowSingle=h=>`<tr>
-      <td><b>${h.name||h.code}</b> <span class="muted">${h.code}</span>${h.error?` <span class="muted" style="font-size:10px">(${h.error})</span>`:""}</td>
-      <td class="num">${(+h.shares).toLocaleString()}</td>
-      <td class="muted">${h.buy_date}</td>
-      <td class="num">${h.buy_price!=null?(+h.buy_price).toFixed(3):"—"}</td>
-      <td class="num">${h.last_price!=null?(+h.last_price).toFixed(3):"—"}</td>
-      <td class="num">${h.cost!=null?pfMoney(h.cost):"—"}</td>
-      <td class="num">${h.value!=null?pfMoney(h.value):"—"}</td>
-      <td class="num ${h.gain!=null?cls(h.gain):""}">${h.gain!=null?`${h.gain>=0?"+":""}${(+h.gain).toFixed(2)} (${fmt(h.gain_pct)}%)`:"—"}</td>
-      <td><span class="pf-del" data-id="${h.id}" title="${t("pf.remove")}">✕</span></td></tr>`;
-    const lotRow=l=>`<tr class="pf-lot">
-      <td>↳</td>
-      <td class="num">${(+l.shares).toLocaleString()}</td>
-      <td>${l.buy_date}</td>
-      <td class="num">${l.buy_price!=null?(+l.buy_price).toFixed(3):"—"}</td>
-      <td class="num">${l.last_price!=null?(+l.last_price).toFixed(3):"—"}</td>
-      <td class="num">${l.cost!=null?pfMoney(l.cost):"—"}</td>
-      <td class="num">${l.value!=null?pfMoney(l.value):"—"}</td>
-      <td class="num ${l.gain!=null?cls(l.gain):""}">${l.gain!=null?`${l.gain>=0?"+":""}${(+l.gain).toFixed(2)} (${fmt(l.gain_pct)}%)`:"—"}</td>
-      <td><span class="pf-del" data-id="${l.id}" title="${t("pf.remove")}">✕</span></td></tr>`;
-    const groupHtml=groups.map(g=>{
-      const priced=g.lots.filter(l=>l.cost!=null), multi=g.lots.length>1;
-      const sharesAll=g.lots.reduce((a,l)=>a+(+l.shares||0),0);
-      const sharesPriced=priced.reduce((a,l)=>a+(+l.shares||0),0);
-      const cost=priced.reduce((a,l)=>a+l.cost,0), value=priced.reduce((a,l)=>a+l.value,0);
-      const gain=value-cost, gainPct=cost?gain/cost*100:0;
-      const avgBuy=sharesPriced?cost/sharesPriced:null;          // weighted-average entry
-      const last=priced.length?priced[priced.length-1].last_price:null;
-      const errLot=g.lots.find(l=>l.error);
-      if(!multi) return lotRowSingle(g.lots[0]);                 // one purchase -> plain row
-      return `<tr class="pf-grp">
-        <td><b>${g.name||g.code}</b> <span class="muted">${g.code}</span>
-          <span class="muted" style="font-size:10px">· ${g.lots.length} ${t("pf.entries")}</span>${errLot?` <span class="muted" style="font-size:10px">(${errLot.error})</span>`:""}</td>
-        <td class="num">${sharesAll.toLocaleString()}</td>
-        <td class="muted">${t("pf.avgEntry")}</td>
-        <td class="num">${avgBuy!=null?avgBuy.toFixed(3):"—"}</td>
-        <td class="num">${last!=null?(+last).toFixed(3):"—"}</td>
-        <td class="num">${priced.length?pfMoney(cost):"—"}</td>
-        <td class="num">${priced.length?pfMoney(value):"—"}</td>
-        <td class="num ${priced.length?cls(gain):""}">${priced.length?`${gain>=0?"+":""}${gain.toFixed(2)} (${fmt(gainPct)}%)`:"—"}</td>
-        <td></td></tr>`+g.lots.map(lotRow).join("");
-    }).join("");
-    body.innerHTML=`<div class="gx-panel" style="margin-top:14px"><h3>${t("pf.holdingsTitle")}</h3>
-      <div style="overflow-x:auto"><table><thead><tr>
-        <th>${t("pf.stock")}</th><th class="num">${t("pf.shares")}</th><th>${t("pf.buyDate")}</th>
-        <th class="num">${t("pf.buyPx")}</th><th class="num">${t("pf.lastPx")}</th>
-        <th class="num">${t("pf.cost")}</th><th class="num">${t("pf.value")}</th>
-        <th class="num">${t("pf.pl")}</th><th></th></tr></thead>
-        <tbody>${groupHtml}</tbody></table></div></div>`;
-    body.querySelectorAll(".pf-del").forEach(x=>x.onclick=()=>removeHolding(+x.dataset.id));
-    loadAnalysis(pid);   // CAPM/MPT (async; appends cards + fills panels)
-  }catch(e){
-    if(e.message==="timeout" && !retried){ sub.textContent="";
-      autoRetry(body, ()=>loadPortfolio(true,1), t("pf.title")||"Your portfolio", 20); return; }
-    sub.textContent=(e.message==="timeout"?t("pf.slowNote")||"still computing on the server — try again in a moment":e.message)||t("auth.failed");
-  }
-}
-
-// stock-correlation heatmap with a selectable lookback
-let PF_CORR_LB="2y";
-const PF_CORR_LBS=[["3mo","3M"],["6mo","6M"],["1y","1Y"],["2y","2Y"]];
-function renderCorr(corr){
-  if(!corr || !corr.names || corr.names.length<2){ $("#pf-corr").innerHTML=`<div class="muted">${t("pf.corrNeed")||"Add at least 2 stocks to see correlations."}</div>`; return; }
-  const nm=corr.names, mtx=corr.matrix, shrt=s=>s.length>11?s.slice(0,10)+"…":s;
-  // low (below 0.075) or negative correlation = green (diversifying); higher = red
-  const cc=v=>{ const tt=Math.max(-1,Math.min(1,v)), al=(0.1+0.55*Math.abs(tt)).toFixed(2);
-    return tt<0.075?`rgba(0,209,121,${al})`:`rgba(255,91,91,${al})`; };
-  let html=`<div style="overflow-x:auto"><table class="pf-corr-tbl"><thead><tr><th></th>`+
-    nm.map(n=>`<th title="${n}">${shrt(n)}</th>`).join("")+`</tr></thead><tbody>`;
-  for(let i=0;i<nm.length;i++){ html+=`<tr><td class="rh"><b>${shrt(nm[i])}</b></td>`+
-    nm.map((_,j)=>{ const v=mtx[i][j];
-      return `<td style="background:${i===j?"transparent":cc(v)}">${i===j?'<span class="muted">1.00</span>':v.toFixed(2)}</td>`; }).join("")+`</tr>`; }
-  html+="</tbody></table></div>";
-  const avgTxt=corr.avg!=null?`${t("pf.corrAvg")}: <b>${corr.avg.toFixed(2)}</b> — ${corr.avg>0.6?t("pf.corrHigh"):corr.avg<0.3?t("pf.corrLow"):t("pf.corrMid")}`:"";
-  $("#pf-corr").innerHTML=html+`<div class="muted" style="font-size:11px;margin-top:9px">${avgTxt?avgTxt+"<br>":""}${t("pf.corrNote")}</div>`;
-}
-function renderCorrLb(){
-  const el=$("#pf-corr-lb"); if(!el) return;
-  el.innerHTML=PF_CORR_LBS.map(([v,l])=>`<button data-lb="${v}" class="${v===PF_CORR_LB?"active":""}">${l}</button>`).join("");
-  el.querySelectorAll("button").forEach(b=>b.onclick=()=>loadCorrelation(b.dataset.lb));
-}
-async function loadCorrelation(lb){
-  if(PF_PID==null || lb===PF_CORR_LB) return;
-  PF_CORR_LB=lb; renderCorrLb();
-  $("#pf-corr").innerHTML=skeleton(2);
-  try{
-    const c=await get(`/api/portfolios/${PF_PID}/correlation?lookback=${encodeURIComponent(lb)}&_=`+Date.now(), 120000);
-    if(PF_PID==null) return;
-    renderCorr(c);
-  }catch(e){ $("#pf-corr").innerHTML=`<div class="muted">${e.message||t("auth.failed")}</div>`; }
-}
-async function loadAnalysis(pid,retried){
-  try{
-    const a=await get(`/api/portfolios/${pid}/analysis?_=`+Date.now(), 180000);
-    if(PF_PID!==pid) return;
-    if(!a || !a.ok){ return; }
-    const cards=$("#pf-cards"), c=a.current||{}, cm=a.capm||{};
-    // append risk / sharpe / beta / alpha metric cards
-    cards.insertAdjacentHTML("beforeend",`
-      <div class="card"><div class="k">${t("pf.risk")}</div><div class="v">${pfPct(c.vol,1)}</div><div class="d">${t("pf.riskSub")}</div></div>
-      <div class="card"><div class="k">${t("pf.sharpe")}</div><div class="v ${c.sharpe>=0?"pos":"neg"}">${c.sharpe==null?"—":(+c.sharpe).toFixed(2)}</div><div class="d">${t("pf.expRet")} ${pfPct(c.ret,1)}</div></div>
-      <div class="card"><div class="k">${t("pf.beta")}</div><div class="v">${cm.beta==null?"—":(+cm.beta).toFixed(2)}</div><div class="d">${t("pf.betaSub")} ${cm.r_squared==null?"—":(+cm.r_squared).toFixed(2)}</div></div>
-      <div class="card"><div class="k">${t("pf.alpha")}</div><div class="v ${(cm.alpha_annual||0)>=0?"pos":"neg"}">${cm.alpha_annual==null?"—":pfPct(cm.alpha_annual,1)}</div><div class="d">${t("pf.alphaSub")}</div></div>`);
-    // rebalance advice banner
-    const rbl=a.rebalance||{};
-    if(rbl.action){
-      const act=rbl.action==="rebalance";
-      // build the reason text locally from structured fields so it follows the
-      // UI language (backend `reasons` strings are English-only)
-      const rs=[];
-      if(rbl.drift_top!=null) rs.push(t("pf.reasonDrift").replace("{stock}",rbl.drift_top).replace("{pp}",rbl.drift_top_pp));
-      if(rbl.days_since>=91 && rbl.months_since!=null) rs.push(t("pf.reasonTime").replace("{months}",rbl.months_since));
-      const reasonTxt=rs.length?rs.join(t("pf.reasonSep")):(rbl.reasons||[]).join("; ");
-      const period=LANG==="zh"?"。":".";
-      $("#pf-reb-wrap").innerHTML=`<div class="pf-reb ${act?"act":"ok"}">
-        <span class="ic">${act?"⚠️":"✅"}</span>
-        <div><b>${act?t("pf.rebNow"):t("pf.rebOk")}</b>${" — "+(reasonTxt||t("pf.rebOkSub"))+period}
-        <div class="muted" style="font-size:11px;margin-top:2px">${t("pf.maxDrift")}: ${rbl.max_drift_pp}pp · ${rbl.days_since} ${t("pf.daysSince")}</div></div></div>`;
-    }
-    // recommended weights table — the optimum (max-Sharpe) point's allocation,
-    // with the actual change to make from today's weights at the next rebalance
-    const ms=a.max_sharpe.weights||{}, mv=a.min_var.weights||{};
-    const rows=(a.stocks||[]).map(s=>{
-      const cur=s.weight||0, m=ms[s.name]||0, v=mv[s.name]||0, chg=(m-cur)*100;
-      const chgTxt=Math.abs(chg)<0.5?`<span class="muted">—</span>`
-        :`<span class="${chg>0?"pos":"neg"}">${chg>0?"▲ +":"▼ "}${chg.toFixed(1)}</span>`;
-      return `<tr><td><b>${s.name}</b></td>
-        <td class="num">${(cur*100).toFixed(1)}%</td>
-        <td class="num" style="min-width:120px"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-          <span>${(m*100).toFixed(1)}%</span><div class="pf-w-bar" style="width:56px"><i style="width:${(m*100).toFixed(0)}%"></i></div></div></td>
-        <td class="num">${chgTxt}</td>
-        <td class="num muted">${(v*100).toFixed(1)}%</td></tr>`;}).join("");
-    $("#pf-reco").innerHTML=`<div class="muted" style="font-size:11px;margin-bottom:9px">${t("pf.rebalanceLead")}</div>
-      <div style="overflow-x:auto"><table><thead><tr>
-      <th>${t("pf.stock")}</th><th class="num">${t("pf.wNow")}</th>
-      <th class="num">${t("pf.wMaxSharpe")}</th><th class="num">${t("pf.wChange")}</th>
-      <th class="num">${t("pf.wMinVar")}</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>
-      <div class="muted" style="font-size:11px;margin-top:8px">${t("pf.recoNote")}</div>`;
-    $("#pf-reco-panel").style.display="";
-    // stock correlation matrix (with its own selectable lookback)
-    if(a.correlation && a.correlation.names && a.correlation.names.length>=2){
-      PF_CORR_LB=a.correlation.lookback||"2y";
-      renderCorr(a.correlation); renderCorrLb();
-      $("#pf-corr-panel").style.display="";
-    }
-    // CAPM risk–return chart
-    $("#pf-capm").innerHTML=efficientFrontierSVG(a);
-    $("#pf-capm-legend").innerHTML=`
-      <span><i style="background:var(--accent);border-radius:50%"></i>${t("pf.legCur")}</span>
-      <span><i style="background:#ef4444;border-radius:50%"></i>${t("pf.legMaxS")}</span>
-      <span><i style="background:#22d3ee"></i>${t("pf.legMinV")}</span>
-      <span><i style="background:#fff;border:1px solid #000;border-radius:50%"></i>${t("pf.legStock")}</span>
-      <span><i style="background:#22c55e"></i>${t("pf.legFront")}</span>`;
-    $("#pf-capm-panel").style.display="";
-  }catch(e){
-    // analysis is best-effort; on a slow cold-cache timeout, retry once quietly
-    if(e && e.message==="timeout" && !retried && PF_PID===pid)
-      setTimeout(()=>{ if(PF_PID===pid) loadAnalysis(pid,1); }, 10000);
-  }
-}
-
-async function addHolding(){
-  const err=$("#pf-add-err"); err.textContent="";
-  if(PF_PID==null){ err.textContent=t("pf.needPf")||"Create a portfolio first"; return; }
-  const shares=parseFloat($("#pf-shares").value), buy_date=$("#pf-date").value;
-  if(!PF_SEL||!PF_SEL.ticker){ err.textContent=t("pf.needStock"); return; }
-  if(!(shares>0)){ err.textContent=t("pf.needShares"); return; }
-  if(!buy_date){ err.textContent=t("pf.needDate"); return; }
-  const btn=$("#pf-add-btn"); btn.disabled=true;
-  try{
-    await post(`/api/portfolios/${PF_PID}/holdings`,{code:PF_SEL.code,ticker:PF_SEL.ticker,name:PF_SEL.name,shares,buy_date});
-    PF_SEL=null; $("#pf-stock").value=""; $("#pf-shares").value="";
-    loadPortfolio(true);
-  }catch(e){ err.textContent=e.message||t("auth.failed"); }
-  btn.disabled=false;
-}
-async function removeHolding(id){
-  if(PF_PID==null) return;
-  try{ await api("DELETE",`/api/portfolios/${PF_PID}/holdings/${id}`); }catch(_){}
-  loadPortfolio(true);
-}
-// search-as-you-type inside the add form
-function setupPfSearch(){
-  const inp=$("#pf-stock"), dd=$("#pf-stock-dd"); let timer=null;
-  const close=()=>{dd.classList.remove("open");dd.innerHTML="";};
-  const run=async()=>{
-    const q=inp.value.trim(); if(!q){close();PF_SEL=null;return;}
-    try{
-      const items=(await get(`/api/search?q=${encodeURIComponent(q)}&limit=10`)).filter(it=>!it.is_index);
-      dd.innerHTML=items.map((it,i)=>`<div class="sd-row" data-i="${i}">
-        <span class="sn"><b>${it.code}</b><small>${it.name||""}</small></span>
-        <span class="sp ${cls(it.chg_pct)}">${it.last!=null?fmtP(it.last,3):""}</span></div>`).join("");
-      dd.classList.toggle("open",items.length>0);
-      dd.querySelectorAll(".sd-row").forEach(r=>r.onmousedown=e=>{e.preventDefault();
-        const it=items[+r.dataset.i]; PF_SEL={code:it.code,ticker:it.ticker,name:it.name};
-        inp.value=`${it.code} · ${it.name||""}`; close(); });
-    }catch(_){ close(); }
-  };
-  inp.addEventListener("input",()=>{ PF_SEL=null; clearTimeout(timer); timer=setTimeout(run,180); });
-  inp.addEventListener("blur",()=>setTimeout(close,150));
-}
-
 /* ---------------- nav + boot ---------------- */
 function boot(){
-  loadPublicConfig();   // resolve the Google client ID from the backend (per-deploy)
   initChart();
   renderIndBar();       // indicator toolbar (MA/EMA/BOLL/Vol/RSI/MACD)
   loadQuotes();loadHealth();loadRotation();loadNews();
@@ -3337,14 +2592,6 @@ function boot(){
   $("#nav-ra").onclick=()=>showPage("ra");
   $("#nav-fundflow").onclick=()=>showPage("fundflow");
   $("#ff-refresh").onclick=()=>loadFundFlow(true);
-  $("#nav-portfolio").onclick=()=>showPage("portfolio");
-  // portfolio: default buy-date to today, wire add/refresh + in-form search
-  (function(){ const dt=$("#pf-date"); if(dt){ const now=new Date();
-    dt.max=now.toISOString().slice(0,10); dt.value=dt.max; } })();
-  $("#pf-add-btn").onclick=addHolding;
-  $("#pf-shares").addEventListener("keydown",e=>{ if(e.key==="Enter")addHolding(); });
-  $("#pf-refresh").onclick=()=>loadPortfolio(true);
-  setupPfSearch();
   // KLCI Index Health term toggle (beside the index title) — drives the KLCI
   // gauge + sector rotation + sector detail. FBM indexes have their own toggles.
   const gterm=$("#g-term"); gterm.innerHTML=termToggleHTML(TERM);
@@ -3363,24 +2610,11 @@ function boot(){
   window.addEventListener("keydown",e=>{
     if(e.key!=="Escape") return;
     if(_indPop){ closeIndPop(); return; }
-    if($("#auth-modal").classList.contains("open")){ closeAuth(); return; }
     if(!/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||"")) showPage("chart");
   });
-  // restore the last view (skip gated pages when signed out — no modal on boot)
+  // restore the last view
   try{const v=localStorage.getItem("view");
-    if(GATED_PAGES[v] && isAuthed()) showPage(v);}catch(_){}
-  // sign-in gate: button toggles sign-in / sign-out; modal handles sign-in
-  updateAuthUI();
-  $("#signin").onclick=()=>{ isAuthed() ? signOut() : openAuth(null); };
-  $("#auth-cancel").onclick=closeAuth;
-  $("#auth-submit").onclick=submitEmailAuth;
-  $("#auth-toggle").onclick=()=>setAuthMode(AUTH_MODE==="login"?"signup":"login");
-  $("#auth-info-ok").onclick=closeAuth;
-  $("#auth-resend").onclick=resendVerification;
-  ["auth-email","auth-pass","auth-name"].forEach(id=>$("#"+id).addEventListener("keydown",
-    e=>{ if(e.key==="Enter"){ e.preventDefault(); submitEmailAuth(); } }));
-  $("#auth-modal").addEventListener("mousedown",e=>{ if(e.target===$("#auth-modal")) closeAuth(); });
-  handleVerifyParam();   // finish signup if the page was opened from an email link
+    if(v && v!=="portfolio") showPage(v);}catch(_){}
   $("#g-reset").onclick=()=>selectIndex('KLCI');
   // dark / light theme toggle (logo letters + chart follow the theme; persists)
   function setTheme(light){
