@@ -19,8 +19,9 @@ replaced by this app's own infrastructure:
 
 IMPORTANT, and why this does not replace klci_vix: warrant prices are a LIVE
 snapshot with no history to backfill, so a wVIX can only ever be computed for
-today. Each run appends one row to a CSV on the persistent disk, so the series
-builds forward from the first run.
+today. Each build appends one timestamped row to a CSV on the persistent disk
+(a few times a day, plus any Refresh), so the series builds forward from the
+first run and shows intraday movement rather than one point per day.
 
 CAVEATS carried over from the original: issuer-quoted prices carry a vol premium
 (the level reads high), last-trade prices can be stale, and the correlation is
@@ -86,6 +87,16 @@ CORR_LOOKBACK = 60
 RV_LOOKBACK = 21
 ANN = 252
 REQUEST_PAUSE = 0.35     # be gentle: ~31 sequential POSTs per build
+
+# Render runs in UTC; Bursa trades in UTC+8, so stamping a build with the server
+# clock labels a midday sample "04:45" and, before 08:00 MYT, dates it yesterday
+# (which would also add a day to every days-to-maturity). Same convention as
+# fund_flow._MYT.
+_MYT = _dt.timedelta(hours=8)
+
+
+def _now_my() -> _dt.datetime:
+    return _dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None) + _MYT
 
 
 # --------------------------------------------------------------------------- #
@@ -285,7 +296,8 @@ def _append_history(row: dict) -> list[dict]:
 def build_wvix_payload() -> dict:
     import requests
 
-    today = _dt.date.today()
+    now = _now_my()
+    today = now.date()
     target_T = TARGET_DAYS / 365.0
 
     cons = ih.fetch_klci_constituents_klse()          # [(code, name, sector), ...]
@@ -380,7 +392,7 @@ def build_wvix_payload() -> dict:
     def _r(x, nd=2):
         return None if x is None or x != x else round(float(x), nd)
 
-    row = {"ts": _dt.datetime.now().strftime("%Y-%m-%dT%H:%M"),
+    row = {"ts": now.strftime("%Y-%m-%dT%H:%M"),
            "date": today.isoformat(),
            "wvix_pct": _r(100 * wvix),
            "index_warrant_iv_pct": _r(100 * idx_iv) if idx_iv is not None else None,
@@ -409,7 +421,7 @@ def build_wvix_payload() -> dict:
     ]
 
     return {**row,
-            "as_of": _dt.datetime.now().isoformat(timespec="seconds"),
+            "as_of": now.isoformat(timespec="seconds"),
             "target_days": TARGET_DAYS,
             "iv_rv_premium_median": _r(prem, 3),
             "index_warrants_used": idx_n,
