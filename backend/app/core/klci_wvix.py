@@ -237,9 +237,14 @@ def per_underlying_iv(rows: list[dict], q: float, today: _dt.date,
 # --------------------------------------------------------------------------- #
 # History on the persistent disk (one row per date)
 # --------------------------------------------------------------------------- #
-_FIELDS = ["date", "wvix_pct", "index_warrant_iv_pct", "klci_rv21_pct",
+# One row per BUILD, keyed by timestamp rather than by date. The original script
+# is a daily cron (one row per date), but here the panel should show movement, and
+# a date-keyed file only draws its first line segment tomorrow. Keyed by minute,
+# every rebuild adds a point, so the chart fills in during the day.
+_FIELDS = ["ts", "date", "wvix_pct", "index_warrant_iv_pct", "klci_rv21_pct",
            "avg_corr", "implied_corr", "names_with_iv", "weight_coverage_pct",
            "warrants_used"]
+MAX_HISTORY_ROWS = 1500     # ~a year of several-per-day samples
 
 
 def _read_history() -> list[dict]:
@@ -247,15 +252,22 @@ def _read_history() -> list[dict]:
         return []
     try:
         with HISTORY_CSV.open("r", encoding="utf-8", newline="") as fh:
-            return [r for r in csv.DictReader(fh) if r.get("date")]
+            rows = []
+            for r in csv.DictReader(fh):
+                # rows written before the switch carry a date but no timestamp
+                if not r.get("ts"):
+                    r["ts"] = (r.get("date") or "") + "T00:00"
+                if r["ts"]:
+                    rows.append(r)
+            return rows
     except Exception:  # noqa: BLE001
         return []
 
 
 def _append_history(row: dict) -> list[dict]:
-    rows = {r["date"]: r for r in _read_history()}
-    rows[row["date"]] = {k: ("" if row.get(k) is None else row.get(k)) for k in _FIELDS}
-    out = [rows[d] for d in sorted(rows)]
+    rows = {r["ts"]: r for r in _read_history()}
+    rows[row["ts"]] = {k: ("" if row.get(k) is None else row.get(k)) for k in _FIELDS}
+    out = [rows[t] for t in sorted(rows)][-MAX_HISTORY_ROWS:]
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         with HISTORY_CSV.open("w", encoding="utf-8", newline="") as fh:
@@ -368,7 +380,8 @@ def build_wvix_payload() -> dict:
     def _r(x, nd=2):
         return None if x is None or x != x else round(float(x), nd)
 
-    row = {"date": today.isoformat(),
+    row = {"ts": _dt.datetime.now().strftime("%Y-%m-%dT%H:%M"),
+           "date": today.isoformat(),
            "wvix_pct": _r(100 * wvix),
            "index_warrant_iv_pct": _r(100 * idx_iv) if idx_iv is not None else None,
            "klci_rv21_pct": _r(100 * klci_rv),
@@ -400,7 +413,7 @@ def build_wvix_payload() -> dict:
             "target_days": TARGET_DAYS,
             "iv_rv_premium_median": _r(prem, 3),
             "index_warrants_used": idx_n,
-            "history": {"dates": [h["date"] for h in hist],
+            "history": {"dates": [h.get("ts") or h.get("date") for h in hist],
                         "wvix": [_f(h.get("wvix_pct")) for h in hist],
                         "index_iv": [_f(h.get("index_warrant_iv_pct")) for h in hist],
                         "klci_rv": [_f(h.get("klci_rv21_pct")) for h in hist]},

@@ -639,7 +639,7 @@
     <b>Implied correlation</b> compares the index warrants' own volatility with the basket's: high means
     the market is paying up for everything to fall together.
     <br><br>Warrant prices are a live snapshot that cannot be backfilled, so this series <b>starts from its
-    first run and builds forward</b> — one point per day.
+    first run and builds forward</b> — a new point each time it is rebuilt.
   </div></details>
   <div class="sub" id="wvix-sub">loading…</div>
   <div id="wvix-body"></div>
@@ -2008,11 +2008,23 @@ async function loadWvix(force){
       {label:"KLCI realized 21d",color:"var(--muted)",values:hist.klci_rv||[]},
       {label:"Index-warrant IV",color:"var(--accent)",values:hist.index_iv||[]}
     ].filter(s=>s.values.some(v=>v!=null));
+    // history is timestamped per build ("2026-10-20T14:32"): show just the time
+    // while every sample is from one day, otherwise date + time
+    const stamps=(hist.dates||[]).map(s=>String(s||""));
+    const sameDay=stamps.length>0 && stamps.every(s=>s.slice(0,10)===stamps[0].slice(0,10));
+    const labels=stamps.map(s=>{
+      const [dpart,tpart]=s.split("T");
+      const hm=(tpart||"").slice(0,5);
+      if(sameDay) return hm||dpart;
+      const [,m,dd]=(dpart||"").split("-");
+      return (dd&&m? `${dd}/${m}`:dpart)+(hm?` ${hm}`:"");
+    });
     const chart = pts>=2
-      ? multiLineSVG(hist.dates,series,{fmtTick:v=>v.toFixed(0)+"%"})
+      ? multiLineSVG(labels,series,{fmtTick:v=>v.toFixed(0)+"%"})
       : `<div class="muted" style="padding:14px 8px;font-size:12px;line-height:1.6">
            Collecting history — <b>${pts} point${pts===1?"":"s"}</b> so far. Warrant prices are a live
-           snapshot and cannot be backfilled, so this chart fills in one point per day from here.</div>`;
+           snapshot and cannot be backfilled, so the line starts here and builds forward: a point is
+           added every time the figure is rebuilt (at most every 3 hours, or on Refresh).</div>`;
     const legend = pts>=2 ? toggleLegend(series) : "";
     const rows=(d.constituents||[]).filter(c=>c.iv30_pct!=null).slice(0,8).map(c=>`
       <tr><td><b>${c.name}</b> <span class="muted">${c.code}</span></td>
@@ -2035,7 +2047,7 @@ async function loadWvix(force){
           <div class="v">${d.avg_corr==null?"—":fmtP(d.avg_corr,2)}</div>
           <div class="d">implied ${d.implied_corr==null?"—":fmtP(d.implied_corr,2)}</div></div>
       </div>
-      <div class="gx-panel" style="margin-top:14px"><h3>wVIX vs realized — accumulating daily</h3>
+      <div class="gx-panel" style="margin-top:14px"><h3>wVIX vs realized — movement since the first build</h3>
         ${chart}
         ${legend}
         <div class="muted" style="font-size:11px;margin-top:8px">${d.note||""}</div></div>
