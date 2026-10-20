@@ -344,6 +344,26 @@ def klci_vix(force: bool = False):
         raise HTTPException(502, f"VIX compute failed: {exc}")
 
 
+@app.get("/api/wvix/klci")
+def klci_wvix(force: bool = False):
+    """KLCI warrant-implied 30-day vol (wVIX) — implied vol backed out of the
+    structured warrants on each KLCI constituent, combined through a realized
+    correlation matrix. Forward-looking companion to /api/vix/klci, which stays
+    the realized measure. Slow build, 12h TTL, stale-while-revalidate; returns
+    {warming:true} on a cold cache. History accumulates from the first run:
+    warrant prices are a live snapshot and cannot be backfilled.
+
+    `force` is accepted so the page's Refresh button can bust its own client
+    cache; the server still never blocks on a cold build."""
+    try:
+        r = service.get_klci_wvix(nowait=True)
+        if r is not None:
+            return r
+        return {"warming": True, "error": service.build_error("wvix:KLCI")}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(503, f"wVIX unavailable: {exc}")
+
+
 # --------------------------------------------------------------------------- #
 # FBM market indexes (Mid 70 / ACE / EMAS / Fledgling)
 # --------------------------------------------------------------------------- #

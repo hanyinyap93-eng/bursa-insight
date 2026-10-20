@@ -628,6 +628,21 @@
   </div></details>
   <div class="sub" id="vix-sub">loading…</div>
   <div id="vix-body"></div>
+
+  <h2 style="margin-top:30px">KLCI wVIX <span class="muted" style="font-weight:400">— warrant-implied 30-day volatility</span></h2>
+  <details class="explain"><summary>What am I looking at?</summary><div class="ex-body">
+    The VIX above measures what the index <b>has</b> done. This measures what the market <b>expects</b>:
+    every structured warrant on the 30 KLCI constituents is priced back through Black-Scholes to the
+    volatility it implies, each stock is interpolated to <b>30 days</b>, and the names are combined with a
+    60-day correlation matrix into one index number. A level <b>above</b> realized vol is the usual state —
+    issuers quote a premium — so watch the <b>gap</b> and the direction, not the absolute level.
+    <b>Implied correlation</b> compares the index warrants' own volatility with the basket's: high means
+    the market is paying up for everything to fall together.
+    <br><br>Warrant prices are a live snapshot that cannot be backfilled, so this series <b>starts from its
+    first run and builds forward</b> — one point per day.
+  </div></details>
+  <div class="sub" id="wvix-sub">loading…</div>
+  <div id="wvix-body"></div>
 </section>
 
 <!-- MARKET INDEX PAGE: FBM Mid 70 / ACE / EMAS / Fledgling index health -->
@@ -1485,7 +1500,7 @@ async function loadNews(){
 /* ---------------- GEX page (analyst sentiment + warrant GEX) ---------------- */
 const RATING_META=[["strongBuy","Strong Buy","#1a9641"],["buy","Buy","#a6d96a"],
   ["hold","Hold","#bdbdbd"],["sell","Sell","#fdae61"],["strongSell","Strong Sell","#d7191c"]];
-let SENT_LOADED=false, GEX_LOADED=false, VIX_LOADED=false, FBM_LOADED=false, RA_LOADED=false, FF_LOADED=false;
+let SENT_LOADED=false, WVIX_LOADED=false, GEX_LOADED=false, VIX_LOADED=false, FBM_LOADED=false, RA_LOADED=false, FF_LOADED=false;
 
 // views: the chart dashboard ('chart') and the full pages ('gex','fbm','ra')
 function showPage(name){
@@ -1496,7 +1511,7 @@ function showPage(name){
   $("#page-fundflow").classList.toggle("open", name==="fundflow");
   document.querySelectorAll("nav a").forEach(a=>
     a.classList.toggle("active", a.id==="nav-"+name || (name==="chart"&&a.id==="nav-chart")));
-  if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); if(!VIX_LOADED)loadVix(); }
+  if(name==="gex"){ if(!SENT_LOADED)loadSentiment(); if(!GEX_LOADED)loadGex(); if(!VIX_LOADED)loadVix(); if(!WVIX_LOADED)loadWvix(); }
   if(name==="fbm" && !FBM_LOADED){ FBM_LOADED=true; loadFbm(); }
   if(name==="ra" && !RA_LOADED){ RA_LOADED=true; loadRiskAppetite(); }
   if(name==="fundflow" && !FF_LOADED){ FF_LOADED=true; loadFundFlow(); }
@@ -1967,6 +1982,73 @@ function warrantIvFromGex(g, spot){
     const med=iv.length%2?iv[mid]:(iv[mid-1]+iv[mid])/2;
     return {iv:med, n:iv.length};
   }catch(_){ return null; }
+}
+/* ---------------- KLCI wVIX (warrant-implied 30-day vol) ---------------- */
+// Companion to the realized VIX above. The build is slow (one warrant-screener
+// request per constituent) so it is served stale-while-revalidate; a cold cache
+// returns {warming:true} and we poll. Its history accumulates one point per day
+// from the first run — warrant prices cannot be backfilled.
+async function loadWvix(force){
+  const body=$("#wvix-body"), sub=$("#wvix-sub");
+  body.innerHTML=skeleton(3);
+  try{
+    const d=await getCached("/api/wvix/klci"+(force?"?force=true":""),30*60000,120000,force);
+    if(d&&d.warming){ sub.textContent="building — one warrant chain per constituent…";
+      warmingRetry(body, ()=>loadWvix(), "Pricing the warrant chains (first build takes a minute)…", d.error); return; }
+    WVIX_LOADED=true;
+    const pct=v=>v==null?"—":fmtP(v,1)+"%";
+    const gap=(d.wvix_pct!=null&&d.klci_rv21_pct!=null)?d.wvix_pct-d.klci_rv21_pct:null;
+    sub.innerHTML=`as of ${(d.as_of||"").replace("T"," ")} · ${d.target_days}-day · `+
+      `${d.names_with_iv} of 30 names priced from warrants (${fmtP(d.weight_coverage_pct,0)}% of index weight) · `+
+      `${d.warrants_used} warrants used`;
+    const hist=d.history||{dates:[],wvix:[]};
+    const pts=(hist.wvix||[]).filter(v=>v!=null).length;
+    const series=[
+      {label:"wVIX (warrant-implied)",color:"#a855f7",values:hist.wvix||[],width:2.2},
+      {label:"KLCI realized 21d",color:"var(--muted)",values:hist.klci_rv||[]},
+      {label:"Index-warrant IV",color:"var(--accent)",values:hist.index_iv||[]}
+    ].filter(s=>s.values.some(v=>v!=null));
+    const chart = pts>=2
+      ? multiLineSVG(hist.dates,series,{fmtTick:v=>v.toFixed(0)+"%"})
+      : `<div class="muted" style="padding:14px 8px;font-size:12px;line-height:1.6">
+           Collecting history — <b>${pts} point${pts===1?"":"s"}</b> so far. Warrant prices are a live
+           snapshot and cannot be backfilled, so this chart fills in one point per day from here.</div>`;
+    const legend = pts>=2 ? toggleLegend(series) : "";
+    const rows=(d.constituents||[]).filter(c=>c.iv30_pct!=null).slice(0,8).map(c=>`
+      <tr><td><b>${c.name}</b> <span class="muted">${c.code}</span></td>
+        <td class="num">${pct(c.iv30_pct)}</td>
+        <td class="num muted">${pct(c.rv21_pct)}</td>
+        <td class="num">${fmtP(c.weight_pct,1)}%</td>
+        <td class="num muted">${c.n_warrants}</td></tr>`).join("");
+    body.innerHTML=`
+      <div class="cards">
+        <div class="card"><div class="k">wVIX ${d.target_days}d</div>
+          <div class="v" style="color:#a855f7">${pct(d.wvix_pct)}</div>
+          <div class="d">warrant-implied, annualized</div></div>
+        <div class="card"><div class="k">vs realized</div>
+          <div class="v ${gap==null?"":cls(gap)}">${gap==null?"—":fmt(gap,1)+"%"}</div>
+          <div class="d">realized 21d ${pct(d.klci_rv21_pct)}</div></div>
+        <div class="card"><div class="k">Index-warrant IV</div>
+          <div class="v">${pct(d.index_warrant_iv_pct)}</div>
+          <div class="d">FBMKLCI warrants directly</div></div>
+        <div class="card"><div class="k">Correlation</div>
+          <div class="v">${d.avg_corr==null?"—":fmtP(d.avg_corr,2)}</div>
+          <div class="d">implied ${d.implied_corr==null?"—":fmtP(d.implied_corr,2)}</div></div>
+      </div>
+      <div class="gx-panel" style="margin-top:14px"><h3>wVIX vs realized — accumulating daily</h3>
+        ${chart}
+        ${legend}
+        <div class="muted" style="font-size:11px;margin-top:8px">${d.note||""}</div></div>
+      ${rows?`<div class="gx-panel" style="margin-top:14px"><h3>Largest names — warrant-implied vs realized</h3>
+        <table><thead><tr><th>Stock</th><th class="num">IV 30d</th><th class="num">RV 21d</th>
+          <th class="num">Weight</th><th class="num">Warrants</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`:""}`;
+    if(pts>=2){ wireLegends(body); wireXhair(body); }
+  }catch(e){
+    sub.textContent="";
+    body.innerHTML=`<div class="muted">${e.message||"wVIX unavailable"} <a class="reset-link" id="wvix-retry">retry</a></div>`;
+    const r=$("#wvix-retry"); if(r)r.onclick=()=>loadWvix(true);
+  }
 }
 async function loadVix(retried,force){
   const body=$("#vix-body");
@@ -2603,7 +2685,7 @@ function boot(){
     loadHealth(); loadRotation();
   });
   // per-page refresh buttons re-fetch (server serves cached + refreshes behind)
-  $("#gex-refresh").onclick=()=>{loadSentiment(false,true);loadGex(false,true);loadVix(false,true);};
+  $("#gex-refresh").onclick=()=>{loadSentiment(false,true);loadGex(false,true);loadVix(false,true);loadWvix(true);};
   $("#fbm-refresh").onclick=()=>loadFbm(true);
   $("#ra-refresh").onclick=()=>loadRiskAppetite(false,true);
   // Esc anywhere (outside an input) returns to the chart

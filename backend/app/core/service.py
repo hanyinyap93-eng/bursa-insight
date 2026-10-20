@@ -401,6 +401,24 @@ def get_klci_vix(force: bool = False, nowait: bool = False):
     return _swr(key, TTL_SECONDS * 6, builder, force=force)  # 3h TTL
 
 
+def get_klci_wvix(force: bool = False, nowait: bool = False):
+    """KLCI warrant-implied vol (wVIX) — forward-looking companion to the VIX.
+
+    SLOW build: one warrant-screener POST per KLCI constituent (~31 requests,
+    deliberately paced) plus the constituent price panel, so it carries a 12h
+    TTL and is always served stale-while-revalidate. It only changes once a day
+    anyway — each build appends one row to the history on the persistent disk,
+    which is the series the chart draws. nowait=True never blocks on a cold
+    build."""
+    from . import klci_wvix as wvix_mod
+
+    key = "wvix:KLCI"
+    builder = wvix_mod.build_wvix_payload
+    if nowait:
+        return _cached_or_warm(key, TTL_SECONDS * 24, builder)
+    return _swr(key, TTL_SECONDS * 24, builder, force=force)  # 12h TTL
+
+
 def get_fund_flow(force: bool = False, nowait: bool = False):
     """KLCI 30 tick-rule fund flow (SWR-cached). The intraday download + tick
     classification is slow, so it is cached with a 12h TTL and served
