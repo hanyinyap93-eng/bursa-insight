@@ -2000,7 +2000,7 @@ async function loadWvix(force){
     const gap=(d.wvix_pct!=null&&d.klci_rv21_pct!=null)?d.wvix_pct-d.klci_rv21_pct:null;
     sub.innerHTML=`as of ${(d.as_of||"").replace("T"," ")} · ${d.target_days}-day · `+
       `${d.names_with_iv} of 30 names priced from warrants (${fmtP(d.weight_coverage_pct,0)}% of index weight) · `+
-      `${d.warrants_used} warrants used`;
+      `${d.warrants_used} warrants used`+(d.iv_rejected_names?` · ${d.iv_rejected_names} name${d.iv_rejected_names===1?"":"s"} rejected as stale`:"");
     const hist=d.history||{dates:[],wvix:[]};
     const pts=(hist.wvix||[]).filter(v=>v!=null).length;
     const series=[

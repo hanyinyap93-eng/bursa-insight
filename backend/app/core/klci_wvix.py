@@ -65,9 +65,23 @@ INDEX_DIV = 0.04         # KLCI dividend yield
 INDEX_MCODE = "0650"     # FBMKLCI underlying (index warrants)
 TARGET_DAYS = 30
 MIN_DAYS, MAX_DAYS = 14, 400
-MONEYNESS_BAND = 0.15    # |ln(K/S)| <= band
+# --- stale-quote defence -----------------------------------------------------
+# The original drops warrants that did not trade today (require_volume). This
+# feed exposes no volume column, and the screener's relative_volume_min filter
+# returns an EMPTY chain for every underlying, so that defence is unavailable.
+# Verified live, first run: the basket read 18.6% while the FBMKLCI index
+# warrants read 8.6% and implied correlation came out ~0 (impossible) — the
+# signature of stale quotes on illiquid warrants inflating IV. These three
+# substitutes deliberately deviate from the script, and the page says so:
+#   * a tighter moneyness band, so only near-ATM (the liquid ones) count
+#   * a tighter sane-IV band
+#   * the MEDIAN per expiry once there are enough quotes, so one stale outlier
+#     cannot drag the bucket, and a per-stock IV/RV sanity cap
+MONEYNESS_BAND = 0.08    # |ln(K/S)| <= band (original: 0.15)
 MIN_PRICE = 0.03         # RM; below this the half-sen tick dominates the IV
-IV_LO, IV_HI = 0.02, 2.0  # sane-IV band for a warrant to count
+IV_LO, IV_HI = 0.05, 1.20  # sane-IV band for a warrant (original: 0.02-2.0)
+MEDIAN_MIN_QUOTES = 3    # per expiry: median once we have this many quotes
+MAX_IV_RV_RATIO = 3.0    # reject a stock's IV above this multiple of its realized vol
 CORR_LOOKBACK = 60
 RV_LOOKBACK = 21
 ANN = 252
@@ -204,8 +218,14 @@ def per_underlying_iv(rows: list[dict], q: float, today: _dt.date,
     vs = []
     for T in Ts:
         pairs = buckets[T]
-        wsum = sum(w for _, w in pairs) + 1e-9
-        vs.append(sum(iv * w for iv, w in pairs) / wsum)
+        if len(pairs) >= MEDIAN_MIN_QUOTES:
+            # median: one stale quote cannot drag the expiry (stale-quote defence)
+            s = sorted(iv for iv, _w in pairs)
+            mid = len(s) // 2
+            vs.append(s[mid] if len(s) % 2 else 0.5 * (s[mid - 1] + s[mid]))
+        else:
+            wsum = sum(w for _, w in pairs) + 1e-9
+            vs.append(sum(iv * w for iv, w in pairs) / wsum)
     if len(Ts) == 1 or target_T <= Ts[0]:
         return float(vs[0]), used          # flat extrapolation
     if target_T >= Ts[-1]:
@@ -276,6 +296,7 @@ def build_wvix_payload() -> dict:
     sess.headers.update(HEADERS)
 
     names, ivs, rvs, weights, nwar = [], [], [], [], []
+    rejected = 0
     for code, name, _sec in cons:
         tkr = f"{code}.KL"
         qrow = quotes.get(code) or {}
@@ -289,6 +310,10 @@ def build_wvix_payload() -> dict:
         mcap = qrow.get("market_cap")
         rv = (float(rets[tkr].tail(RV_LOOKBACK).std() * math.sqrt(ANN))
               if tkr in rets.columns and rets[tkr].tail(RV_LOOKBACK).notna().sum() > 5 else np.nan)
+        # sanity cap: an IV far above the stock's own realized vol is a stale
+        # quote, not a forecast — drop it and let the RV x premium fallback stand
+        if iv is not None and rv == rv and rv > 0 and iv > MAX_IV_RV_RATIO * rv:
+            iv, rejected = None, rejected + 1
         names.append(name)
         ivs.append(iv if iv is not None else np.nan)
         rvs.append(rv)
@@ -351,7 +376,8 @@ def build_wvix_payload() -> dict:
            "implied_corr": _r(impl_rho, 3),
            "names_with_iv": int(st["iv30"].notna().sum()),
            "weight_coverage_pct": _r(100 * cover, 1),
-           "warrants_used": int(sum(nwar))}
+           "warrants_used": int(sum(nwar)),
+           "iv_rejected_names": int(rejected)}
     hist = _append_history(row)
 
     def _f(v):
@@ -381,5 +407,8 @@ def build_wvix_payload() -> dict:
             "constituents": constituents,
             "note": ("Warrant-implied 30-day vol. Issuer quotes carry a premium so the "
                      "level reads above realized vol; correlation is historical, not "
-                     "implied. History starts from the first run — warrant prices "
-                     "cannot be backfilled.")}
+                     "implied. This feed has no volume column, so instead of dropping "
+                     "warrants that did not trade we use the median IV per expiry, a "
+                     "tighter near-ATM band and an IV/RV sanity cap — a deviation from "
+                     "the reference script. History starts from the first run: warrant "
+                     "prices cannot be backfilled.")}
