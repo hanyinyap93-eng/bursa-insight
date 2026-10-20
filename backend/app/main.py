@@ -353,9 +353,12 @@ def klci_wvix(force: bool = False):
     {warming:true} on a cold cache. History accumulates from the first run:
     warrant prices are a live snapshot and cannot be backfilled.
 
-    `force` is accepted so the page's Refresh button can bust its own client
-    cache; the server still never blocks on a cold build."""
+    `force` kicks off a rebuild in the background and returns the current
+    payload immediately — the build takes about a minute, so the request never
+    blocks on it. The next poll picks up the new numbers."""
     try:
+        if force:
+            service.refresh_klci_wvix()
         r = service.get_klci_wvix(nowait=True)
         if r is not None:
             return r

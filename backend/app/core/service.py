@@ -419,6 +419,21 @@ def get_klci_wvix(force: bool = False, nowait: bool = False):
     return _swr(key, TTL_SECONDS * 24, builder, force=force)  # 12h TTL
 
 
+def refresh_klci_wvix():
+    """Kick off a wVIX rebuild in the background and return immediately.
+
+    The build takes ~a minute (one warrant chain per constituent), so the
+    Refresh button must not block on it — and because the payload is cached on
+    the persistent disk, it also survives a redeploy, so without this a code
+    change to the model would not show up until the 12h TTL lapsed."""
+    _spawn_refresh("wvix:KLCI", lambda: _rebuild_klci_wvix())
+
+
+def _rebuild_klci_wvix():
+    from . import klci_wvix as wvix_mod
+    return wvix_mod.build_wvix_payload()
+
+
 def get_fund_flow(force: bool = False, nowait: bool = False):
     """KLCI 30 tick-rule fund flow (SWR-cached). The intraday download + tick
     classification is slow, so it is cached with a 12h TTL and served
